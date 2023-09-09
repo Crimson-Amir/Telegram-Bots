@@ -1,5 +1,5 @@
 # Telegram-Bots
-Telegram bots made by me
+Telegram bots made by me | `python-telegram-bot` `telebot`
 
 # List of bots
 + [Birthday-Bot:](https://github.com/Crimson-Amir/Telegram-Bots/tree/main/birthday-bot) This bot registers birth and congratulates at the specified time. and other features.
