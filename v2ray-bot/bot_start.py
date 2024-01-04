@@ -17,16 +17,16 @@ def bot_start(update, context):
     conn = sqlite3.connect('v2ray.db')
     c = conn.cursor()
 
-    c.execute("SELECT id FROM User WHERE chat_id = {0}".format(chat_id))
+    c.execute("SELECT id FROM User WHERE id = {0}".format(chat_id))
     user_is_available = c.fetchall()
 
     if len(user_is_available) == 0:
 
-        context.bot.send_message(ADMIN_CHAT_ID, text=start_text_notif)
+        context.bot.send_message(ADMIN_CHAT_ID, text=start_text_notif, parse_mode="HTML")
         c.execute("INSERT INTO User VALUES(?,?,?,?)",
                   (user["first_name"], user["username"], int(user["id"]), str(date)))
         conn.commit()
 
-    user_text = f"سلام، <a href='tg://user?id={user['id']}'>{user['first_name']}</a> عزیز.\n• بخش مورد نظر خود را انتخاب کنید:"
+    user_text = f"<b>سلام <a href='tg://user?id={user['id']}'>{user['first_name']}</a> عزیز، به ربات v2ray خوش آمدید.\nبرای ادامه بخش مورد نظر خودتون رو انتخاب کنید:\n</b>"
     update.message.reply_text(text=user_text, reply_markup=InlineKeyboardMarkup(key), parse_mode='HTML')
     conn.close()

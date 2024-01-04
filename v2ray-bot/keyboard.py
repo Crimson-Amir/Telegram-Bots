@@ -1,13 +1,13 @@
 from telegram import InlineKeyboardButton
 
 main_key = [
-    [InlineKeyboardButton("ثبت تولد ❤️", callback_data='set_birthday')],
+    [InlineKeyboardButton("🛒 خرید سرویس", callback_data='buy_service')],
 
-    [InlineKeyboardButton("اضافه کردن به گروه", url='t.me/Birthday_Reminder2_Bot?startgroup=new'),
-     InlineKeyboardButton("تنظیمات ⚙️", callback_data='settings')],
+    [InlineKeyboardButton("⚙️ تنظیمات", callback_data='settings'),
+     InlineKeyboardButton("🎛 سرویس های من", callback_data='my_service')],
 
-    [InlineKeyboardButton("مشاهده تولد ها 🎂", callback_data='see_birthday')],
+    [InlineKeyboardButton("⏳ دریافت سرویس تست", callback_data='get_test_service')],
 
-    [InlineKeyboardButton("راهنما 📚", callback_data='guidance'),
-     InlineKeyboardButton("پشتیبانی 👥", callback_data='support')],
+    [InlineKeyboardButton("📚 راهنما", callback_data='guidance'),
+     InlineKeyboardButton("👥 پشتیبانی", callback_data='support')],
 ]
