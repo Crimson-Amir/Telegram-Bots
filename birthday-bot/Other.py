@@ -1,6 +1,4 @@
 import sqlite3
-from telegram.ext import *
-
 
 def create_database():
     conn = sqlite3.connect('Birth.db')

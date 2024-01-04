@@ -1,17 +1,17 @@
 from telegram.ext import *
 
 from ApiKey import Key
-from keyboards import keyboard, keyboard_fa, lang_key
 from Srart_ActivateTheUser import bot_start, select_lang, choose, help_bot
-from Other import what_lang, create_database, all_births, delete_birth, say_update
-from MainOption_keys import set_birthday_ways, set_birthday_text, set_birthday_video, see_birthday, support, guidance, setting
-from Actions import reg_birth_code, filter_words, clear_data, happy_birthday
+from Other import create_database, all_births, delete_birth, say_update
+from MainOption_keys import (set_birthday_ways, set_birthday_text, set_birthday_video, see_birthday, support, guidance,
+                             setting)
+from Actions import filter_words, clear_data
 from Quidance import birth_orders, information, permissions
-from Settings import cal, greeting_code, greetings, langueg_code, language, reminder_code, reminder, status_permission_code, status_permission, change_status, change_language, change_reminder, change_permisson, change_cal
+from Settings import (cal, greetings, language, reminder, status_permission, change_status, change_language,
+                      change_reminder, change_permisson, change_cal)
 
 
 # main -----------------------------------------------------
-
 
 
 def main():
@@ -20,7 +20,6 @@ def main():
     create_database()
 
     dp = updater.dispatcher
-
 
     dp.add_handler(CommandHandler('start', select_lang))
     dp.add_handler(CommandHandler('help', help_bot))
@@ -60,7 +59,6 @@ def main():
     dp.add_handler(CallbackQueryHandler(reminder, pattern='reminder'))
     dp.add_handler(CallbackQueryHandler(status_permission, pattern='status_permission'))
     dp.add_handler(CallbackQueryHandler(cal, pattern='calenders'))
-
 
     dp.add_handler(CallbackQueryHandler(change_language, pattern='us'))
     dp.add_handler(CallbackQueryHandler(change_language, pattern='ir'))
