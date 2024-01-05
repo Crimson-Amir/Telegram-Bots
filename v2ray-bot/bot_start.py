@@ -17,13 +17,12 @@ def bot_start(update, context):
     conn = sqlite3.connect('v2ray.db')
     c = conn.cursor()
 
-    c.execute("SELECT id FROM User WHERE id = {0}".format(chat_id))
+    c.execute("SELECT id FROM User WHERE chat_id = {0}".format(chat_id))
     user_is_available = c.fetchall()
 
     if len(user_is_available) == 0:
-
         context.bot.send_message(ADMIN_CHAT_ID, text=start_text_notif, parse_mode="HTML")
-        c.execute("INSERT INTO User VALUES(?,?,?,?)",
+        c.execute("INSERT INTO User (name,user_name,chat_id,date) VALUES (?,?,?,?)",
                   (user["first_name"], user["username"], int(user["id"]), str(date)))
         conn.commit()
 
