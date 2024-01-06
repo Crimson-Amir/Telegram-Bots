@@ -29,3 +29,18 @@ def bot_start(update, context):
     user_text = f"<b>سلام <a href='tg://user?id={user['id']}'>{user['first_name']}</a> عزیز، به ربات v2ray خوش آمدید.\nبرای ادامه بخش مورد نظر خودتون رو انتخاب کنید:\n</b>"
     update.message.reply_text(text=user_text, reply_markup=InlineKeyboardMarkup(key), parse_mode='HTML')
     conn.close()
+
+
+def main_menu(update, context, send_message=False):
+    query = update.callback_query
+    user = query.from_user
+
+    user_text = f"<b>سلام <a href='tg://user?id={user['id']}'>{user['first_name']}</a> عزیز، به ربات v2ray خوش آمدید.\nبرای ادامه بخش مورد نظر خودتون رو انتخاب کنید:\n</b>"
+    if not send_message:
+        query.edit_message_text(text=user_text, reply_markup=InlineKeyboardMarkup(key), parse_mode='HTML')
+    else:
+        context.bot.send_message(text=user_text, reply_markup=InlineKeyboardMarkup(key), parse_mode='HTML', chat_id=query.message.chat_id)
+        query.answer(text="در یک پیام جدید فرستادم!", show_alert=False)
+
+def send_main_message(update, context):
+    main_menu(update, context, send_message=True)

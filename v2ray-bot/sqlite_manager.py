@@ -82,7 +82,8 @@ class ManageDb:
     def update(self, table, where):
         for key, value in table.items():
             for k, v in value.items():
-                self.cursor.execute(f"UPDATE {key} SET {k} = '{v}' {where}")
+                text = f"UPDATE {key} SET {k} = '{v}' {where}"
+                self.cursor.execute(text)
             self.db.commit()
 
     @connecting_manage

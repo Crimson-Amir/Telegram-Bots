@@ -53,24 +53,31 @@ def admin_add_update_inbound(update, context):
 def add_service(update, context):
     """
     {
+    'update': 0,
     'inbound_id': 1,
     'active': 1,
     'name': 'Netherlands Server 🇳🇱',
     'country': 'Netherlands',
     'period': 30,
     'traffic': 10,
+    'price': 10000
     }
     """
-    try:
-        user_message = eval(update.message.reply_to_message.text)
-        sqlite_manager.insert('Product', [{'inbound_id': user_message["inbound_id"],'active': user_message["active"],
-                                           'name': user_message["name"],'country': user_message["country"],
-                                           'period': user_message["period"],'traffic': user_message["traffic"],
-                                           'date': datetime.datetime.now(pytz.timezone('Asia/Tehran'))}])
-        update.message.reply_text('OK')
-    except Exception as e:
-        print(e)
-        update.message.reply_text(e)
+    if update.message.reply_to_message:
+        try:
+            user_message = eval(update.message.reply_to_message.text)
+            get_data = {'Product': {'inbound_id': user_message["inbound_id"],'active': user_message["active"],
+                                    'name': user_message["name"],'country': user_message["country"],
+                                    'period': user_message["period"],'traffic': user_message["traffic"],
+                                    'price': user_message["price"],'date': datetime.datetime.now(pytz.timezone('Asia/Tehran'))}}
+            if user_message['update']:
+                sqlite_manager.update(get_data, where=f'where id = {user_message['update']}')
+            else:
+                sqlite_manager.insert(get_data)
+            update.message.reply_text('OK')
+        except Exception as e:
+            print(e)
+            update.message.reply_text(e)
 
 
 def get_all_service():
@@ -84,6 +91,7 @@ def get_all_service():
         'country',
         'period',
         'traffic',
+        'price',
         'date',
     ]
     for ser in all_serv:
@@ -95,16 +103,15 @@ def get_all_service():
 def all_service(update, context):
     try:
         get = get_all_service()
-        update.message.reply_text("Like This: \n", get)
+        update.message.reply_text('All Service:\n\n' + str(get))
     except Exception as e:
         update.message.reply_text(e)
 
 
 def del_service(update, context):
-    try:
-        if context.args:
-            print(context.args)
+    if context.args:
+        try:
             sqlite_manager.delete({"Product": [context.args[0], eval(context.args[1])]})
             update.message.reply_text("OK")
-    except Exception as e:
-        update.message.reply_text(e)
+        except Exception as e:
+            update.message.reply_text("Error", e)

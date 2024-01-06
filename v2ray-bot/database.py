@@ -10,7 +10,7 @@ def create_database():
     c.execute('CREATE TABLE IF NOT EXISTS Admin(id integer primary key, name text, user_name text, chat_id text,'
               ' level integer)')
     c.execute('CREATE TABLE IF NOT EXISTS Product(id integer primary key, inbound_id integer, active integer, name text'
-              ',country text, period integer, traffic real, date text)')
+              ',country text, period integer, traffic integer, price integer, date text)')
     c.execute('CREATE TABLE IF NOT EXISTS Purchased(id integer primary key, active integer, name text, user_name text,'
               'chat_id integer, factor_id text, product_id integer, details text, date text)')
 
