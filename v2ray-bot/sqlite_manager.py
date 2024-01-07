@@ -62,7 +62,7 @@ class ManageDb:
             touples.append(f"({', '.join(values)})")
         ex = self.cursor.execute(f'INSERT INTO {table} ({column}) VALUES {", ".join(touples)}')
         self.db.commit()
-        return ex
+        return self.cursor.lastrowid
 
     @connecting_manage
     def delete(self, table: dict):
