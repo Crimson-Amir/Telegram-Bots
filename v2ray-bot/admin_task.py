@@ -66,14 +66,14 @@ def add_service(update, context):
     if update.message.reply_to_message:
         try:
             user_message = eval(update.message.reply_to_message.text)
-            get_data = {'Product': {'inbound_id': user_message["inbound_id"],'active': user_message["active"],
+            get_data = {'inbound_id': user_message["inbound_id"],'active': user_message["active"],
                                     'name': user_message["name"],'country': user_message["country"],
                                     'period': user_message["period"],'traffic': user_message["traffic"],
-                                    'price': user_message["price"],'date': datetime.datetime.now(pytz.timezone('Asia/Tehran'))}}
+                                    'price': user_message["price"],'date': datetime.datetime.now(pytz.timezone('Asia/Tehran'))}
             if user_message['update']:
-                sqlite_manager.update(get_data, where=f'where id = {user_message["update"]}')
+                sqlite_manager.update({'Product': get_data}, where=f'where id = {user_message["update"]}')
             else:
-                sqlite_manager.insert(get_data)
+                sqlite_manager.insert('Product', [get_data])
             update.message.reply_text('OK')
         except Exception as e:
             print(e)
