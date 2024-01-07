@@ -86,8 +86,9 @@ def pay_page_get_evidence(update, context):
         context.user_data['package'] = package
         keyboard = [[InlineKeyboardButton("بیخیال", callback_data="cancel")]
             ,[InlineKeyboardButton("صفحه اصلی ⤶", callback_data="send_main_message")]]
-        sqlite_manager.insert('Purchased',rows= [{'active': 0,'name': user["first_name"],'user_name': user["username"],
-                                                  'chat_id': int(user["id"]),'factor_id': uuid_,'product_id': id_}])
+        ex = sqlite_manager.insert('Purchased',rows= [{'active': 0,'name': user["first_name"],'user_name': user["username"],
+                                                       'chat_id': int(user["id"]),'factor_id': uuid_,'product_id': id_}])
+        print(ex)
         text = (f"شماره سفارش:"
                 f"\n`{uuid_}`"
                 f"\n\nمدت اعتبار فاکتور: 10 دقیقه"
@@ -105,20 +106,24 @@ def pay_page_get_evidence(update, context):
 
 def send_evidence_to_admin(update, context):
     package = context.user_data['package']
+    text = "- Check the new payment to the card:\n\n"
+    keyboard = [[InlineKeyboardButton("بیخیال", callback_data="cancel")]
+        , [InlineKeyboardButton("صفحه اصلی ⤶", callback_data="send_main_message")]]
     if update.message.photo:
         file_id = update.message.photo[-1].file_id
-        caption = update.message.caption or ''
-        caption += f"\n\n{'-'*50}\nFrom `{package[0][4]}` server, Inbound id: `{package[0][1]}`\n{package[0][5]} day - {package[0][6]}GB - {package[0][7]:,} T"
-        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=caption, parse_mode='markdown')
-        update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
+        text += f"caption: {update.message.caption}" or 'Witout caption!'
+        text += f"\n\nServer: `{package[0][4]}`\nInbound id: `{package[0][1]}`\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
+        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, parse_mode='markdown')
+        update.message.reply_text(f'*سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
     elif update.message.text:
-        text = update.message.text
-        text += f"\n\n{'-'*50}\nFrom `{package[0][4]}` server, Inbound id: `{package[0][1]}`\n{package[0][5]} day - {package[0][6]}GB - {package[0][7]:,} T"
+        text += f"Text: {update.message.text}"
+        text += f"\n\nServer: `{package[0][4]}`\nInbound id: `{package[0][1]}`\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
         context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, parse_mode='markdown')
         update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
     else:
         update.message.reply_text('مشکلی وجود داره!')
 
+    context.user_data.clear()
     return ConversationHandler.END
 
 
@@ -126,6 +131,7 @@ def cancel(update, context):
     query = update.callback_query
     query.answer(text="با موفقیت کنسل شد!", show_alert=False)
     return ConversationHandler.END
+
 
 get_service_con = ConversationHandler(
     entry_points=[CallbackQueryHandler(pay_page_get_evidence, pattern=r'payment_by_card_\d+')],

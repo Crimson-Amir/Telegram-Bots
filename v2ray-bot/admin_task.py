@@ -4,7 +4,7 @@ from sqlite_manager import ManageDb
 from api_clean import XuiApiClean
 
 sqlite_manager = ManageDb('v2ray')
-api_operation = XuiApiClean()
+# api_operation = XuiApiClean()
 
 
 def admin_add_update_inbound(update, context):
@@ -71,7 +71,7 @@ def add_service(update, context):
                                     'period': user_message["period"],'traffic': user_message["traffic"],
                                     'price': user_message["price"],'date': datetime.datetime.now(pytz.timezone('Asia/Tehran'))}}
             if user_message['update']:
-                sqlite_manager.update(get_data, where=f'where id = {user_message['update']}')
+                sqlite_manager.update(get_data, where=f'where id = {user_message["update"]}')
             else:
                 sqlite_manager.insert(get_data)
             update.message.reply_text('OK')

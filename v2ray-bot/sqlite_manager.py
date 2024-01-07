@@ -60,8 +60,9 @@ class ManageDb:
         for row in rows:
             values = [f"'{val}'" for val in row.values()]
             touples.append(f"({', '.join(values)})")
-        self.cursor.execute(f'INSERT INTO {table} ({column}) VALUES {", ".join(touples)}')
+        ex = self.cursor.execute(f'INSERT INTO {table} ({column}) VALUES {", ".join(touples)}')
         self.db.commit()
+        return ex
 
     @connecting_manage
     def delete(self, table: dict):
