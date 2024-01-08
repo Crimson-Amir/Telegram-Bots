@@ -137,18 +137,24 @@ def add_client_bot(purchased_id):
         get_client_db = sqlite_manager.select(table='Purchased', where=f'id = {purchased_id}')
         get_service_db = sqlite_manager.select(table='Product', where=f'id = {get_client_db[0][6]}')
         traffic_to_gb_ = traffic_to_gb(get_service_db[0][6], False)
-        now_data_add_day = datetime.now(pytz.timezone('Asia/Tehran')) + timedelta(days=get_service_db[0][5])
+        now = datetime.now(pytz.timezone('Asia/Tehran'))
+        period = get_service_db[0][5]
+        now_data_add_day = now + timedelta(days=period)
         time_to_ms = second_to_ms(now_data_add_day)
         id_ = f"{get_client_db[0][4]}_{purchased_id}"
-        email_ = f"{purchased_id}_Expiration:{now_data_add_day.strftime('%Y_%m_%d__%H:%M:%S')}"
+        email_ = f"{purchased_id}_Started:{now.strftime('%Y_%m_%d')}__{period}Day__{get_service_db[0][6]}GB"
         data = {
             "id": int(get_service_db[0][1]),
             "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,\"start_after_first_use\":true,"
                         "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
                         "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(id_, email_, traffic_to_gb_, time_to_ms)
         }
-        sqlite_manager.update({'Purchased': {'inbound_id': int(get_service_db[0][1]),'client_email': email_, 'client_id': id_, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}}, where=f'where id = {purchased_id}')
         create = api_operation.add_client(data)
+        get_cong = api_operation.get_client_url(email_, int(get_service_db[0][1]))
+        sqlite_manager.update({'Purchased': {'inbound_id': int(get_service_db[0][1]),'client_email': email_,
+                                             'client_id': id_, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
+                                             'details': get_cong, 'active': 1, 'status': 1}},
+                              where=f'where id = {purchased_id}')
         print(create)
         if create['success']:
             return True
@@ -157,3 +163,7 @@ def add_client_bot(purchased_id):
     except Exception as e:
         print(e)
         return False
+
+
+# a = api_operation.get_client_url('1_Expiration:2024_06_06__12:38:17', 1)
+# print(a)

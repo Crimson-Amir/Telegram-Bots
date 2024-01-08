@@ -1,9 +1,16 @@
+import random
+
+import telegram.error
+
 from sqlite_manager import ManageDb
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
 import uuid
 from private import ADMIN_CHAT_ID
 from admin_task import add_client_bot, api_operation
+import qrcode
+from io import BytesIO
+
 
 sqlite_manager = ManageDb('v2ray')
 GET_EVIDENCE = 0
@@ -35,7 +42,7 @@ def buy_service(update, context):
 
 def all_query_handler(update, context):
     try:
-        text = "<b>سرویس مناسب خودتون رو انتخاب کنید:\n\n✪ با انتخاب گزینه 'دلخواه' میتوانید یک سرویس شخصی سازی شده بسازید!</b>"
+        text = "<b>سرویس مناسب خودتون رو انتخاب کنید:\n\n✪ با انتخاب گزینه 'دلخواه' میتونید یک سرویس شخصی سازی شده بسازید!</b>"
         query = update.callback_query
         plans = sqlite_manager.select(table='Product', where='active = 1')
         country_unic = {name[4] for name in plans}
@@ -68,7 +75,7 @@ def payment_page(update, context):
                 f"\nسرور: {package[0][3]}"
                 f"\nدوره زمانی: {package[0][5]} روز"
                 f"\nترافیک (حجم): {package[0][6]} گیگابایت"
-                f"\nحداکثر کاربر متصل: ∞"
+                f"\nحداکثر کاربر مجاز: ∞"
                 f"\n<b>قیمت: {package[0][7]:,} تومان</b>"
                 f"\n\n• دوره زمانی سرویس بعد از اولین اتصال شروع میشود."
                 f"\n\n<b>⤶ برای پرداخت میتونید یکی از روش های زیر رو استفاده کنید:</b>")
@@ -86,7 +93,7 @@ def pay_page_get_evidence(update, context):
         package = sqlite_manager.select(table='Product', where=f'id = {id_}')
         context.user_data['package'] = package
         keyboard = [[InlineKeyboardButton("صفحه اصلی ⤶", callback_data="send_main_message")]]
-        ex = sqlite_manager.insert('Purchased',rows= [{'active': 0,'name': user["first_name"],'user_name': user["username"],
+        ex = sqlite_manager.insert('Purchased',rows= [{'active': 0,'status': 0, 'name': user["first_name"],'user_name': user["username"],
                                                        'chat_id': int(user["id"]),'factor_id': uuid_,'product_id': id_}])
         context.user_data['purchased_id'] = ex
         text = (f"شماره سفارش:"
@@ -94,7 +101,7 @@ def pay_page_get_evidence(update, context):
                 f"\n\nمدت اعتبار فاکتور: 10 دقیقه"
                 f"\nسرویس: {package[0][5]} روز - {package[0][6]} گیگابایت"
                 f"\n*قیمت*: `{package[0][7]}`* تومان *"
-                f"\n\n*• لطفا مبلغ دقیق را به شماره‌حساب زیر واریز کنید و اسکرین‌شات یا شماره‌پیگیری را بعد همین پیام ارسال کنید.*"
+                f"\n\n*• لطفا مبلغ رو به شماره‌حساب زیر واریز کنید و اسکرین‌شات یا شماره‌پیگیری رو بعد از همین پیام ارسال کنید.*"
                 f"\n\n`6219861938619417` - امیرحسین نجفی"
                 f"\n\n*• بعد از تایید شدن پرداخت، سرویس برای شما ارسال میشه، زمان تقریبی 5 دقیقه الی 3 ساعت.*")
         query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -119,8 +126,8 @@ def send_evidence_to_admin(update, context):
     elif update.message.text:
         text += f"Text: {update.message.text}"
         text += f"\n\nServer: `{package[0][4]}`\nInbound id: `{package[0][1]}`\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
-        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, parse_mode='markdown')
-        update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
     else:
         update.message.reply_text('مشکلی وجود داره!')
 
@@ -146,6 +153,39 @@ get_service_con = ConversationHandler(
 )
 
 
+def send_clean_for_customer(query, context, id_):
+    create = add_client_bot(id_)
+    if create:
+        try:
+            get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
+            returned = api_operation.get_client_url(client_email=get_client[0][9], inbound_id=get_client[0][7])
+            if returned:
+                returned_copy = f'`{returned}`'
+                qr_code = qrcode.make(returned)
+                qr_image = qr_code.get_image()
+                buffer = BytesIO()
+                qr_image.save(buffer, format='PNG')
+                binary_data = buffer.getvalue()
+                keyboard = [[InlineKeyboardButton("🎛 سرویس های من", callback_data=f"my_service")],
+                            [InlineKeyboardButton("دریافت به صورت فایل", callback_data=f"create_txt_file")]]
+                context.user_data['v2ray_client'] = returned
+                context.bot.send_photo(photo=binary_data,
+                                       caption=f' سرویس شما با موفقیت فعال شد✅\n\n*• میتونید جزئیات سرویس رو از بخش "سرویس های من" مشاهده کنید.\n\n✪ لطفا سرویس رو به صورت مستقیم از طریق پیام رسان های ایرانی یا پیامک ارسال نکنید، با کلیک روی گزینه "دانلود به صورت فایل" سرویس رو به صورت فایل ارسال کنید.* \n\n\nلینک:\n{returned_copy}',
+                                       chat_id=get_client[0][4], reply_markup=InlineKeyboardMarkup(keyboard),
+                                       parse_mode='markdown')
+                query.answer('Done ✅')
+                query.delete_message()
+            else:
+                print('wrong: ', returned)
+                query.answer('Wrong')
+        except Exception as e:
+            print(e)
+            query.answer(f'Failed ❌ | {e}')
+            query.delete_message()
+    else:
+        query.answer('Failed ❌')
+
+
 def apply_card_pay(update, context):
     query = update.callback_query
     try:
@@ -153,27 +193,15 @@ def apply_card_pay(update, context):
             status = query.data.replace('card_pay_', '')
             keyboard = [[InlineKeyboardButton("YES", callback_data=f"ok_card_pay_{status}")]
                 , [InlineKeyboardButton("NO", callback_data=f"cancel_pay")]]
-            context.bot.send_message(text='Are You Sure?', reply_markup=InlineKeyboardMarkup(keyboard), chat_id=ADMIN_CHAT_ID)
             query.answer('Confirm Pleas!')
+            context.bot.send_message(text='Are You Sure?', reply_markup=InlineKeyboardMarkup(keyboard), chat_id=ADMIN_CHAT_ID)
         elif 'ok_card_pay_accept_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_accept_', ''))
-            create = add_client_bot(id_)
-            if create:
-                try:
-                    get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
-                    returned = api_operation.get_client_url(client_email=get_client[0][8], inbound_id=get_client[0][7])
-                    context.bot.send_message(text=f'{returned}کانفیگ ساخته شد.\n', chat_id=get_client[0][4])
-                    query.answer('Done ✅')
-                    query.delete_message()
-                except Exception as e:
-                    query.answer(f'Failed ❌ | {e}')
-                    query.delete_message()
-            else:
-                query.answer('Failed ❌')
+            send_clean_for_customer(query, context, id_)
         elif 'ok_card_pay_refuse_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_refuse_', ''))
             get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
-            context.bot.send_message(text=f'متاسفانه درخواست شما رد شد!', chat_id=get_client[0][4])
+            context.bot.send_message(text=f'متاسفانه درخواست شما برای ثبت سرویس پذیرفته نشد❌\n ارتباط با پشتیبانی: \n @Fupport ', chat_id=get_client[0][4])
             query.answer('Done ✅')
             query.delete_message()
 
@@ -182,3 +210,41 @@ def apply_card_pay(update, context):
             query.delete_message()
     except Exception as e:
         print('errot:', e)
+
+
+def my_service(update, context):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    get_purchased = sqlite_manager.select(table='Purchased', where=f'chat_id = {chat_id} and active = 1')
+    if get_purchased:
+        keyboard = [[InlineKeyboardButton(f"{'✅' if ser[11] == 1 else '❌'} {ser[9]}", callback_data=f"view_service_{ser[9]}")] for ser in get_purchased]
+        keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="main_menu")])
+        try:
+            query.edit_message_text('*برای مشاهده جزئیات، سرویس مورد نظر خودتان را انتخاب کنید:*', reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+        except telegram.error.BadRequest:
+            query.answer('در یک پیام جدید فرستادم!')
+            context.bot.send_message(chat_id=chat_id, text='*برای مشاهده جزئیات، سرویس مورد نظر خودتان را انتخاب کنید:*', reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+    else:
+        query.answer('سرویسی برای شما یافت نشد!')
+
+
+def server_detail_customer(update, context):
+    email = int(update.callback_query.data.replace('view_service_', ''))
+    api_operation.get_client(email)
+
+
+
+def create_file_and_return(update, context):
+    query = update.callback_query
+    try:
+        config_ = context.user_data['v2ray_client']
+        random_number = random.randint(0, 5)
+        with open(f'text_file/create_v2ray_file_with_id_{random_number}.txt', 'w') as f:
+            f.write(config_)
+        with open(f'text_file/create_v2ray_file_with_id_{random_number}.txt', 'rb') as document_file:
+            context.bot.send_document(document=document_file, chat_id=query.message.chat_id, filename='Open_And_Copy_Service.txt')
+        query.answer('فایل ارسال شد.')
+        context.user_data.clear()
+    except Exception as e:
+        query.answer('مشکلی وجود دارد!')
+        print(e)

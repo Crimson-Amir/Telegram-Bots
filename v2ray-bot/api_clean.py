@@ -115,4 +115,4 @@ class XuiApiClean:
             if client['email'] == client_email:
                 return default_config_schematic.format(client['id'], domain, port, host, network,remark, client['email'])
 
-        return "client is not available"
+        return False

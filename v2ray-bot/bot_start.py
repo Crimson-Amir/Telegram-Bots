@@ -26,7 +26,7 @@ def bot_start(update, context):
                   (user["first_name"], user["username"], int(user["id"]), str(date)))
         conn.commit()
 
-    user_text = f"<b>سلام <a href='tg://user?id={user['id']}'>{user['first_name']}</a> عزیز، به ربات v2ray خوش آمدید.\nبرای ادامه بخش مورد نظر خودتون رو انتخاب کنید:\n</b>"
+    user_text = f"<b>سلام <a href='tg://user?id={user['id']}'>{user['first_name']}</a> عزیز، به FreeByte خوش آمدید.\nبرای ادامه بخش مورد نظر خودتون رو انتخاب کنید:\n</b>"
     update.message.reply_text(text=user_text, reply_markup=InlineKeyboardMarkup(key), parse_mode='HTML')
     conn.close()
 
@@ -35,7 +35,7 @@ def main_menu(update, context, send_message=False):
     query = update.callback_query
     user = query.from_user
 
-    user_text = f"<b>سلام <a href='tg://user?id={user['id']}'>{user['first_name']}</a> عزیز، به ربات v2ray خوش آمدید.\nبرای ادامه بخش مورد نظر خودتون رو انتخاب کنید:\n</b>"
+    user_text = f"<b>سلام <a href='tg://user?id={user['id']}'>{user['first_name']}</a> عزیز، به FreeByte خوش آمدید.\nبرای ادامه بخش مورد نظر خودتون رو انتخاب کنید:\n</b>"
     if not send_message:
         query.edit_message_text(text=user_text, reply_markup=InlineKeyboardMarkup(key), parse_mode='HTML')
     else:

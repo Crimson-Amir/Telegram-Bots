@@ -27,7 +27,7 @@ class ManageDb:
     @connecting_manage
     def select(self, column: str = "*", table: str = "sqlite_master",
                where: str = None, distinct: bool = False, order_by: str = None,
-               limit: str = None):
+               limit: str = None, ret_raw_res=False):
         """
         :param column: select <column> from db
         :param table: table name
