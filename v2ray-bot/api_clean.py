@@ -1,7 +1,7 @@
 import json
 
 import requests
-from private import PORT, auth, telegram_bot_token, ADMIN_CHAT_ID, DOMAIN
+from private import PORT, auth, telegram_bot_token, ADMIN_CHAT_ID, DOMAIN, protocol
 
 telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
 
@@ -12,7 +12,7 @@ class XuiApiClean:
         get_cookies = ""
 
         if get_cookies == "":
-            self.login = self.connect.post(f'https://{DOMAIN}:{PORT}/login', data=auth)
+            self.login = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/login', data=auth)
             get_cookies = self.login.cookies.get('session')
             self.headers = {'Cookie': f'session={get_cookies}'}
             print(self.login.json())
@@ -49,61 +49,61 @@ class XuiApiClean:
             return False
 
     def get_all_inbounds(self):
-        get_inbounds = self.connect.get(f'https://{DOMAIN}:{PORT}/panel/api/inbounds/list')
+        get_inbounds = self.connect.get(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/list')
         if self.check_request(get_inbounds):
             return get_inbounds
 
     def get_inbound(self, inbound_id):
-        get_inbound = self.connect.get(f'https://{DOMAIN}:{PORT}/panel/api/inbounds/get/{inbound_id}')
+        get_inbound = self.connect.get(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/get/{inbound_id}')
         if self.check_request(get_inbound):
             return get_inbound.json()
 
     def get_client(self, client_email):
-        get_client_ = self.connect.get(f'https://{DOMAIN}:{PORT}/panel/api/inbounds/getClientTraffics/{client_email}')
+        get_client_ = self.connect.get(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/getClientTraffics/{client_email}')
         if self.check_request(get_client_):
             return get_client_.json()
 
     def add_inbound(self, data):
-        add_inb = self.connect.post(f'https://{DOMAIN}:{PORT}/panel/api/inbounds/add', json=data)
+        add_inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/add', json=data)
         if self.check_json(add_inb):
             return add_inb.json()
 
     def add_client(self, data):
-        ad_client = self.connect.post(f'https://{DOMAIN}:{PORT}/panel/api/inbounds/addClient', json=data)
+        ad_client = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/addClient', json=data)
         if self.check_json(ad_client):
             return ad_client.json()
 
     def update_inbound(self, inbound_id, data):
-        inb = self.connect.post(f'https://{DOMAIN}:{PORT}/panel/api/inbounds/update/{inbound_id}', json=data)
+        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/update/{inbound_id}', json=data)
         if self.check_json(inb):
             return inb.json()
 
     def update_client(self, uuid, data):
-        inb = self.connect.post(f'https://{DOMAIN}:{PORT}/panel/api/inbounds/updateClient/{uuid}', json=data)
+        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/updateClient/{uuid}', json=data)
         if self.check_json(inb):
             return inb.json()
 
     def del_inbound(self, inbound_id):
-        inb = self.connect.post(f'https://{DOMAIN}:{PORT}/panel/api/inbounds/del/{inbound_id}')
+        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/del/{inbound_id}')
         if self.check_json(inb):
             return inb.json()
 
     def del_client(self, uuid):
-        inb = self.connect.post(f'https://{DOMAIN}:{PORT}/panel/api/inbounds/delClient/{uuid}')
+        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/delClient/{uuid}')
         if self.check_json(inb):
             return inb.json()
 
     def del_depleted_clients(self, inbound_id=""):
-        inb = self.connect.post(f'https://{DOMAIN}:{PORT}/panel/api/inbounds/delDepletedClients/{inbound_id}')
+        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/delDepletedClients/{inbound_id}')
         if self.check_json(inb):
             return inb.json()
 
     def create_backup(self):
-        inb = self.connect.post(f'https://{DOMAIN}:{PORT}/panel/api/inbounds/createbackup')
+        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/createbackup')
         if self.check_json(inb):
             return inb.json()
 
-    def get_client_url(self, client_email, inbound_id, domain="root.ggkala.shop", host="ponisha.ir", default_config_schematic=None):
+    def get_client_url(self, client_email, inbound_id, domain="admin.ggkala.shop", host="ponisha.ir", default_config_schematic=None):
         if not default_config_schematic:
             default_config_schematic = "vless://{}@{}:{}?security=none&host={}&headerType=http&type={}#{}-{}"
         get_in = self.get_inbound(inbound_id)

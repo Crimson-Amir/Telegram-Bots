@@ -1,10 +1,10 @@
-import datetime
+from datetime import datetime, timedelta
 import pytz
 from sqlite_manager import ManageDb
 from api_clean import XuiApiClean
 
 sqlite_manager = ManageDb('v2ray')
-# api_operation = XuiApiClean()
+api_operation = XuiApiClean()
 
 
 def admin_add_update_inbound(update, context):
@@ -67,9 +67,9 @@ def add_service(update, context):
         try:
             user_message = eval(update.message.reply_to_message.text)
             get_data = {'inbound_id': user_message["inbound_id"],'active': user_message["active"],
-                                    'name': user_message["name"],'country': user_message["country"],
-                                    'period': user_message["period"],'traffic': user_message["traffic"],
-                                    'price': user_message["price"],'date': datetime.datetime.now(pytz.timezone('Asia/Tehran'))}
+                        'name': user_message["name"],'country': user_message["country"],
+                        'period': user_message["period"],'traffic': user_message["traffic"],
+                        'price': user_message["price"],'date': datetime.now(pytz.timezone('Asia/Tehran'))}
             if user_message['update']:
                 sqlite_manager.update({'Product': get_data}, where=f'where id = {user_message["update"]}')
             else:
@@ -115,3 +115,45 @@ def del_service(update, context):
             update.message.reply_text("OK")
         except Exception as e:
             update.message.reply_text("Error", e)
+
+
+def traffic_to_gb(traffic, byte_to_gb:bool = True):
+    if byte_to_gb:
+        return traffic / (1024 ** 3)
+    else:
+        return traffic * (1024 ** 3)
+
+
+def second_to_ms(date, time_to_ms: bool = True):
+    if time_to_ms:
+        return int(date.timestamp() * 1000)
+    else:
+        seconds = date / 1000
+        return datetime.fromtimestamp(seconds)
+
+
+def add_client_bot(purchased_id):
+    try:
+        get_client_db = sqlite_manager.select(table='Purchased', where=f'id = {purchased_id}')
+        get_service_db = sqlite_manager.select(table='Product', where=f'id = {get_client_db[0][6]}')
+        traffic_to_gb_ = traffic_to_gb(get_service_db[0][6], False)
+        now_data_add_day = datetime.now(pytz.timezone('Asia/Tehran')) + timedelta(days=get_service_db[0][5])
+        time_to_ms = second_to_ms(now_data_add_day)
+        id_ = f"{get_client_db[0][4]}_{purchased_id}"
+        email_ = f"{purchased_id}_Expiration:{now_data_add_day.strftime('%Y_%m_%d__%H:%M:%S')}"
+        data = {
+            "id": int(get_service_db[0][1]),
+            "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,\"start_after_first_use\":true,"
+                        "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
+                        "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(id_, email_, traffic_to_gb_, time_to_ms)
+        }
+        sqlite_manager.update({'Purchased': {'inbound_id': int(get_service_db[0][1]),'client_email': email_, 'client_id': id_, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}}, where=f'where id = {purchased_id}')
+        create = api_operation.add_client(data)
+        print(create)
+        if create['success']:
+            return True
+        else:
+            return False
+    except Exception as e:
+        print(e)
+        return False

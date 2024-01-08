@@ -3,6 +3,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
 import uuid
 from private import ADMIN_CHAT_ID
+from admin_task import add_client_bot, api_operation
 
 sqlite_manager = ManageDb('v2ray')
 GET_EVIDENCE = 0
@@ -84,11 +85,10 @@ def pay_page_get_evidence(update, context):
     try:
         package = sqlite_manager.select(table='Product', where=f'id = {id_}')
         context.user_data['package'] = package
-        keyboard = [[InlineKeyboardButton("بیخیال", callback_data="cancel")]
-            ,[InlineKeyboardButton("صفحه اصلی ⤶", callback_data="send_main_message")]]
+        keyboard = [[InlineKeyboardButton("صفحه اصلی ⤶", callback_data="send_main_message")]]
         ex = sqlite_manager.insert('Purchased',rows= [{'active': 0,'name': user["first_name"],'user_name': user["username"],
                                                        'chat_id': int(user["id"]),'factor_id': uuid_,'product_id': id_}])
-        print(ex)
+        context.user_data['purchased_id'] = ex
         text = (f"شماره سفارش:"
                 f"\n`{uuid_}`"
                 f"\n\nمدت اعتبار فاکتور: 10 دقیقه"
@@ -106,20 +106,21 @@ def pay_page_get_evidence(update, context):
 
 def send_evidence_to_admin(update, context):
     package = context.user_data['package']
+    purchased_id = context.user_data['purchased_id'][1]
     text = "- Check the new payment to the card:\n\n"
-    keyboard = [[InlineKeyboardButton("بیخیال", callback_data="cancel")]
-        , [InlineKeyboardButton("صفحه اصلی ⤶", callback_data="send_main_message")]]
+    keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_{purchased_id}")]
+        , [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_{purchased_id}")]]
     if update.message.photo:
         file_id = update.message.photo[-1].file_id
         text += f"caption: {update.message.caption}" or 'Witout caption!'
         text += f"\n\nServer: `{package[0][4]}`\nInbound id: `{package[0][1]}`\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
-        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, parse_mode='markdown')
+        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         update.message.reply_text(f'*سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
     elif update.message.text:
         text += f"Text: {update.message.text}"
         text += f"\n\nServer: `{package[0][4]}`\nInbound id: `{package[0][1]}`\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
         context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, parse_mode='markdown')
-        update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
+        update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
     else:
         update.message.reply_text('مشکلی وجود داره!')
 
@@ -143,3 +144,41 @@ get_service_con = ConversationHandler(
     per_chat=True,
     allow_reentry=True
 )
+
+
+def apply_card_pay(update, context):
+    query = update.callback_query
+    try:
+        if 'accept_card_pay_' in query.data or 'refuse_card_pay_' in query.data:
+            status = query.data.replace('card_pay_', '')
+            keyboard = [[InlineKeyboardButton("YES", callback_data=f"ok_card_pay_{status}")]
+                , [InlineKeyboardButton("NO", callback_data=f"cancel_pay")]]
+            context.bot.send_message(text='Are You Sure?', reply_markup=InlineKeyboardMarkup(keyboard), chat_id=ADMIN_CHAT_ID)
+            query.answer('Confirm Pleas!')
+        elif 'ok_card_pay_accept_' in query.data:
+            id_ = int(query.data.replace('ok_card_pay_accept_', ''))
+            create = add_client_bot(id_)
+            if create:
+                try:
+                    get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
+                    returned = api_operation.get_client_url(client_email=get_client[0][8], inbound_id=get_client[0][7])
+                    context.bot.send_message(text=f'{returned}کانفیگ ساخته شد.\n', chat_id=get_client[0][4])
+                    query.answer('Done ✅')
+                    query.delete_message()
+                except Exception as e:
+                    query.answer(f'Failed ❌ | {e}')
+                    query.delete_message()
+            else:
+                query.answer('Failed ❌')
+        elif 'ok_card_pay_refuse_' in query.data:
+            id_ = int(query.data.replace('ok_card_pay_refuse_', ''))
+            get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
+            context.bot.send_message(text=f'متاسفانه درخواست شما رد شد!', chat_id=get_client[0][4])
+            query.answer('Done ✅')
+            query.delete_message()
+
+        elif 'cancel_pay' in query.data:
+            query.answer('Done ✅')
+            query.delete_message()
+    except Exception as e:
+        print('errot:', e)

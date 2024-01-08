@@ -2,7 +2,7 @@ from telegram.ext import (Updater, CommandHandler, CallbackQueryHandler)
 from private import telegram_bot_token
 from bot_start import bot_start, main_menu, send_main_message
 from database import create_database
-from tasks import not_ready_yet, buy_service, all_query_handler, payment_page, get_service_con
+from tasks import not_ready_yet, buy_service, all_query_handler, payment_page, get_service_con, apply_card_pay
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service
 
 
@@ -26,6 +26,12 @@ def main():
 
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern=r'payment_by_wallet_\d+'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern=r'payment_by_crypto_\d+'))
+    dp.add_handler(CallbackQueryHandler(apply_card_pay, pattern=r'accept_card_pay_\d+'))
+    dp.add_handler(CallbackQueryHandler(apply_card_pay, pattern=r'refuse_card_pay_\d+'))
+    dp.add_handler(CallbackQueryHandler(apply_card_pay, pattern=r'ok_card_pay_accept_\d+'))
+    dp.add_handler(CallbackQueryHandler(apply_card_pay, pattern=r'ok_card_pay_refuse_\d+'))
+    dp.add_handler(CallbackQueryHandler(apply_card_pay, pattern='cancel_pay'))
+
 
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='settings'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='my_service'))
