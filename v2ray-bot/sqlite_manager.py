@@ -62,7 +62,7 @@ class ManageDb:
             touples.append(f"({', '.join(values)})")
         ex = self.cursor.execute(f'INSERT INTO {table} ({column}) VALUES {", ".join(touples)}')
         self.db.commit()
-        return "Before: ", self.cursor.lastrowid
+        return self.cursor.lastrowid
 
     @connecting_manage
     def delete(self, table: dict):
@@ -86,6 +86,7 @@ class ManageDb:
                 text = f"UPDATE {key} SET {k} = '{v}' {where}"
                 self.cursor.execute(text)
             self.db.commit()
+        return self.cursor.lastrowid
 
     @connecting_manage
     def custom(self, order: str):

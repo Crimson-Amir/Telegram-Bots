@@ -132,7 +132,7 @@ def second_to_ms(date, time_to_ms: bool = True):
         return datetime.fromtimestamp(seconds)
 
 
-def add_client_bot(purchased_id):
+def add_client_bot(purchased_id, personalization=None):
     try:
         get_client_db = sqlite_manager.select(table='Purchased', where=f'id = {purchased_id}')
         get_service_db = sqlite_manager.select(table='Product', where=f'id = {get_client_db[0][6]}')

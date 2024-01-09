@@ -7,11 +7,10 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
 import uuid
 from private import ADMIN_CHAT_ID
-from admin_task import add_client_bot, api_operation
+from admin_task import add_client_bot, api_operation, add_service
 import qrcode
 from io import BytesIO
-from plot import generate_chart
-
+import pytz
 
 sqlite_manager = ManageDb('v2ray')
 GET_EVIDENCE = 0
@@ -77,12 +76,12 @@ def payment_page(update, context):
                 f"\nترافیک (حجم): {package[0][6]} گیگابایت"
                 f"\nحداکثر کاربر مجاز: ∞"
                 f"\n<b>قیمت: {package[0][7]:,} تومان</b>"
-                f"\n\n• دوره زمانی سرویس بعد از اولین اتصال شروع میشود."
                 f"\n\n<b>⤶ برای پرداخت میتونید یکی از روش های زیر رو استفاده کنید:</b>")
         query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
     except Exception as e:
         print(e)
         something_went_wrong(update, context)
+
 
 def pay_page_get_evidence(update, context):
     query = update.callback_query
@@ -113,7 +112,7 @@ def pay_page_get_evidence(update, context):
 
 def send_evidence_to_admin(update, context):
     package = context.user_data['package']
-    purchased_id = context.user_data['purchased_id'][1]
+    purchased_id = context.user_data['purchased_id']
     text = "- Check the new payment to the card:\n\n"
     keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_{purchased_id}")]
         , [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_{purchased_id}")]]
@@ -317,20 +316,36 @@ def personalization_service(update, context):
         period_t = int(query.data.replace('period_high_', ''))
         period = period + period_t
         period = period if period <= 500 else 500
+
     elif 'accept_personalization' in query.data:
         id_ =  context.user_data['personalization_service_id']
-        keyboard = [
-            [InlineKeyboardButton("بله", callback_data=f"personalization_service_{id_}"),
-             InlineKeyboardButton("خیر", callback_data=f"personalization_service_{id_}")]
-        ]
-        texted = (f'شخصی سازی مورد تایید شماست؟'
+        check_available = sqlite_manager.select(table='Product', where=f'is_personalization = {query.message.chat_id}')
+        inbound_id = sqlite_manager.select(column='inbound_id,name,country', table='Product', where=f'id = {id_}')
+
+        get_data = {'inbound_id': inbound_id[0][0], 'active': 0,
+                    'name': inbound_id[0][1], 'country': inbound_id[0][2],
+                    'period': period, 'traffic': traffic,
+                    'price': price, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
+                    'is_personalization': query.message.chat_id}
+
+        if check_available:
+            sqlite_manager.update({'Product': get_data}, where=f'where id = {check_available[0][0]}')
+            new_id = check_available[0][0]
+        else:
+            new_id = sqlite_manager.insert('Product', [get_data])
+        texted = ('*• شخصی سازی را تایید میکنید؟:*'
                   f'\n\nحجم سرویس: {traffic}GB'
                   f'\nدوره زمانی: {period} روز'
                   f'\n*قیمت: {price:,}*')
+        keyboard = [[InlineKeyboardButton("خیر❌", callback_data=f"personalization_service_{id_}"),
+                     InlineKeyboardButton("بله✅", callback_data=f"service_{new_id}"),]]
+
         query.edit_message_text(text=texted, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        return
 
 
     sqlite_manager.update({'User': {'traffic':traffic, 'period': period}},where=f'where chat_id = {query.message.chat_id}')
+    price = (traffic * private.PRICE_PER_GB) + (period * private.PRICE_PER_DAY)
 
     text = ('*• تو این بخش میتونید سرویس مورد نظر خودتون رو شخصی سازی کنید:*'
             f'\n\nحجم سرویس: {traffic}GB'
@@ -350,5 +365,4 @@ def personalization_service(update, context):
         [InlineKeyboardButton("✓ تایید", callback_data="accept_personalization")],
         [InlineKeyboardButton("برگشت ↰", callback_data="select_server")]
     ]
-
     query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
