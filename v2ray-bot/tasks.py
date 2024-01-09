@@ -1,7 +1,7 @@
 import random
-
+from datetime import datetime
 import telegram.error
-
+import private
 from sqlite_manager import ManageDb
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
@@ -10,6 +10,7 @@ from private import ADMIN_CHAT_ID
 from admin_task import add_client_bot, api_operation
 import qrcode
 from io import BytesIO
+from plot import generate_chart
 
 
 sqlite_manager = ManageDb('v2ray')
@@ -30,9 +31,8 @@ def buy_service(update, context):
     try:
         query = update.callback_query
         plans = sqlite_manager.select(table='Product', where='active = 1')
-        server_name_unic = {name[3] for name in plans}
-        country_unic = {name[4] for name in plans}
-        keyboard = [[InlineKeyboardButton(ser, callback_data=cont)] for ser, cont in zip(list(server_name_unic), list(country_unic))]
+        server_name_unic = {name[3]:name[4] for name in plans}
+        keyboard = [[InlineKeyboardButton(ser, callback_data=cou)] for ser, cou in server_name_unic.items()]
         keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="main_menu")])
         query.edit_message_text(text="<b>سرور مورد نظر خودتون رو انتخاب کنید:</b>", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     except Exception as e:
@@ -44,7 +44,7 @@ def all_query_handler(update, context):
     try:
         text = "<b>سرویس مناسب خودتون رو انتخاب کنید:\n\n✪ با انتخاب گزینه 'دلخواه' میتونید یک سرویس شخصی سازی شده بسازید!</b>"
         query = update.callback_query
-        plans = sqlite_manager.select(table='Product', where='active = 1')
+        plans = sqlite_manager.select(table='Product', where=f'active = 1 and country = "{query.data}"')
         country_unic = {name[4] for name in plans}
         for country in country_unic:
             if query.data == country:
@@ -52,7 +52,7 @@ def all_query_handler(update, context):
                 keyboard = [[InlineKeyboardButton(f"سرویس {pattern[5]} روزه - {pattern[6]} گیگابایت - {pattern[7]:,} تومان",
                                                   callback_data=f"service_{pattern[0]}")] for pattern in service_list]
 
-                keyboard.append([InlineKeyboardButton("سرویس دلخواه ४", callback_data="personalization_service")])
+                keyboard.append([InlineKeyboardButton("سرویس دلخواه ४", callback_data=f"personalization_service_{plans[0][0]}")])
                 keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="select_server")])
                 query.edit_message_text(text= text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     except Exception as e:
@@ -100,7 +100,7 @@ def pay_page_get_evidence(update, context):
                 f"\n`{uuid_}`"
                 f"\n\nمدت اعتبار فاکتور: 10 دقیقه"
                 f"\nسرویس: {package[0][5]} روز - {package[0][6]} گیگابایت"
-                f"\n*قیمت*: `{package[0][7]}`* تومان *"
+                f"\n*قیمت*: `{package[0][7]:,}`* تومان *"
                 f"\n\n*• لطفا مبلغ رو به شماره‌حساب زیر واریز کنید و اسکرین‌شات یا شماره‌پیگیری رو بعد از همین پیام ارسال کنید.*"
                 f"\n\n`6219861938619417` - امیرحسین نجفی"
                 f"\n\n*• بعد از تایید شدن پرداخت، سرویس برای شما ارسال میشه، زمان تقریبی 5 دقیقه الی 3 ساعت.*")
@@ -229,9 +229,50 @@ def my_service(update, context):
 
 
 def server_detail_customer(update, context):
-    email = int(update.callback_query.data.replace('view_service_', ''))
-    api_operation.get_client(email)
+    query = update.callback_query
+    email = update.callback_query.data.replace('view_service_', '')
+    try:
+        get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
+        ret_conf = api_operation.get_client(email)
+        keyboard = [[InlineKeyboardButton("تمدید و ارتقا ↟", callback_data="main_menu")],
+                    [InlineKeyboardButton("برگشت ↰", callback_data="my_service")]]
 
+        upload_gb = round(int(ret_conf['obj']['up']) / (1024 ** 3), 2)
+        download_gb = round(int(ret_conf['obj']['down']) / (1024 ** 3), 2)
+        usage_traffic = round(upload_gb + download_gb, 2)
+        if int(ret_conf['obj']['total']) != 0:
+            total_traffic = round(int(ret_conf['obj']['total']) / (1024 ** 3), 2)
+        else:
+            total_traffic = '∞'
+
+        if ret_conf['obj']['expiryTime'] != 0:
+            expiry_timestamp = ret_conf['obj']['expiryTime'] / 1000
+            expiry_date = datetime.fromtimestamp(expiry_timestamp)
+            expiry_month = expiry_date.strftime("%Y/%m/%d")
+            days_lefts = (expiry_date - datetime.now()).days
+        else:
+            expiry_month = days_lefts = '∞'
+
+        change_active = '✅' if ret_conf['obj']['enable'] else '❌'
+        print(ret_conf)
+        purchase_date = datetime.strptime(get_data[0][12], "%Y-%m-%d %H:%M:%S.%f%z")
+
+        text_ = (
+            f"اطلاعات سرویس انتخاب شده:"
+            f"\n\n🔷 نام سرویس: {email}"
+            f"\n💡 فعال: {change_active}"
+            f"\n📅 تاریخ انقضا: {expiry_month} ({days_lefts}روز مانده)"
+            f"\n🔼 آپلود↑: {upload_gb}"
+            f"\n🔽 دانلود↓: {download_gb}"
+            f"\n📊 مصرف کل: {usage_traffic}/{total_traffic}GB"
+            f"\n\n⏰ تاریخ خرید: {purchase_date.strftime("%H:%M:%S %d/%m/%Y")}"
+            f"\n\n🌐 آدرس سرویس:\n <code>{get_data[0][8]}</code>"
+        )
+        query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+        sqlite_manager.update({'Purchased': {'status': 1 if ret_conf['obj']['enable'] else 0}}, where=f'where client_email = "{email}"')
+    except Exception as e:
+        query.answer('مشکلی وجود دارد!')
+        print(e)
 
 
 def create_file_and_return(update, context):
@@ -248,3 +289,66 @@ def create_file_and_return(update, context):
     except Exception as e:
         query.answer('مشکلی وجود دارد!')
         print(e)
+
+
+def personalization_service(update, context):
+    query = update.callback_query
+    if 'personalization_service_' in query.data:
+        context.user_data['personalization_service_id'] = int(query.data.replace('personalization_service_', ''))
+    get_data_from_db = sqlite_manager.select(table='User', where=f'chat_id = {query.message.chat_id}')
+
+    traffic = get_data_from_db[0][5]
+    period = get_data_from_db[0][6]
+    price = (traffic * private.PRICE_PER_GB) + (period * private.PRICE_PER_DAY)
+
+    if 'traffic_low_10' in query.data or 'traffic_low_1' in query.data:
+        traffic_t = int(query.data.replace('traffic_low_', ''))
+        traffic = traffic - traffic_t
+        traffic = traffic if traffic >= 0 else 0
+    elif 'traffic_high_1' in query.data or 'traffic_high_10' in query.data:
+        traffic_t = int(query.data.replace('traffic_high_', ''))
+        traffic = traffic + traffic_t
+        traffic = traffic if traffic <= 500 else 500
+    elif 'period_low_10' in query.data or 'period_low_1' in query.data:
+        period_t = int(query.data.replace('period_low_', ''))
+        period = period - period_t
+        period = period if period >= 1 else 1
+    elif 'period_high_1' in query.data or 'period_high_10' in query.data:
+        period_t = int(query.data.replace('period_high_', ''))
+        period = period + period_t
+        period = period if period <= 500 else 500
+    elif 'accept_personalization' in query.data:
+        id_ =  context.user_data['personalization_service_id']
+        keyboard = [
+            [InlineKeyboardButton("بله", callback_data=f"personalization_service_{id_}"),
+             InlineKeyboardButton("خیر", callback_data=f"personalization_service_{id_}")]
+        ]
+        texted = (f'شخصی سازی مورد تایید شماست؟'
+                  f'\n\nحجم سرویس: {traffic}GB'
+                  f'\nدوره زمانی: {period} روز'
+                  f'\n*قیمت: {price:,}*')
+        query.edit_message_text(text=texted, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+    sqlite_manager.update({'User': {'traffic':traffic, 'period': period}},where=f'where chat_id = {query.message.chat_id}')
+
+    text = ('*• تو این بخش میتونید سرویس مورد نظر خودتون رو شخصی سازی کنید:*'
+            f'\n\nحجم سرویس: {traffic}GB'
+            f'\nدوره زمانی: {period} روز'
+            f'\n*قیمت: {price:,}*')
+    keyboard = [
+        [InlineKeyboardButton("«", callback_data="traffic_low_10"),
+         InlineKeyboardButton("‹", callback_data="traffic_low_1"),
+         InlineKeyboardButton(f"{traffic}GB", callback_data="just_for_show"),
+         InlineKeyboardButton("›", callback_data="traffic_high_1"),
+         InlineKeyboardButton("»", callback_data="traffic_high_10")],
+        [InlineKeyboardButton("«", callback_data="period_low_10"),
+         InlineKeyboardButton("‹", callback_data="period_low_1"),
+         InlineKeyboardButton(f"{period}Day", callback_data="just_for_show"),
+         InlineKeyboardButton("›", callback_data="period_high_1"),
+         InlineKeyboardButton("»", callback_data="period_high_10")],
+        [InlineKeyboardButton("✓ تایید", callback_data="accept_personalization")],
+        [InlineKeyboardButton("برگشت ↰", callback_data="select_server")]
+    ]
+
+    query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))

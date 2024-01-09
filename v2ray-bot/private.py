@@ -4,3 +4,5 @@ PORT = 2053
 ADMIN_CHAT_ID = 6450325872
 DOMAIN = "admin.ggkala.shop"
 protocol = 'http://'
+PRICE_PER_GB = 1_500
+PRICE_PER_DAY = 100

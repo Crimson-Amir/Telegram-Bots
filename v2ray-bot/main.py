@@ -3,7 +3,7 @@ from private import telegram_bot_token
 from bot_start import bot_start, main_menu, send_main_message
 from database import create_database
 from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, get_service_con, apply_card_pay,
-                   my_service, create_file_and_return, server_detail_customer)
+                   my_service, create_file_and_return, server_detail_customer, personalization_service)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service
 
 
@@ -35,6 +35,17 @@ def main():
     dp.add_handler(CallbackQueryHandler(apply_card_pay, pattern='cancel_pay'))
 
     dp.add_handler(CallbackQueryHandler(create_file_and_return, pattern=r'create_txt_file'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern=r'personalization_service_\d+'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='accept_personalization'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_low_10'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_low_1'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_high_1'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_high_10'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='period_low_10'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='period_low_1'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='period_high_1'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='period_high_10'))
+
     dp.add_handler(CallbackQueryHandler(my_service, pattern='my_service'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='settings'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='get_test_service'))
