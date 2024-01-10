@@ -6,7 +6,7 @@ def create_database():
     c = conn.cursor()
 
     c.execute('CREATE TABLE IF NOT EXISTS User(id integer primary key, name text, user_name text, chat_id integer, '
-              'date text, traffic integer, period integer)')
+              'date text, traffic integer, period integer, free_service integer)')
 
     c.execute('CREATE TABLE IF NOT EXISTS Admin(id integer primary key, name text, user_name text, chat_id text,'
               ' level integer)')

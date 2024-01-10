@@ -62,14 +62,27 @@ def all_query_handler(update, context):
 def payment_page(update, context):
     query = update.callback_query
     id_ = int(query.data.replace('service_', ''))
+    print('as')
     try:
         package = sqlite_manager.select(table='Product', where=f'id = {id_}')
-        keyboard = [
-            [InlineKeyboardButton("کارت به کارت", callback_data=f'payment_by_card_{id_}')],
-            [InlineKeyboardButton("پرداخت از طریق کیف پول", callback_data=f'payment_by_wallet_{id_}')],
-            [InlineKeyboardButton("پرداخت از طریق کریپتو", callback_data=f'payment_by_crypto_{id_}')],
-            [InlineKeyboardButton("برگشت ↰", callback_data="select_server")]
-        ]
+        if package[0][7]:
+            keyboard = [
+                [InlineKeyboardButton("کارت به کارت", callback_data=f'payment_by_card_{id_}')],
+                [InlineKeyboardButton("پرداخت از طریق کیف پول", callback_data=f'payment_by_wallet_{id_}')],
+                [InlineKeyboardButton("پرداخت از طریق کریپتو", callback_data=f'payment_by_crypto_{id_}')],
+                [InlineKeyboardButton("برگشت ↰", callback_data="select_server")]
+            ]
+        else:
+            free = sqlite_manager.select(column='free_service', table='User', where=f'chat_id = {query.message.chat_id}')
+            print(free)
+            if free[0][0]:
+                query.answer('ببخشید، شما یک بار این بسته را دریافت کردید!')
+                return
+            else:
+                keyboard = [
+                    [InlineKeyboardButton("دریافت ⤓", callback_data=f'get_free_service')],
+                    [InlineKeyboardButton("برگشت ↰", callback_data="select_server")]
+                ]
         text = (f"<b>❋ بسته انتخابی شامل مشخصات زیر میباشد:</b>\n"
                 f"\nسرور: {package[0][3]}"
                 f"\nدوره زمانی: {package[0][5]} روز"
@@ -228,9 +241,9 @@ def my_service(update, context):
 
 
 def server_detail_customer(update, context):
-    query = update.callback_query
-    email = update.callback_query.data.replace('view_service_', '')
-    try:
+        query = update.callback_query
+        email = update.callback_query.data.replace('view_service_', '')
+    # try:
         get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
         ret_conf = api_operation.get_client(email)
         keyboard = [[InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"personalization_service_lu_{get_data[0][0]}")],
@@ -251,12 +264,11 @@ def server_detail_customer(update, context):
         days_lefts = (expiry_date - datetime.now()).days
 
         change_active = '✅' if ret_conf['obj']['enable'] else '❌'
-        purchase_date = datetime.strptime(get_data[0][12], "%Y-%m-%d %H:%M:%S.%f%z")
+        purchase_date = datetime.strptime(get_data[0][12], "%Y-%m-%d %H:%M:%S.%f%z").replace(tzinfo=None)
         days_left_2 = abs(days_lefts)
         exist_day = f"({days_left_2} روز {'مانده' if days_lefts >= 0 else 'گذشته'})"
 
-        input_datetime = datetime.strptime(get_data[0][8], "%Y-%m-%d %H:%M:%S.%f%z")
-        context.user_data['period_for_upgrade'] = (expiry_date - input_datetime).days
+        context.user_data['period_for_upgrade'] = (expiry_date - purchase_date).days
         context.user_data['traffic_for_upgrade'] = total_traffic
 
         text_ = (
@@ -271,10 +283,10 @@ def server_detail_customer(update, context):
             f"\n\n🌐 آدرس سرویس:\n <code>{get_data[0][8]}</code>"
         )
         query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
-        sqlite_manager.update({'Purchased': {'status': 1 if ret_conf['obj']['enable'] else 0, 'date': datetime.now()}}, where=f'where client_email = "{email}"')
-    except Exception as e:
-        query.answer('مشکلی وجود دارد!')
-        print(e)
+        sqlite_manager.update({'Purchased': {'status': 1 if ret_conf['obj']['enable'] else 0}}, where=f'where client_email = "{email}"')
+    # except Exception as e:
+    #     query.answer('مشکلی وجود دارد!')
+    #     print(e)
 
 
 def create_file_and_return(update, context):
@@ -380,7 +392,8 @@ def personalization_service_lu(update, context):
     if 'personalization_service_lu_' in query.data:
         period_for_upgrade = context.user_data['period_for_upgrade']
         traffic_for_upgrade = context.user_data['traffic_for_upgrade']
-        sqlite_manager.update({'User': {'period': int(period_for_upgrade), 'traffic': int(traffic_for_upgrade)}})
+        sqlite_manager.update({'User': {'period': int(period_for_upgrade), 'traffic': int(traffic_for_upgrade)}},
+                              where=f'where chat_id = {query.message.chat_id}')
         context.user_data['personalization_client_lu_id'] = int(query.data.replace('personalization_service_lu_', ''))
 
     id_ = context.user_data['personalization_client_lu_id']
@@ -527,6 +540,8 @@ def apply_card_pay_lu(update, context):
                                                                                        traffic, my_data)}
             # breakpoint()
             print(api_operation.update_client(get_client[0][10], data))
+            sqlite_manager.update({'Purchased': {'date': datetime.now(pytz.timezone('Asia/Tehran'))}}
+                                  ,where=f'where client_email = "{get_client[0][9]}"')
             context.bot.send_message(text='سفارش شما برای تمدید و یا ارتقا با موفقیت تایید شد ✅', chat_id=get_client[0][4])
             query.answer('Done ✅')
             query.delete_message()
@@ -542,3 +557,14 @@ def apply_card_pay_lu(update, context):
             query.delete_message()
     except Exception as e:
         print('errot:', e)
+
+
+def get_free_service(update, context):
+    user = update.callback_query.from_user
+    uuid_ = random.randint(1, 100000)
+    sqlite_manager.update({'User': {'free_service': 1}}, where=f"where chat_id = {user['id']}")
+    ex = sqlite_manager.insert('Purchased', rows=[
+        {'active': 1, 'status': 1, 'name': user["first_name"], 'user_name': user["username"],
+         'chat_id': int(user["id"]), 'factor_id': uuid_, 'product_id': 1, 'inbound_id': 1,
+         'client_email': f'Test Service | FreeByte | {uuid_}', 'client_id':uuid_, 'date': datetime.now()}])
+    send_clean_for_customer(update.callback_query, context, ex)

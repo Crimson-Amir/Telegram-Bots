@@ -4,7 +4,7 @@ from bot_start import bot_start, main_menu, send_main_message
 from database import create_database
 from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, get_service_con, apply_card_pay,
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
-                   personalization_service_lu, apply_card_pay_lu, get_service_con_per)
+                   personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service
 
 
@@ -40,6 +40,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(apply_card_pay_lu, pattern=r'ok_card_pay_lu_accept_\d+'))
     dp.add_handler(CallbackQueryHandler(apply_card_pay_lu, pattern=r'ok_card_pay_lu_refuse_\d+'))
     dp.add_handler(CallbackQueryHandler(apply_card_pay_lu, pattern='cancel_pay'))
+    dp.add_handler(CallbackQueryHandler(get_free_service, pattern='get_free_service'))
 
     dp.add_handler(CallbackQueryHandler(server_detail_customer, pattern=r'view_service_(.*)'))
 

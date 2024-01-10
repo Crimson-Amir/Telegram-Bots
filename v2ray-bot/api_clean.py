@@ -15,7 +15,10 @@ class XuiApiClean:
             self.login = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/login', data=auth)
             get_cookies = self.login.cookies.get('session')
             self.headers = {'Cookie': f'session={get_cookies}'}
-            print(self.login.json())
+            if self.login.status_code == 200:
+                print(self.login.json())
+            else:
+                print(f'Connection Problem. {self.login.status_code}')
 
     @staticmethod
     def send_telegram_message(message):
@@ -107,12 +110,15 @@ class XuiApiClean:
         if not default_config_schematic:
             default_config_schematic = "vless://{}@{}:{}?security=none&host={}&headerType=http&type={}#{}-{}"
         get_in = self.get_inbound(inbound_id)
-        port = get_in['obj']['port']
-        remark = get_in['obj']['remark']
-        client_list = json.loads(get_in['obj']['settings'])['clients']
-        network = json.loads(get_in['obj']['streamSettings'])['network']
-        for client in client_list:
-            if client['email'] == client_email:
-                return default_config_schematic.format(client['id'], domain, port, host, network,remark, client['email'])
+        if get_in['success']:
+            port = get_in['obj']['port']
+            remark = get_in['obj']['remark']
+            client_list = json.loads(get_in['obj']['settings'])['clients']
+            network = json.loads(get_in['obj']['streamSettings'])['network']
+            for client in client_list:
+                if client['email'] == client_email:
+                    return default_config_schematic.format(client['id'], domain, port, host, network,remark, client['email'])
 
-        return False
+            return False
+        else:
+            return False

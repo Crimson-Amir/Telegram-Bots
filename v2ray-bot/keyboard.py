@@ -6,7 +6,7 @@ main_key = [
     [InlineKeyboardButton("⚙️ تنظیمات", callback_data='settings'),
      InlineKeyboardButton("🎛 سرویس های من", callback_data='my_service')],
 
-    [InlineKeyboardButton("⏳ دریافت سرویس تست", callback_data='get_test_service')],
+    [InlineKeyboardButton("⏳ دریافت سرویس تست", callback_data='service_1')],
 
     [InlineKeyboardButton("📚 راهنما", callback_data='guidance'),
      InlineKeyboardButton("👥 پشتیبانی", callback_data='support')],
