@@ -254,16 +254,18 @@ def server_detail_customer(update, context):
 
         change_active = '✅' if ret_conf['obj']['enable'] else '❌'
         purchase_date = datetime.strptime(get_data[0][12], "%Y-%m-%d %H:%M:%S.%f%z")
+        days_left_2 = abs(days_lefts)
+        exist_day = f"({days_left_2} روز {'مانده' if days_lefts >= 0 else 'گذشته'})"
 
         text_ = (
-            f"اطلاعات سرویس انتخاب شده:"
+            f"<b>اطلاعات سرویس انتخاب شده:</b>"
             f"\n\n🔷 نام سرویس: {email}"
             f"\n💡 فعال: {change_active}"
-            f"\n📅 تاریخ انقضا: {expiry_month} ({days_lefts}روز مانده)"
+            f"\n📅 تاریخ انقضا: {expiry_month} {exist_day}"
             f"\n🔼 آپلود↑: {upload_gb}"
             f"\n🔽 دانلود↓: {download_gb}"
             f"\n📊 مصرف کل: {usage_traffic}/{total_traffic}GB"
-            f"\n\n⏰ تاریخ خرید: {purchase_date.strftime("%H:%M:%S %d/%m/%Y")}"
+            f"\n\n⏰ تاریخ خرید: {purchase_date.strftime('%H:%M:%S | %Y/%m/%d')}"
             f"\n\n🌐 آدرس سرویس:\n <code>{get_data[0][8]}</code>"
         )
         query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
@@ -439,7 +441,8 @@ def pay_page_get_evidence_per(update, context):
                 f"\n\n*• لطفا مبلغ رو به شماره‌حساب زیر واریز کنید و اسکرین‌شات یا شماره‌پیگیری رو بعد از همین پیام ارسال کنید.*"
                 f"\n\n`6219861938619417` - امیرحسین نجفی"
                 f"\n\n*• بعد از تایید شدن پرداخت، سرویس برای شما ارسال میشه، زمان تقریبی 5 دقیقه الی 3 ساعت.*")
-        query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        query.answer('فاکتور برای شما ارسال شد.')
         return GET_EVIDENCE
     except Exception as e:
         print(e)
@@ -483,8 +486,8 @@ get_service_con_per = ConversationHandler(
 )
 
 def apply_card_pay_lu(update, context):
-        query = update.callback_query
-    # try:
+    query = update.callback_query
+    try:
         if 'accept_card_pay_lu_' in query.data or 'refuse_card_pay_lu_' in query.data:
             status = query.data.replace('card_pay_lu_', '')
             keyboard = [[InlineKeyboardButton("YES", callback_data=f"ok_card_pay_lu_{status}")]
@@ -499,26 +502,29 @@ def apply_card_pay_lu(update, context):
             ret_conf = api_operation.get_client(get_client[0][9])
             now = datetime.now(pytz.timezone('Asia/Tehran'))
             if ret_conf['obj']['enable']:
-                tra = (ret_conf['obj']['up'] + ret_conf['obj']['down'])
+                tra = ret_conf['obj']['total']
                 traffic = (user_db[0][5] * (1024 ** 3)) + tra
-                if ret_conf['obj']['expiryTime'] != 0:
-                    expiry_timestamp = ret_conf['obj']['expiryTime']
-                    expiry_datetime = datetime.fromtimestamp(expiry_timestamp / 1000)
-                    new_expiry_datetime = expiry_datetime + timedelta(days=30)
-                    my_data = int(new_expiry_datetime.timestamp() * 1000)
+                # if ret_conf['obj']['expiryTime'] != 0:
+                expiry_timestamp = ret_conf['obj']['expiryTime']
+                expiry_datetime = datetime.fromtimestamp(expiry_timestamp / 1000)
+                new_expiry_datetime = expiry_datetime + timedelta(days=user_db[0][6])
+                my_data = int(new_expiry_datetime.timestamp() * 1000)
 
             else:
                 traffic = user_db[0][5] * (1024 ** 3)
                 my_data = now + timedelta(days=user_db[0][6])
+                my_data = int(my_data.timestamp() * 1000)
             data = {
                 "id": int(get_client[0][7]),
                 "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
                             "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
                             "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(get_client[0][10], get_client[0][9],
-                                                                                       traffic, my_data)
-            }
+                                                                                       traffic, my_data)}
             # breakpoint()
-            print(api_operation.update_client(ret_conf['obj']['id'], data))
+            print(api_operation.update_client(get_client[0][10], data))
+            context.bot.send_message(text='سفارش شما برای تمدید و یا ارتقا با موفقیت تایید شد ✅', chat_id=get_client[0][4])
+            query.answer('Done ✅')
+            query.delete_message()
         elif 'ok_card_pay_lu_refuse_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_lu_refuse_', ''))
             get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
@@ -529,5 +535,5 @@ def apply_card_pay_lu(update, context):
         elif 'cancel_pay' in query.data:
             query.answer('Done ✅')
             query.delete_message()
-    # except Exception as e:
-    #     print('errot:', e)
+    except Exception as e:
+        print('errot:', e)
