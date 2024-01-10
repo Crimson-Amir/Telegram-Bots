@@ -244,18 +244,20 @@ def server_detail_customer(update, context):
         else:
             total_traffic = '∞'
 
-        if ret_conf['obj']['expiryTime'] != 0:
-            expiry_timestamp = ret_conf['obj']['expiryTime'] / 1000
-            expiry_date = datetime.fromtimestamp(expiry_timestamp)
-            expiry_month = expiry_date.strftime("%Y/%m/%d")
-            days_lefts = (expiry_date - datetime.now()).days
-        else:
-            expiry_month = days_lefts = '∞'
+
+        expiry_timestamp = ret_conf['obj']['expiryTime'] / 1000
+        expiry_date = datetime.fromtimestamp(expiry_timestamp)
+        expiry_month = expiry_date.strftime("%Y/%m/%d")
+        days_lefts = (expiry_date - datetime.now()).days
 
         change_active = '✅' if ret_conf['obj']['enable'] else '❌'
         purchase_date = datetime.strptime(get_data[0][12], "%Y-%m-%d %H:%M:%S.%f%z")
         days_left_2 = abs(days_lefts)
         exist_day = f"({days_left_2} روز {'مانده' if days_lefts >= 0 else 'گذشته'})"
+
+        input_datetime = datetime.strptime(get_data[0][8], "%Y-%m-%d %H:%M:%S.%f%z")
+        context.user_data['period_for_upgrade'] = (expiry_date - input_datetime).days
+        context.user_data['traffic_for_upgrade'] = total_traffic
 
         text_ = (
             f"<b>اطلاعات سرویس انتخاب شده:</b>"
@@ -269,7 +271,7 @@ def server_detail_customer(update, context):
             f"\n\n🌐 آدرس سرویس:\n <code>{get_data[0][8]}</code>"
         )
         query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
-        sqlite_manager.update({'Purchased': {'status': 1 if ret_conf['obj']['enable'] else 0}}, where=f'where client_email = "{email}"')
+        sqlite_manager.update({'Purchased': {'status': 1 if ret_conf['obj']['enable'] else 0, 'date': datetime.now()}}, where=f'where client_email = "{email}"')
     except Exception as e:
         query.answer('مشکلی وجود دارد!')
         print(e)
@@ -376,6 +378,9 @@ def personalization_service(update, context):
 def personalization_service_lu(update, context):
     query = update.callback_query
     if 'personalization_service_lu_' in query.data:
+        period_for_upgrade = context.user_data['period_for_upgrade']
+        traffic_for_upgrade = context.user_data['traffic_for_upgrade']
+        sqlite_manager.update({'User': {'period': int(period_for_upgrade), 'traffic': int(traffic_for_upgrade)}})
         context.user_data['personalization_client_lu_id'] = int(query.data.replace('personalization_service_lu_', ''))
 
     id_ = context.user_data['personalization_client_lu_id']
