@@ -3,7 +3,8 @@ from private import telegram_bot_token
 from bot_start import bot_start, main_menu, send_main_message
 from database import create_database
 from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, get_service_con, apply_card_pay,
-                   my_service, create_file_and_return, server_detail_customer, personalization_service)
+                   my_service, create_file_and_return, server_detail_customer, personalization_service,
+                   personalization_service_lu, apply_card_pay_lu, get_service_con_per)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service
 
 
@@ -24,6 +25,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(buy_service, pattern='select_server'))
     dp.add_handler(CallbackQueryHandler(payment_page, pattern=r'service_\d+'))
     dp.add_handler(get_service_con)
+    dp.add_handler(get_service_con_per)
 
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern=r'payment_by_wallet_\d+'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern=r'payment_by_crypto_\d+'))
@@ -31,11 +33,19 @@ def main():
     dp.add_handler(CallbackQueryHandler(apply_card_pay, pattern=r'refuse_card_pay_\d+'))
     dp.add_handler(CallbackQueryHandler(apply_card_pay, pattern=r'ok_card_pay_accept_\d+'))
     dp.add_handler(CallbackQueryHandler(apply_card_pay, pattern=r'ok_card_pay_refuse_\d+'))
-    dp.add_handler(CallbackQueryHandler(server_detail_customer, pattern=r'view_service_(.*)'))
     dp.add_handler(CallbackQueryHandler(apply_card_pay, pattern='cancel_pay'))
+
+    dp.add_handler(CallbackQueryHandler(apply_card_pay_lu, pattern=r'accept_card_pay_lu_\d+'))
+    dp.add_handler(CallbackQueryHandler(apply_card_pay_lu, pattern=r'refuse_card_pay_lu_\d+'))
+    dp.add_handler(CallbackQueryHandler(apply_card_pay_lu, pattern=r'ok_card_pay_lu_accept_\d+'))
+    dp.add_handler(CallbackQueryHandler(apply_card_pay_lu, pattern=r'ok_card_pay_lu_refuse_\d+'))
+    dp.add_handler(CallbackQueryHandler(apply_card_pay_lu, pattern='cancel_pay'))
+
+    dp.add_handler(CallbackQueryHandler(server_detail_customer, pattern=r'view_service_(.*)'))
 
     dp.add_handler(CallbackQueryHandler(create_file_and_return, pattern=r'create_txt_file'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern=r'personalization_service_\d+'))
+    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern=r'personalization_service_lu_\d+'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern='accept_personalization'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_low_10'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_low_1'))
