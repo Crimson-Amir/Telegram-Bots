@@ -4,7 +4,8 @@ from bot_start import bot_start, main_menu, send_main_message
 from database import create_database
 from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, get_service_con, apply_card_pay,
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
-                   personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service)
+                   personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service, help_sec,
+                   show_help, support)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service
 
 
@@ -21,6 +22,9 @@ def main():
     dp.add_handler(CommandHandler('del_service', del_service))
 
     dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu'))
+    dp.add_handler(CallbackQueryHandler(help_sec, pattern='guidance'))
+    dp.add_handler(CallbackQueryHandler(support, pattern='support'))
+
     dp.add_handler(CallbackQueryHandler(send_main_message, pattern='send_main_message'))
     dp.add_handler(CallbackQueryHandler(buy_service, pattern='select_server'))
     dp.add_handler(CallbackQueryHandler(payment_page, pattern=r'service_\d+'))
@@ -43,6 +47,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(get_free_service, pattern='get_free_service'))
 
     dp.add_handler(CallbackQueryHandler(server_detail_customer, pattern=r'view_service_(.*)'))
+    dp.add_handler(CallbackQueryHandler(show_help, pattern=r'(.*)_help'))
 
     dp.add_handler(CallbackQueryHandler(create_file_and_return, pattern=r'create_txt_file'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern=r'personalization_service_\d+'))

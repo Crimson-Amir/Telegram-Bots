@@ -62,7 +62,6 @@ def all_query_handler(update, context):
 def payment_page(update, context):
     query = update.callback_query
     id_ = int(query.data.replace('service_', ''))
-    print('as')
     try:
         package = sqlite_manager.select(table='Product', where=f'id = {id_}')
         if package[0][7]:
@@ -74,7 +73,6 @@ def payment_page(update, context):
             ]
         else:
             free = sqlite_manager.select(column='free_service', table='User', where=f'chat_id = {query.message.chat_id}')
-            print(free)
             if free[0][0]:
                 query.answer('ببخشید، شما یک بار این بسته را دریافت کردید!')
                 return
@@ -241,9 +239,9 @@ def my_service(update, context):
 
 
 def server_detail_customer(update, context):
-        query = update.callback_query
-        email = update.callback_query.data.replace('view_service_', '')
-    # try:
+    query = update.callback_query
+    email = update.callback_query.data.replace('view_service_', '')
+    try:
         get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
         ret_conf = api_operation.get_client(email)
         keyboard = [[InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"personalization_service_lu_{get_data[0][0]}")],
@@ -284,9 +282,9 @@ def server_detail_customer(update, context):
         )
         query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
         sqlite_manager.update({'Purchased': {'status': 1 if ret_conf['obj']['enable'] else 0}}, where=f'where client_email = "{email}"')
-    # except Exception as e:
-    #     query.answer('مشکلی وجود دارد!')
-    #     print(e)
+    except Exception as e:
+        query.answer('مشکلی وجود دارد!')
+        print(e)
 
 
 def create_file_and_return(update, context):
@@ -568,3 +566,67 @@ def get_free_service(update, context):
          'chat_id': int(user["id"]), 'factor_id': uuid_, 'product_id': 1, 'inbound_id': 1,
          'client_email': f'Test Service | FreeByte | {uuid_}', 'client_id':uuid_, 'date': datetime.now()}])
     send_clean_for_customer(update.callback_query, context, ex)
+
+
+def help_sec(update, context):
+    query = update.callback_query
+    text = "*برای کدوم دیوایس یا سیستم عامل راهنمایی لازم دارید؟*"
+    keyboard = [
+        [InlineKeyboardButton("اندروید", callback_data=f"android_help"),
+         InlineKeyboardButton("ویندوز", callback_data=f"windows_help")],
+        [InlineKeyboardButton("آیفون و مک‌", callback_data=f"mac_help"),
+         InlineKeyboardButton("لینوکس", callback_data=f"linux_help")],
+        [InlineKeyboardButton("در مورد v2ray بیشتر بدانید", callback_data=f"v2ray_help")],
+        [InlineKeyboardButton("صفحه اصلی ⤶", callback_data="main_menu")]
+    ]
+    query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+
+
+def show_help(update, context):
+    query = update.callback_query
+    help_what = query.data.replace('_help', '')
+    if help_what == 'android':
+        text = ("*برای اندروید میتونید از نرم‌افزار v2rayNG استفاده کنید.*"
+                "\n\nراهنما اتصال:"
+                "\n• بعد از دانلود و نصب وارد برنامه بشید و روی گزینه + کلیک کنید"
+                "\n• از لیست تاشو انتخاب کنید چطور کانفیگ رو وارد میکنید"
+                "\n• اگر لینک کانفیگ رو کپی کردید، با انتخاب گزینه from clipboard "
+                "کانفیگ رو وارد برنامه کنید و با دکمه پایین، اتصال رو برقرار کنید")
+        keyboard = [
+            [InlineKeyboardButton("دانلود از پلی استور", url="https://play.google.com/store/apps/details?id=com.v2ray.ang&pcampaignid=web_share")],
+            [InlineKeyboardButton("دانلود از صفحه رسمی", url="https://github.com/2dust/v2rayNG/releases/")],
+            [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]
+        ]
+    elif help_what == 'mac':
+        text = "*برای آیفون و مک میتونید از نرم‌افزار V2Box استفاده کنید.*"
+        keyboard = [
+            [InlineKeyboardButton("دانلود از apple.com", url="https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690?platform=mac")],
+            [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]
+        ]
+    elif help_what == 'windows':
+        text = ("*برای ویندوز میتونید از نرم‌افزار v2rayN یا nekoray استفاده کنید.*"
+                "\n\n• برای اتصال کافیه نرم افزار رو باز کنید و کانفیگ کپی شده رو paste کنید."
+                "\n\n*حتما نسخه core نرم افزار 2rayN رو دانلود کنید.*")
+        keyboard = [
+            [InlineKeyboardButton("دانلود v2rayN", url="https://github.com/2dust/v2rayN/releases")],
+            [InlineKeyboardButton("دانلود nekoray", url="https://github.com/Matsuridayo/nekoray/releases")],
+            [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]
+        ]
+    elif help_what == 'linux':
+        text = "*برای اتصال و پروکسی کردن سیستم لینوکس، میتونید آموزش لینک شده رو بخونید*"
+        keyboard = [
+            [InlineKeyboardButton("نحوه پروکسی کردن اوبونتو، سایت linuxbabe", url="https://www.linuxbabe.com/ubuntu/set-up-v2ray-proxy-server")],
+            [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]
+        ]
+
+    elif help_what == 'v2ray':
+        text = 'چیزی اضافه نشده'
+        keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]]
+
+    query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+
+def support(update, context):
+    query = update.callback_query
+    keyboard = [[InlineKeyboardButton("پرایوت", url="https://t.me/fupport")],
+                [InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]]
+    query.edit_message_text('از طریق روش های زیر میتوانید با پشتیبان صحبت کنید', reply_markup=InlineKeyboardMarkup(keyboard))
