@@ -613,15 +613,32 @@ def show_help(update, context):
             [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]
         ]
     elif help_what == 'linux':
-        text = "*برای اتصال و پروکسی کردن سیستم لینوکس، میتونید آموزش لینک شده رو بخونید*"
+        text = "*به دلیل طولانی بودن مطلب، در ربات قرار نگرفته و شما میتونید از طریق سایت های زیر توضیحات فنی و دقیق رو بخونید*"
         keyboard = [
             [InlineKeyboardButton("نحوه پروکسی کردن اوبونتو، سایت linuxbabe", url="https://www.linuxbabe.com/ubuntu/set-up-v2ray-proxy-server")],
             [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]
         ]
 
     elif help_what == 'v2ray':
-        text = 'چیزی اضافه نشده'
-        keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]]
+        text = ('نتیجه گیری V2Ray یک سرویس VPN قدرتمند است که عملکردهای پیشرفته پروکسی مانند مبهم سازی داده ها، شکل دادن به ترافیک و نظارت بر شبکه را ارائه می دهد. چه بخواهید سانسور را دور بزنید، از حریم خصوصی آنلاین خود محافظت کنید یا عملکرد VPN خود را بهینه کنید، V2Ray شما را تحت پوشش قرار می دهد.'
+                '\n\nبیاید قسمت های مختلف یک کانفیگ v2ray رو بررسی کنیم:'
+                '\nvless://81462468231_1@admin.ggkala.shop:30508?security=&type=tcp&path=/&headerType=http&host=ponisha.ir&encryption=none#zahra-nylwsc07'
+                '\n\nاولین قسمت یک کانفیگ نوع پروتکول رو مشخص میکنه که در این کانفیگ از vless استفاده شده که یک پروتوکل سبک و سریع و متمرکز بر امنیته:'
+                '\nvlees://'
+                '\nقسمت بعد آیدی یک کانفیگ یا uuid هست، که یک ایدی یونیک بین همه کانفیگ های دیگست و از اون برای مشخص کردن کانفیگ شما از بقیه استفاده میشه'
+                '\n81462468231_1'
+                '\nقسمت بعدی آدرس و پورت سرور متصل رو مشخص میکنه که اینجا از دامنه استفاده شده که به ip سرور ما اشاره میکنه'
+                '\n@admin.ggkala.shop:30508'
+                '\nبعد از اون امنیت یک کانفیگ و روش اتصال ما به سرور مشخص میشه که این کانیفگ از روش های امن کردن اتصال استفاده نمیکنه و روش اتصال با سرور هم tcp هست'
+                '\nsecurity=&type=tcp'
+                '\nبعد از اون مسیر اتصال سرور و مدل هدر مشخص میشه که این کانفیگ مسیر روت داره و هدر تایپ http'
+                '\npath=/&headerType=http'
+                '\nدر آخر هاست که برای گمراه کردن ترافیکاستفاده میشه که تو این کانفیگ از پونیشا استفاده شده تا باعث دیرتر فیلتر شدن کانفیگ بشه، میتونید این رو عوض کنید و یک سایت دلخواه بزارید، همچنین encryption اشاره به مدل رمزنگاره داره که اینجا از چیزی استفاده نشده'
+                '\nhost=ponisha.ir&encryption=none'
+                '\nهرچیزی که بعد از # تو کانفیگ بیاد حساب نمیشه و صرفا یک توضیح و راهنماییه که ما از اسم کاربر استفاده کردیم'
+                '\nzahra-nylwsc07')
+        keyboard = [[InlineKeyboardButton("بیشتر یاد بگیرید", url="https://www.v2ray.com/en/")],
+            [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]]
 
     query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
 
@@ -629,4 +646,4 @@ def support(update, context):
     query = update.callback_query
     keyboard = [[InlineKeyboardButton("پرایوت", url="https://t.me/fupport")],
                 [InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]]
-    query.edit_message_text('از طریق روش های زیر میتوانید با پشتیبان صحبت کنید', reply_markup=InlineKeyboardMarkup(keyboard))
+    query.edit_message_text('از طریق روش های زیر میتونید با پشتیبان صحبت کنید', reply_markup=InlineKeyboardMarkup(keyboard))
