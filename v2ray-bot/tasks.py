@@ -67,8 +67,6 @@ def payment_page(update, context):
         if package[0][7]:
             keyboard = [
                 [InlineKeyboardButton("کارت به کارت", callback_data=f'payment_by_card_{id_}')],
-                [InlineKeyboardButton("پرداخت از طریق کیف پول", callback_data=f'payment_by_wallet_{id_}')],
-                [InlineKeyboardButton("پرداخت از طریق کریپتو", callback_data=f'payment_by_crypto_{id_}')],
                 [InlineKeyboardButton("برگشت ↰", callback_data="select_server")]
             ]
         else:
@@ -168,7 +166,8 @@ def send_clean_for_customer(query, context, id_):
     if create:
         try:
             get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
-            returned = api_operation.get_client_url(client_email=get_client[0][9], inbound_id=get_client[0][7])
+            get_domain = sqlite_manager.select(table='Product', where=f'id = {get_client[0][6]}')[0][10]
+            returned = api_operation.get_client_url(client_email=get_client[0][9], inbound_id=get_client[0][7], domain=get_domain)
             if returned:
                 returned_copy = f'`{returned}`'
                 qr_code = qrcode.make(returned)

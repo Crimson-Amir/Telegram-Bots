@@ -60,7 +60,8 @@ def add_service(update, context):
     'country': 'Netherlands',
     'period': 30,
     'traffic': 10,
-    'price': 10000
+    'price': 10000,
+    'domain': 'admin.ggkala.shop'
     }
     """
     if update.message.reply_to_message:
@@ -69,7 +70,7 @@ def add_service(update, context):
             get_data = {'inbound_id': user_message["inbound_id"],'active': user_message["active"],
                         'name': user_message["name"],'country': user_message["country"],
                         'period': user_message["period"],'traffic': user_message["traffic"],
-                        'price': user_message["price"],'date': datetime.now(pytz.timezone('Asia/Tehran'))}
+                        'price': user_message["price"],'date': datetime.now(pytz.timezone('Asia/Tehran')), 'domain': user_message['domain']}
             if user_message['update']:
                 sqlite_manager.update({'Product': get_data}, where=f'where id = {user_message["update"]}')
             else:
@@ -150,7 +151,7 @@ def add_client_bot(purchased_id, personalization=None):
                         "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(id_, email_, traffic_to_gb_, time_to_ms)
         }
         create = api_operation.add_client(data)
-        get_cong = api_operation.get_client_url(email_, int(get_service_db[0][1]))
+        get_cong = api_operation.get_client_url(email_, int(get_service_db[0][1]), domain=get_service_db[0][10])
         sqlite_manager.update({'Purchased': {'inbound_id': int(get_service_db[0][1]),'client_email': email_,
                                              'client_id': id_, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
                                              'details': get_cong, 'active': 1, 'status': 1}},
