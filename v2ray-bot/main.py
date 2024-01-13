@@ -5,7 +5,7 @@ from database import create_database
 from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, get_service_con, apply_card_pay,
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
                    personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service, help_sec,
-                   show_help, support)
+                   show_help, support, setting, change_notif, start_timer)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service
 
 
@@ -20,10 +20,13 @@ def main():
     dp.add_handler(CommandHandler('add_service', add_service))
     dp.add_handler(CommandHandler('all_service', all_service))
     dp.add_handler(CommandHandler('del_service', del_service))
+    dp.add_handler(CommandHandler('start_timer', start_timer))
 
     dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu'))
     dp.add_handler(CallbackQueryHandler(help_sec, pattern='guidance'))
     dp.add_handler(CallbackQueryHandler(support, pattern='support'))
+    dp.add_handler(CallbackQueryHandler(setting, pattern='setting'))
+    dp.add_handler(CallbackQueryHandler(change_notif, pattern='notification'))
 
     dp.add_handler(CallbackQueryHandler(send_main_message, pattern='send_main_message'))
     dp.add_handler(CallbackQueryHandler(buy_service, pattern='select_server'))
@@ -50,9 +53,10 @@ def main():
     dp.add_handler(CallbackQueryHandler(show_help, pattern=r'(.*)_help'))
 
     dp.add_handler(CallbackQueryHandler(create_file_and_return, pattern=r'create_txt_file'))
-    dp.add_handler(CallbackQueryHandler(personalization_service, pattern=r'personalization_service_\d+'))
     dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern=r'personalization_service_lu_\d+'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern=r'personalization_service_\d+'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern='accept_personalization'))
+
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_low_10'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_low_1'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_high_1'))
@@ -61,6 +65,21 @@ def main():
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern='period_low_1'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern='period_high_1'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern='period_high_10'))
+
+    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='traffic_low_lu_10'))
+    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='traffic_low_lu_1'))
+    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='traffic_high_lu_10'))
+    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='traffic_high_lu_1'))
+    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='period_low_lu_10'))
+    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='period_low_lu_1'))
+    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='period_high_lu_10'))
+    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='period_high_lu_1'))
+
+    dp.add_handler(CallbackQueryHandler(change_notif, pattern='notif_traffic_low_5'))
+    dp.add_handler(CallbackQueryHandler(change_notif, pattern='notif_traffic_high_5'))
+    dp.add_handler(CallbackQueryHandler(change_notif, pattern='notif_day_low_1'))
+    dp.add_handler(CallbackQueryHandler(change_notif, pattern='notif_day_high_1'))
+
 
     dp.add_handler(CallbackQueryHandler(my_service, pattern='my_service'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='settings'))

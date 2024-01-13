@@ -7,7 +7,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
 import uuid
 from private import ADMIN_CHAT_ID
-from admin_task import add_client_bot, api_operation, add_service
+from admin_task import add_client_bot, api_operation, second_to_ms
 import qrcode
 from io import BytesIO
 import pytz
@@ -102,7 +102,7 @@ def pay_page_get_evidence(update, context):
         context.user_data['package'] = package
         keyboard = [[InlineKeyboardButton("صفحه اصلی ⤶", callback_data="send_main_message")]]
         ex = sqlite_manager.insert('Purchased',rows= [{'active': 0,'status': 0, 'name': user["first_name"],'user_name': user["username"],
-                                                       'chat_id': int(user["id"]),'factor_id': uuid_,'product_id': id_}])
+                                                       'chat_id': int(user["id"]),'factor_id': uuid_,'product_id': id_, 'notif_day': 0, 'notif_gb': 0}])
         context.user_data['purchased_id'] = ex
         text = (f"شماره سفارش:"
                 f"\n`{uuid_}`"
@@ -120,9 +120,11 @@ def pay_page_get_evidence(update, context):
 
 
 def send_evidence_to_admin(update, context):
+    user = update.message.from_user
     package = context.user_data['package']
     purchased_id = context.user_data['purchased_id']
     text = "- Check the new payment to the card:\n\n"
+    text += f"Name: {user['first_name']}\nUserName: @{user['username']}\nID: {user['id']}\n\n"
     keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_{purchased_id}")]
         , [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_{purchased_id}")]]
     if update.message.photo:
@@ -315,7 +317,7 @@ def personalization_service(update, context):
     if 'traffic_low_10' in query.data or 'traffic_low_1' in query.data:
         traffic_t = int(query.data.replace('traffic_low_', ''))
         traffic = traffic - traffic_t
-        traffic = traffic if traffic >= 0 else 0
+        traffic = traffic if traffic >= 1 else 1
     elif 'traffic_high_1' in query.data or 'traffic_high_10' in query.data:
         traffic_t = int(query.data.replace('traffic_high_', ''))
         traffic = traffic + traffic_t
@@ -330,7 +332,7 @@ def personalization_service(update, context):
         period = period if period <= 500 else 500
 
     elif 'accept_personalization' in query.data:
-        id_ =  context.user_data['personalization_service_id']
+        id_ = context.user_data['personalization_service_id']
         check_available = sqlite_manager.select(table='Product', where=f'is_personalization = {query.message.chat_id}')
         inbound_id = sqlite_manager.select(column='inbound_id,name,country', table='Product', where=f'id = {id_}')
 
@@ -399,20 +401,20 @@ def personalization_service_lu(update, context):
     traffic = get_data_from_db[0][5]
     period = get_data_from_db[0][6]
 
-    if 'traffic_low_10' in query.data or 'traffic_low_1' in query.data:
-        traffic_t = int(query.data.replace('traffic_low_', ''))
+    if 'traffic_low_lu_10' in query.data or 'traffic_low_lu_1' in query.data:
+        traffic_t = int(query.data.replace('traffic_low_lu_', ''))
         traffic = traffic - traffic_t
-        traffic = traffic if traffic >= 0 else 0
-    elif 'traffic_high_1' in query.data or 'traffic_high_10' in query.data:
-        traffic_t = int(query.data.replace('traffic_high_', ''))
+        traffic = traffic if traffic >= 1 else 1
+    elif 'traffic_high_lu_10' in query.data or 'traffic_high_lu_1' in query.data:
+        traffic_t = int(query.data.replace('traffic_high_lu_', ''))
         traffic = traffic + traffic_t
         traffic = traffic if traffic <= 500 else 500
-    elif 'period_low_10' in query.data or 'period_low_1' in query.data:
-        period_t = int(query.data.replace('period_low_', ''))
+    elif 'period_low_lu_10' in query.data or 'period_low_lu_1' in query.data:
+        period_t = int(query.data.replace('period_low_lu_', ''))
         period = period - period_t
         period = period if period >= 1 else 1
-    elif 'period_high_1' in query.data or 'period_high_10' in query.data:
-        period_t = int(query.data.replace('period_high_', ''))
+    elif 'period_high_lu_10' in query.data or 'period_high_lu_1' in query.data:
+        period_t = int(query.data.replace('period_high_lu_', ''))
         period = period + period_t
         period = period if period <= 500 else 500
 
@@ -425,16 +427,16 @@ def personalization_service_lu(update, context):
             f'\nدوره زمانی: {period} روز'
             f'\n*قیمت: {price:,}*')
     keyboard = [
-        [InlineKeyboardButton("«", callback_data="traffic_low_10"),
-         InlineKeyboardButton("‹", callback_data="traffic_low_1"),
+        [InlineKeyboardButton("«", callback_data="traffic_low_lu_10"),
+         InlineKeyboardButton("‹", callback_data="traffic_low_lu_1"),
          InlineKeyboardButton(f"{traffic}GB", callback_data="just_for_show"),
-         InlineKeyboardButton("›", callback_data="traffic_high_1"),
-         InlineKeyboardButton("»", callback_data="traffic_high_10")],
-        [InlineKeyboardButton("«", callback_data="period_low_10"),
-         InlineKeyboardButton("‹", callback_data="period_low_1"),
+         InlineKeyboardButton("›", callback_data="traffic_high_lu_1"),
+         InlineKeyboardButton("»", callback_data="traffic_high_lu_10")],
+        [InlineKeyboardButton("«", callback_data="period_low_lu_10"),
+         InlineKeyboardButton("‹", callback_data="period_low_lu_1"),
          InlineKeyboardButton(f"{period}Day", callback_data="just_for_show"),
-         InlineKeyboardButton("›", callback_data="period_high_1"),
-         InlineKeyboardButton("»", callback_data="period_high_10")],
+         InlineKeyboardButton("›", callback_data="period_high_lu_1"),
+         InlineKeyboardButton("»", callback_data="period_high_lu_10")],
         [InlineKeyboardButton("✓ تایید", callback_data=f"payment_by_card_lu_{id_}")],
         [InlineKeyboardButton("برگشت ↰", callback_data="my_service")]
     ]
@@ -464,22 +466,23 @@ def pay_page_get_evidence_per(update, context):
         something_went_wrong(update, context)
 
 
-def send_evidence_to_admin_per(update, context):
+def send_evidence_to_admin_lu(update, context):
+    user = update.message.from_user
     package = context.user_data['package']
     purchased_id = context.user_data['purchased_id']
-    text = "- Check the new payment to the card:\n-FOR UPDATE SERVICE\n\n"
-    price = (package[0][5] * private.PRICE_PER_GB) + (package[0][6] * private.PRICE_PER_DAY)
+    text = "- Check the new payment to the card:\n\n"
+    text += f"Name: {user['first_name']}\nUserName: @{user['username']}\nID: {user['id']}\n\n"
     keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_lu_{purchased_id}")]
         , [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_lu_{purchased_id}")]]
     if update.message.photo:
         file_id = update.message.photo[-1].file_id
         text += f"caption: {update.message.caption}" or 'Witout caption!'
-        text += f"\n\nPeriod: {package[0][6]} Day\n Traffic: {package[0][5]}GB\nPrice: {price:,} T"
+        text += f"\n\nServer: `{package[0][4]}`\nInbound id: `{package[0][1]}`\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
         context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         update.message.reply_text(f'*سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
     elif update.message.text:
         text += f"Text: {update.message.text}"
-        text += f"\n\nPeriod: {package[0][6]} Day\n Traffic: {package[0][5]}GB\nPrice: {price:,} T"
+        text += f"\n\nServer: `{package[0][4]}`\nInbound id: `{package[0][1]}`\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
         context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
     else:
@@ -492,7 +495,7 @@ def send_evidence_to_admin_per(update, context):
 get_service_con_per = ConversationHandler(
     entry_points=[CallbackQueryHandler(pay_page_get_evidence_per, pattern=r'payment_by_card_lu_\d+')],
     states={
-        GET_EVIDENCE_PER: [MessageHandler(Filters.all, send_evidence_to_admin_per)]
+        GET_EVIDENCE_PER: [MessageHandler(Filters.all, send_evidence_to_admin_lu)]
     },
     fallbacks=[],
     conversation_timeout=600,
@@ -537,7 +540,7 @@ def apply_card_pay_lu(update, context):
                                                                                        traffic, my_data)}
             # breakpoint()
             print(api_operation.update_client(get_client[0][10], data))
-            sqlite_manager.update({'Purchased': {'date': datetime.now(pytz.timezone('Asia/Tehran'))}}
+            sqlite_manager.update({'Purchased': {'status': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran')), 'notif_day': 0, 'notif_gb': 0}}
                                   ,where=f'where client_email = "{get_client[0][9]}"')
             context.bot.send_message(text='سفارش شما برای تمدید و یا ارتقا با موفقیت تایید شد ✅', chat_id=get_client[0][4])
             query.answer('Done ✅')
@@ -563,7 +566,8 @@ def get_free_service(update, context):
     ex = sqlite_manager.insert('Purchased', rows=[
         {'active': 1, 'status': 1, 'name': user["first_name"], 'user_name': user["username"],
          'chat_id': int(user["id"]), 'factor_id': uuid_, 'product_id': 1, 'inbound_id': 1,
-         'client_email': f'Test Service | FreeByte | {uuid_}', 'client_id':uuid_, 'date': datetime.now()}])
+         'client_email': f'Test Service | FreeByte | {uuid_}', 'client_id':uuid_, 'date': datetime.now(),
+         'notif_day': 0, 'notif_gb': 0}])
     send_clean_for_customer(update.callback_query, context, ex)
 
 
@@ -624,20 +628,20 @@ def show_help(update, context):
                 '\nvless://81462468231_1@admin.ggkala.shop:30508?security=&type=tcp&path=/&headerType=http&host=ponisha.ir&encryption=none#zahra-nylwsc07'
                 '\n\nاولین قسمت یک کانفیگ نوع پروتکول رو مشخص میکنه که در این کانفیگ از vless استفاده شده که یک پروتوکل سبک و سریع و متمرکز بر امنیته:'
                 '\nvlees://'
-                '\nقسمت بعد آیدی یک کانفیگ یا uuid هست، که یک ایدی یونیک بین همه کانفیگ های دیگست و از اون برای مشخص کردن کانفیگ شما از بقیه استفاده میشه'
+                '\n\nقسمت بعد آیدی یک کانفیگ یا uuid هست، که یک ایدی یونیک بین همه کانفیگ های دیگست و از اون برای مشخص کردن کانفیگ شما از بقیه استفاده میشه'
                 '\n81462468231_1'
-                '\nقسمت بعدی آدرس و پورت سرور متصل رو مشخص میکنه که اینجا از دامنه استفاده شده که به ip سرور ما اشاره میکنه'
+                '\n\nقسمت بعدی آدرس و پورت سرور متصل رو مشخص میکنه که اینجا از دامنه استفاده شده که به ip سرور ما اشاره میکنه'
                 '\n@admin.ggkala.shop:30508'
-                '\nبعد از اون امنیت یک کانفیگ و روش اتصال ما به سرور مشخص میشه که این کانیفگ از روش های امن کردن اتصال استفاده نمیکنه و روش اتصال با سرور هم tcp هست'
+                '\n\nبعد از اون امنیت یک کانفیگ و روش اتصال ما به سرور مشخص میشه که این کانیفگ از روش های امن کردن اتصال استفاده نمیکنه و روش اتصال با سرور هم tcp هست'
                 '\nsecurity=&type=tcp'
-                '\nبعد از اون مسیر اتصال سرور و مدل هدر مشخص میشه که این کانفیگ مسیر روت داره و هدر تایپ http'
+                '\n\nبعد از اون مسیر اتصال سرور و مدل هدر مشخص میشه که این کانفیگ مسیر روت داره و هدر تایپ http'
                 '\npath=/&headerType=http'
-                '\nدر آخر هاست که برای گمراه کردن ترافیکاستفاده میشه که تو این کانفیگ از پونیشا استفاده شده تا باعث دیرتر فیلتر شدن کانفیگ بشه، میتونید این رو عوض کنید و یک سایت دلخواه بزارید، همچنین encryption اشاره به مدل رمزنگاره داره که اینجا از چیزی استفاده نشده'
+                '\n\nدر آخر هاست که برای گمراه کردن ترافیکاستفاده میشه که تو این کانفیگ از پونیشا استفاده شده تا باعث دیرتر فیلتر شدن کانفیگ بشه، میتونید این رو عوض کنید و یک سایت دلخواه بزارید، همچنین encryption اشاره به مدل رمزنگاره داره که اینجا از چیزی استفاده نشده'
                 '\nhost=ponisha.ir&encryption=none'
-                '\nهرچیزی که بعد از # تو کانفیگ بیاد حساب نمیشه و صرفا یک توضیح و راهنماییه که ما از اسم کاربر استفاده کردیم'
+                '\n\nهرچیزی که بعد از # تو کانفیگ بیاد حساب نمیشه و صرفا یک توضیح و راهنماییه که ما از اسم کاربر استفاده کردیم'
                 '\nzahra-nylwsc07')
         keyboard = [[InlineKeyboardButton("بیشتر یاد بگیرید", url="https://www.v2ray.com/en/")],
-            [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]]
+                    [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]]
 
     query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
 
@@ -646,3 +650,101 @@ def support(update, context):
     keyboard = [[InlineKeyboardButton("پرایوت", url="https://t.me/fupport")],
                 [InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]]
     query.edit_message_text('از طریق روش های زیر میتونید با پشتیبان صحبت کنید', reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+def check_all_configs(context):
+    # query = update.callback_query
+    get_all = api_operation.get_all_inbounds()
+    get_from_db = sqlite_manager.select(column='id,chat_id,client_email,status,date,notif_day,notif_gb', table='Purchased')
+    get_users_notif = sqlite_manager.select(column='chat_id,notification_gb,notification_day', table='User')
+    for config in get_all['obj']:
+        for client in config['clientStats']:
+            #  check ExpiryTime
+            for user in get_from_db:
+                if user[2] == client['email']:
+                    if not client['enable'] and user[3]:
+                        context.bot.send_message(user[1], text=f'🔴 سرویس شما با نام {user[2]} به پایان رسید!')
+                        sqlite_manager.update({'Purchased': {'status': 0}}, where=f'where id = {user[0]}')
+                    elif client['enable'] and not user[3]:
+                        sqlite_manager.update(
+                            {'Purchased': {'status': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran')), 'notif_day': 0, 'notif_gb': 0}}
+                            , where=f'where id = "{user[0]}"')
+
+                    expiry = second_to_ms(client['expiryTime'], False)
+                    now = datetime.now()
+                    time_left = (expiry - now).days
+
+                    upload_gb = client['up'] / (1024 ** 3)
+                    download_gb = client['down'] / (1024 ** 3)
+                    usage_traffic = upload_gb + download_gb
+                    total_traffic = client['total'] / (1024 ** 3)
+                    traffic_percent = (usage_traffic / total_traffic) * 100
+
+                    list_of_notification = [notif for notif in get_users_notif if notif[0] == user[1]]
+
+                    if not user[5] and time_left <= list_of_notification[0][2]:
+                        context.bot.send_message(user[1], text=f'🔵 از سرویس شما با نام {user[2]} کمتر از {time_left} روز باقی مونده')
+                        sqlite_manager.update(
+                            {'Purchased': {'notif_day': 1}},where=f'where id = "{user[0]}"')
+                    if not user[6] and traffic_percent >= list_of_notification[0][1]:
+                        context.bot.send_message(user[1], text=f'🔵 شما {int(traffic_percent)} درصد از حجم سرویس {user[2]} را مصرف کردید.')
+                        sqlite_manager.update(
+                            {'Purchased': {'notif_gb': 1}},where=f'where id = "{user[0]}"')
+
+
+def setting(update, context):
+    query = update.callback_query
+    keyboard = [
+        [InlineKeyboardButton("تنظیمات نوتیفیکیشن 🔔", callback_data="notification")],
+        [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]
+    ]
+    query.edit_message_text(text='*در این قسمت میتونید تنظیمات ربات رو شخصی سازی کنید:*', parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+def change_notif(update, context):
+    query = update.callback_query
+    get_data_from_db = sqlite_manager.select(table='User', where=f'chat_id = {query.message.chat_id}')
+
+    traffic = get_data_from_db[0][8]
+    period = get_data_from_db[0][9]
+
+    if 'notif_traffic_low_5' in query.data:
+        traffic_t = int(query.data.replace('notif_traffic_low_', ''))
+        traffic = traffic - traffic_t
+        traffic = traffic if traffic >= 1 else 0
+    elif 'notif_traffic_high_5' in query.data:
+        traffic_t = int(query.data.replace('notif_traffic_high_', ''))
+        traffic = traffic + traffic_t
+        traffic = traffic if traffic <= 100 else 100
+    elif 'notif_day_low_1' in query.data:
+        period_t = int(query.data.replace('notif_day_low_', ''))
+        period = period - period_t
+        period = period if period >= 1 else 0
+    elif 'notif_day_high_1' in query.data:
+        period_t = int(query.data.replace('notif_day_high_', ''))
+        period = period + period_t
+        period = period if period <= 100 else 100
+
+
+    sqlite_manager.update({'User': {'notification_gb':traffic, 'notification_day': period}},where=f'where chat_id = {query.message.chat_id}')
+
+    text = ('*• تنظیمات نوتیفیکشن رو مطابق میل خودتون تغییر بدید:*'
+            '• ربات 10 دقیقه یک بار اطلاعات رو بررسی میکنه.'
+            f'\n\nدریافت اعلان بعد مصرف {traffic}% حجم'
+            f'\nدریافت اعلان {period} روز قبل تمام شدن سرویس')
+    keyboard = [
+        [InlineKeyboardButton("«", callback_data="notif_traffic_low_5"),
+         InlineKeyboardButton(f"{traffic}%", callback_data="just_for_show"),
+         InlineKeyboardButton("»", callback_data="notif_traffic_high_5")],
+        [InlineKeyboardButton("«", callback_data="notif_day_low_1"),
+         InlineKeyboardButton(f"{period}Day", callback_data="just_for_show"),
+         InlineKeyboardButton("»", callback_data="notif_day_high_1")],
+        [InlineKeyboardButton("برگشت ↰", callback_data="setting")]
+    ]
+    query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+def start_timer(update, context):
+    context.job_queue.run_repeating(check_all_configs, interval=600, first=0)
+
+    update.message.reply_text('Timer started! ✅')

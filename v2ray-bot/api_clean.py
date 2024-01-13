@@ -54,7 +54,7 @@ class XuiApiClean:
     def get_all_inbounds(self):
         get_inbounds = self.connect.get(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/list')
         if self.check_request(get_inbounds):
-            return get_inbounds
+            return get_inbounds.json()
 
     def get_inbound(self, inbound_id):
         get_inbound = self.connect.get(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/get/{inbound_id}')
