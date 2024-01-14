@@ -106,10 +106,11 @@ class XuiApiClean:
         if self.check_json(inb):
             return inb.json()
 
-    def get_client_url(self, client_email, inbound_id, domain="admin.ggkala.shop", host="ponisha.ir", default_config_schematic=None):
+    def get_client_url(self, client_email, inbound_id, domain=None, host="ponisha.ir", default_config_schematic=None):
         if not default_config_schematic:
             default_config_schematic = "vless://{}@{}:{}?security=none&host={}&headerType=http&type={}#{}-{}"
         get_in = self.get_inbound(inbound_id)
+        domain = domain or 'human.ggkala.shop'
         if get_in['success']:
             port = get_in['obj']['port']
             remark = get_in['obj']['remark']

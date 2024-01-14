@@ -1,3 +1,4 @@
+import requests
 from telegram.ext import (Updater, CommandHandler, CallbackQueryHandler)
 from private import telegram_bot_token
 from bot_start import bot_start, main_menu, send_main_message
@@ -7,7 +8,12 @@ from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, 
                    personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service, help_sec,
                    show_help, support, setting, change_notif, start_timer, export_database, financial_transactions)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service, run_in_system
+from private import ADMIN_CHAT_ID
+import requests
 
+
+telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
+requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'BOT START NOW!'})
 
 def main():
     updater = Updater(telegram_bot_token)

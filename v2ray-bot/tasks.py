@@ -188,7 +188,7 @@ def send_clean_for_customer(query, context, id_):
                 query.delete_message()
                 with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
                     e.write(
-                        f'\n\n💸 پرداخت پول: خرید سرویس | وضعیت: ✅\nشماره سفارش:\n {get_client[0][5]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}')
+                        f"\n\n💸 پرداخت پول: خرید سرویس | وضعیت: ✅\nشماره سفارش:\n {get_client[0][5]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
 
             else:
                 print('wrong: ', returned)
@@ -221,7 +221,7 @@ def apply_card_pay(update, context):
             query.answer('Done ✅')
             query.delete_message()
             with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
-                e.write(f'\n\n💸 پرداخت پول: خرید سرویس | وضعیت: ❌\nشماره سفارش:\n {get_client[0][5]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}')
+                e.write(f"\n\n💸 پرداخت پول: خرید سرویس | وضعیت: ❌\nشماره سفارش:\n {get_client[0][5]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
 
 
         elif 'cancel_pay' in query.data:
@@ -348,7 +348,7 @@ def personalization_service(update, context):
                     'name': inbound_id[0][1], 'country': inbound_id[0][2],
                     'period': period, 'traffic': traffic,
                     'price': price, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
-                    'is_personalization': query.message.chat_id}
+                    'is_personalization': query.message.chat_id,'domain': 'human.ggkala.shop'}
 
         if check_available:
             sqlite_manager.update({'Product': get_data}, where=f'where id = {check_available[0][0]}')
@@ -477,20 +477,21 @@ def pay_page_get_evidence_per(update, context):
 def send_evidence_to_admin_lu(update, context):
     user = update.message.from_user
     package = context.user_data['package']
+    price = (package[0][5] * private.PRICE_PER_GB) + (package[0][6] * private.PRICE_PER_DAY)
     purchased_id = context.user_data['purchased_id']
-    text = "- Check the new payment to the card:\n\n"
+    text = "- Check the new payment to the card [UPGRADE SERVICE]:\n\n"
     text += f"Name: {user['first_name']}\nUserName: @{user['username']}\nID: {user['id']}\n\n"
     keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_lu_{purchased_id}")]
         , [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_lu_{purchased_id}")]]
     if update.message.photo:
         file_id = update.message.photo[-1].file_id
         text += f"caption: {update.message.caption}" or 'Witout caption!'
-        text += f"\n\nServer: `{package[0][4]}`\nInbound id: `{package[0][1]}`\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
+        text += f"\n\nPeriod: {package[0][6]} Day\n Traffic: {package[0][5]}GB\nPrice: {price:,} T"
         context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         update.message.reply_text(f'*سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
     elif update.message.text:
         text += f"Text: {update.message.text}"
-        text += f"\n\nServer: `{package[0][4]}`\nInbound id: `{package[0][1]}`\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
+        text += f"\n\nPeriod: {package[0][6]} Day\n Traffic: {package[0][5]}GB\nPrice: {price:,} T"
         context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
     else:
@@ -555,7 +556,7 @@ def apply_card_pay_lu(update, context):
             query.answer('Done ✅')
             query.delete_message()
             with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
-                e.write(f'\n\n💸 پرداخت پول: تمدید یا ارتقا سرویس | وضعیت: ✅\nنام سرویس: {get_client[0][9]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}')
+                e.write(f"\n\n💸 پرداخت پول: تمدید یا ارتقا سرویس | وضعیت: ✅\nنام سرویس: {get_client[0][9]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
 
         elif 'ok_card_pay_lu_refuse_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_lu_refuse_', ''))
@@ -564,7 +565,7 @@ def apply_card_pay_lu(update, context):
             query.answer('Done ✅')
             query.delete_message()
             with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
-                e.write(f'\n\n💸 پرداخت پول: تمدید یا ارتقا سرویس | وضعیت: ❌\nنام سرویس: {get_client[0][9]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}')
+                e.write(f"\n\n💸 پرداخت پول: تمدید یا ارتقا سرویس | وضعیت: ❌\nنام سرویس: {get_client[0][9]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
 
         elif 'cancel_pay' in query.data:
             query.answer('Done ✅')
@@ -697,7 +698,7 @@ def check_all_configs(context):
                     list_of_notification = [notif for notif in get_users_notif if notif[0] == user[1]]
 
                     if not user[5] and time_left <= list_of_notification[0][2]:
-                        context.bot.send_message(user[1], text=f'🔵 از سرویس شما با نام {user[2]} کمتر از {time_left} روز باقی مونده')
+                        context.bot.send_message(user[1], text=f'🔵 از سرویس شما با نام {user[2]} کمتر از {int(time_left) + 1} روز باقی مونده')
                         sqlite_manager.update(
                             {'Purchased': {'notif_day': 1}},where=f'where id = "{user[0]}"')
                     if not user[6] and traffic_percent >= list_of_notification[0][1]:
