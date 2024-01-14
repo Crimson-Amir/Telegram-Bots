@@ -7,7 +7,7 @@ def create_database():
 
     c.execute('CREATE TABLE IF NOT EXISTS User(id integer primary key, name text, user_name text, chat_id integer, '
               'date text, traffic integer, period integer, free_service integer, notification_gb integer,'
-              ' notification_day integer)')
+              ' notification_day integer, wallet integer)')
 
     c.execute('CREATE TABLE IF NOT EXISTS Admin(id integer primary key, name text, user_name text, chat_id text,'
               ' level integer)')

@@ -22,8 +22,8 @@ def bot_start(update, context):
 
     if len(user_is_available) == 0:
         context.bot.send_message(ADMIN_CHAT_ID, text=start_text_notif, parse_mode="HTML")
-        c.execute("INSERT INTO User (name,user_name,chat_id,date,traffic,period,free_service,notification_gb,notification_day) VALUES (?,?,?,?,?,?,?,?,?)",
-                  (user["first_name"], user["username"], int(user["id"]), str(date), 10, 7, 0, 85,2))
+        c.execute("INSERT INTO User (name,user_name,chat_id,date,traffic,period,free_service,notification_gb,notification_day,wallet) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                  (user["first_name"], user["username"], int(user["id"]), str(date), 10, 7, 0, 85,2,0))
         conn.commit()
 
     user_text = f"<b>سلام <a href='tg://user?id={user['id']}'>{user['first_name']}</a> عزیز، به FreeByte خوش آمدید.\nبرای ادامه بخش مورد نظر خودتون رو انتخاب کنید:\n</b>"

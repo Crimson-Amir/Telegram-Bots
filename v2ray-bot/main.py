@@ -5,7 +5,7 @@ from database import create_database
 from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, get_service_con, apply_card_pay,
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
                    personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service, help_sec,
-                   show_help, support, setting, change_notif, start_timer, export_database)
+                   show_help, support, setting, change_notif, start_timer, export_database, financial_transactions)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service, run_in_system
 
 
@@ -30,6 +30,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(support, pattern='support'))
     dp.add_handler(CallbackQueryHandler(setting, pattern='setting'))
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='notification'))
+    dp.add_handler(CallbackQueryHandler(financial_transactions, pattern='financial_transactions'))
 
     dp.add_handler(CallbackQueryHandler(send_main_message, pattern='send_main_message'))
     dp.add_handler(CallbackQueryHandler(buy_service, pattern='select_server'))

@@ -186,6 +186,10 @@ def send_clean_for_customer(query, context, id_):
                                        parse_mode='markdown')
                 query.answer('Done ✅')
                 query.delete_message()
+                with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
+                    e.write(
+                        f'\n\n💸 پرداخت پول: خرید سرویس | وضعیت: ✅\nشماره سفارش:\n {get_client[0][5]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}')
+
             else:
                 print('wrong: ', returned)
                 query.answer('Wrong')
@@ -209,12 +213,16 @@ def apply_card_pay(update, context):
         elif 'ok_card_pay_accept_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_accept_', ''))
             send_clean_for_customer(query, context, id_)
+
         elif 'ok_card_pay_refuse_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_refuse_', ''))
             get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
             context.bot.send_message(text=f'متاسفانه درخواست شما برای ثبت سرویس پذیرفته نشد❌\n ارتباط با پشتیبانی: \n @Fupport ', chat_id=get_client[0][4])
             query.answer('Done ✅')
             query.delete_message()
+            with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
+                e.write(f'\n\n💸 پرداخت پول: خرید سرویس | وضعیت: ❌\nشماره سفارش:\n {get_client[0][5]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}')
+
 
         elif 'cancel_pay' in query.data:
             query.answer('Done ✅')
@@ -519,6 +527,7 @@ def apply_card_pay_lu(update, context):
 
             ret_conf = api_operation.get_client(get_client[0][9])
             now = datetime.now(pytz.timezone('Asia/Tehran'))
+
             if ret_conf['obj']['enable']:
                 tra = ret_conf['obj']['total']
                 traffic = (user_db[0][5] * (1024 ** 3)) + tra
@@ -545,12 +554,17 @@ def apply_card_pay_lu(update, context):
             context.bot.send_message(text='سفارش شما برای تمدید و یا ارتقا با موفقیت تایید شد ✅', chat_id=get_client[0][4])
             query.answer('Done ✅')
             query.delete_message()
+            with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
+                e.write(f'\n\n💸 پرداخت پول: تمدید یا ارتقا سرویس | وضعیت: ✅\nنام سرویس: {get_client[0][9]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}')
+
         elif 'ok_card_pay_lu_refuse_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_lu_refuse_', ''))
             get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
             context.bot.send_message(text=f'متاسفانه درخواست شما برای تمدید یا ارتقا سرویس پذیرفته نشد❌\n ارتباط با پشتیبانی: \n @Fupport ', chat_id=get_client[0][4])
             query.answer('Done ✅')
             query.delete_message()
+            with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
+                e.write(f'\n\n💸 پرداخت پول: تمدید یا ارتقا سرویس | وضعیت: ❌\nنام سرویس: {get_client[0][9]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}')
 
         elif 'cancel_pay' in query.data:
             query.answer('Done ✅')
@@ -695,10 +709,11 @@ def check_all_configs(context):
 def setting(update, context):
     query = update.callback_query
     keyboard = [
-        [InlineKeyboardButton("تنظیمات نوتیفیکیشن 🔔", callback_data="notification")],
+        [InlineKeyboardButton("تنظیمات نوتیفیکیشن", callback_data="notification")],
+        [InlineKeyboardButton("تراکنش های مالی", callback_data="financial_transactions")],
         [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]
     ]
-    query.edit_message_text(text='*در این قسمت میتونید تنظیمات ربات رو شخصی سازی کنید:*', parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+    query.edit_message_text(text='*در این قسمت میتونید تنظیمات ربات رو مشاهده و یا شخصی سازی کنید:*', parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 def change_notif(update, context):
@@ -729,7 +744,7 @@ def change_notif(update, context):
     sqlite_manager.update({'User': {'notification_gb':traffic, 'notification_day': period}},where=f'where chat_id = {query.message.chat_id}')
 
     text = ('*• تنظیمات نوتیفیکشن رو مطابق میل خودتون تغییر بدید:*'
-            '• ربات 10 دقیقه یک بار اطلاعات رو بررسی میکنه.'
+            f'\n• ربات 10 دقیقه یک بار اطلاعات رو بررسی میکنه.'
             f'\n\nدریافت اعلان بعد مصرف {traffic}% حجم'
             f'\nدریافت اعلان {period} روز قبل تمام شدن سرویس')
     keyboard = [
@@ -744,10 +759,21 @@ def change_notif(update, context):
     query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
 
+def financial_transactions(update, context):
+    query = update.callback_query
+    keyboard = [
+        [InlineKeyboardButton("برگشت ↰", callback_data="setting")]
+    ]
+    with open(f'financial_transactions/{query.message.chat_id}.txt', 'r', encoding='utf-8') as e:
+        get_factors = e.read()
+    query.edit_message_text(text=f"لیست تراکنش های مالی شما: \n{get_factors}", reply_markup=InlineKeyboardMarkup(keyboard))
+
+
 def start_timer(update, context):
     context.job_queue.run_repeating(check_all_configs, interval=600, first=0)
 
     update.message.reply_text('Timer started! ✅')
+
 
 def export_database(update, context):
     check = api_operation.create_backup()
