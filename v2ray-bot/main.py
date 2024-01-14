@@ -5,8 +5,8 @@ from database import create_database
 from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, get_service_con, apply_card_pay,
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
                    personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service, help_sec,
-                   show_help, support, setting, change_notif, start_timer)
-from admin_task import admin_add_update_inbound, add_service, all_service, del_service
+                   show_help, support, setting, change_notif, start_timer, export_database)
+from admin_task import admin_add_update_inbound, add_service, all_service, del_service, run_in_system
 
 
 def main():
@@ -16,11 +16,14 @@ def main():
 
     dp.add_handler(CommandHandler('start', bot_start))
     dp.add_handler(CommandHandler('help', bot_start))
+
     dp.add_handler(CommandHandler('add_inbound', admin_add_update_inbound))
     dp.add_handler(CommandHandler('add_service', add_service))
     dp.add_handler(CommandHandler('all_service', all_service))
     dp.add_handler(CommandHandler('del_service', del_service))
     dp.add_handler(CommandHandler('start_timer', start_timer))
+    dp.add_handler(CommandHandler('export_database', export_database))
+    dp.add_handler(CommandHandler('run_in_system', run_in_system))
 
     dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu'))
     dp.add_handler(CallbackQueryHandler(help_sec, pattern='guidance'))

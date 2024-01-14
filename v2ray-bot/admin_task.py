@@ -165,6 +165,14 @@ def add_client_bot(purchased_id, personalization=None):
         print(e)
         return False
 
+def run_in_system(update, context):
+    try:
+        user_message = eval(update.message.reply_to_message.text)
+        text = f'ok {user_message}'
+    except Exception as e:
+        text = f'There Is Problem\n{e}'
+    update.message.reply_text(text=text)
+
 
 # a = api_operation.get_client_url('1_Expiration:2024_06_06__12:38:17', 1)
 # print(a)

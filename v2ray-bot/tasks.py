@@ -748,3 +748,7 @@ def start_timer(update, context):
     context.job_queue.run_repeating(check_all_configs, interval=600, first=0)
 
     update.message.reply_text('Timer started! ✅')
+
+def export_database(update, context):
+    check = api_operation.create_backup()
+    update.message.reply_text(f'OK | {check}')

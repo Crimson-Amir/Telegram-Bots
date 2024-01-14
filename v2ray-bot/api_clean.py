@@ -122,3 +122,12 @@ class XuiApiClean:
             return False
         else:
             return False
+
+    def get_ips(self, email):
+        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/clientIps/{email}')
+        if self.check_json(inb):
+            return inb.json()
+
+
+# test = XuiApiClean()
+# print(test.get_ips('kyhm2hhk'))
