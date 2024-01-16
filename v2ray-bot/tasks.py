@@ -290,7 +290,7 @@ def server_detail_customer(update, context):
             f"\n\n🌐 آدرس سرویس:\n <code>{get_data[0][8]}</code>"
         )
         query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
-        sqlite_manager.update({'Purchased': {'status': 1 if ret_conf['obj']['enable'] else 0}}, where=f'where client_email = "{email}"')
+        sqlite_manager.update({'Purchased': {'status': 1 if ret_conf['obj']['enable'] else 0}}, where=f'client_email = "{email}"')
     except Exception as e:
         query.answer('مشکلی وجود دارد!')
         print(e)
@@ -351,7 +351,7 @@ def personalization_service(update, context):
                     'is_personalization': query.message.chat_id,'domain': 'human.ggkala.shop'}
 
         if check_available:
-            sqlite_manager.update({'Product': get_data}, where=f'where id = {check_available[0][0]}')
+            sqlite_manager.update({'Product': get_data}, where=f'id = {check_available[0][0]}')
             new_id = check_available[0][0]
         else:
             new_id = sqlite_manager.insert('Product', [get_data])
@@ -367,7 +367,7 @@ def personalization_service(update, context):
         return
 
 
-    sqlite_manager.update({'User': {'traffic':traffic, 'period': period}},where=f'where chat_id = {query.message.chat_id}')
+    sqlite_manager.update({'User': {'traffic':traffic, 'period': period}},where=f'chat_id = {query.message.chat_id}')
     price = (traffic * private.PRICE_PER_GB) + (period * private.PRICE_PER_DAY)
 
     text = ('*• تو این بخش میتونید سرویس مورد نظر خودتون رو شخصی سازی کنید:*'
@@ -400,7 +400,7 @@ def personalization_service_lu(update, context):
         period_for_upgrade = context.user_data['period_for_upgrade']
         traffic_for_upgrade = context.user_data['traffic_for_upgrade']
         sqlite_manager.update({'User': {'period': int(period_for_upgrade), 'traffic': int(traffic_for_upgrade)}},
-                              where=f'where chat_id = {query.message.chat_id}')
+                              where=f'chat_id = {query.message.chat_id}')
         context.user_data['personalization_client_lu_id'] = int(query.data.replace('personalization_service_lu_', ''))
 
     id_ = context.user_data['personalization_client_lu_id']
@@ -427,7 +427,7 @@ def personalization_service_lu(update, context):
         period = period if period <= 500 else 500
 
 
-    sqlite_manager.update({'User': {'traffic':traffic, 'period': period}},where=f'where chat_id = {query.message.chat_id}')
+    sqlite_manager.update({'User': {'traffic':traffic, 'period': period}},where=f'chat_id = {query.message.chat_id}')
     price = (traffic * private.PRICE_PER_GB) + (period * private.PRICE_PER_DAY)
 
     text = ('*• تو این بخش میتونید سرویس مورد نظر خودتون رو تمدید کنید و یا ارتقا دهید:*'
@@ -551,7 +551,7 @@ def apply_card_pay_lu(update, context):
             # breakpoint()
             print(api_operation.update_client(get_client[0][10], data))
             sqlite_manager.update({'Purchased': {'status': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran')), 'notif_day': 0, 'notif_gb': 0}}
-                                  ,where=f'where client_email = "{get_client[0][9]}"')
+                                  ,where=f'client_email = "{get_client[0][9]}"')
             context.bot.send_message(text='سفارش شما برای تمدید و یا ارتقا با موفقیت تایید شد ✅', chat_id=get_client[0][4])
             query.answer('Done ✅')
             query.delete_message()
@@ -577,7 +577,7 @@ def apply_card_pay_lu(update, context):
 def get_free_service(update, context):
     user = update.callback_query.from_user
     uuid_ = random.randint(1, 100000)
-    sqlite_manager.update({'User': {'free_service': 1}}, where=f"where chat_id = {user['id']}")
+    sqlite_manager.update({'User': {'free_service': 1}}, where=f"chat_id = {user['id']}")
     ex = sqlite_manager.insert('Purchased', rows=[
         {'active': 1, 'status': 1, 'name': user["first_name"], 'user_name': user["username"],
          'chat_id': int(user["id"]), 'factor_id': uuid_, 'product_id': 1, 'inbound_id': 1,
@@ -679,11 +679,11 @@ def check_all_configs(context):
                 if user[2] == client['email']:
                     if not client['enable'] and user[3]:
                         context.bot.send_message(user[1], text=f'🔴 سرویس شما با نام {user[2]} به پایان رسید!')
-                        sqlite_manager.update({'Purchased': {'status': 0}}, where=f'where id = {user[0]}')
+                        sqlite_manager.update({'Purchased': {'status': 0}}, where=f'id = {user[0]}')
                     elif client['enable'] and not user[3]:
                         sqlite_manager.update(
                             {'Purchased': {'status': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran')), 'notif_day': 0, 'notif_gb': 0}}
-                            , where=f'where id = "{user[0]}"')
+                            , where=f'id = "{user[0]}"')
 
                     expiry = second_to_ms(client['expiryTime'], False)
                     now = datetime.now()
@@ -700,11 +700,11 @@ def check_all_configs(context):
                     if not user[5] and time_left <= list_of_notification[0][2]:
                         context.bot.send_message(user[1], text=f'🔵 از سرویس شما با نام {user[2]} کمتر از {int(time_left) + 1} روز باقی مونده')
                         sqlite_manager.update(
-                            {'Purchased': {'notif_day': 1}},where=f'where id = "{user[0]}"')
+                            {'Purchased': {'notif_day': 1}},where=f'id = "{user[0]}"')
                     if not user[6] and traffic_percent >= list_of_notification[0][1]:
                         context.bot.send_message(user[1], text=f'🔵 شما {int(traffic_percent)} درصد از حجم سرویس {user[2]} را مصرف کردید.')
                         sqlite_manager.update(
-                            {'Purchased': {'notif_gb': 1}},where=f'where id = "{user[0]}"')
+                            {'Purchased': {'notif_gb': 1}},where=f'id = "{user[0]}"')
 
 
 def setting(update, context):
@@ -742,7 +742,7 @@ def change_notif(update, context):
         period = period if period <= 100 else 100
 
 
-    sqlite_manager.update({'User': {'notification_gb':traffic, 'notification_day': period}},where=f'where chat_id = {query.message.chat_id}')
+    sqlite_manager.update({'User': {'notification_gb':traffic, 'notification_day': period}},where=f'chat_id = {query.message.chat_id}')
 
     text = ('*• تنظیمات نوتیفیکشن رو مطابق میل خودتون تغییر بدید:*'
             f'\n• ربات 10 دقیقه یک بار اطلاعات رو بررسی میکنه.'

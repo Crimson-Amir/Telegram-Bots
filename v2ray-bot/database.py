@@ -9,8 +9,8 @@ def create_database():
               'date text, traffic integer, period integer, free_service integer, notification_gb integer,'
               ' notification_day integer, wallet integer)')
 
-    c.execute('CREATE TABLE IF NOT EXISTS Admin(id integer primary key, name text, user_name text, chat_id text,'
-              ' level integer)')
+    c.execute('CREATE TABLE IF NOT EXISTS Rank(id integer primary key, name text, user_name text, chat_id text,'
+              ' level integer, rank_name text)')
 
     c.execute('CREATE TABLE IF NOT EXISTS Product(id integer primary key, inbound_id integer, active integer, name text'
               ',country text, period integer, traffic integer, price integer, date text, is_personalization text, domain text)')

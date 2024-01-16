@@ -1,4 +1,3 @@
-import requests
 from telegram.ext import (Updater, CommandHandler, CallbackQueryHandler)
 from private import telegram_bot_token
 from bot_start import bot_start, main_menu, send_main_message

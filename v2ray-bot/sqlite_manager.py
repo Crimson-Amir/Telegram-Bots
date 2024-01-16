@@ -81,6 +81,7 @@ class ManageDb:
 
     @connecting_manage
     def update(self, table, where):
+        where = f'where {where}' or None
         for key, value in table.items():
             for k, v in value.items():
                 text = f"UPDATE {key} SET {k} = '{v}' {where}"

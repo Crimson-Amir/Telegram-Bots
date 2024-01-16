@@ -72,7 +72,7 @@ def add_service(update, context):
                         'period': user_message["period"],'traffic': user_message["traffic"],
                         'price': user_message["price"],'date': datetime.now(pytz.timezone('Asia/Tehran')), 'domain': user_message['domain']}
             if user_message['update']:
-                sqlite_manager.update({'Product': get_data}, where=f'where id = {user_message["update"]}')
+                sqlite_manager.update({'Product': get_data}, where=f'id = {user_message["update"]}')
             else:
                 sqlite_manager.insert('Product', [get_data])
             update.message.reply_text('OK')
@@ -94,6 +94,8 @@ def get_all_service():
         'traffic',
         'price',
         'date',
+        'is_personalization',
+        'domain'
     ]
     for ser in all_serv:
         indexed_data += [f"{clean_data[index]}: {data}" for index, data in enumerate(ser)]
@@ -155,7 +157,7 @@ def add_client_bot(purchased_id, personalization=None):
         sqlite_manager.update({'Purchased': {'inbound_id': int(get_service_db[0][1]),'client_email': email_,
                                              'client_id': id_, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
                                              'details': get_cong, 'active': 1, 'status': 1}},
-                              where=f'where id = {purchased_id}')
+                              where=f'id = {purchased_id}')
         print(create)
         if create['success']:
             return True
