@@ -5,18 +5,19 @@ from database import create_database
 from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, get_service_con, apply_card_pay,
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
                    personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service, help_sec,
-                   show_help, support, setting, change_notif, start_timer, export_database, financial_transactions)
+                   show_help, support, setting, change_notif, start_timer, export_database, financial_transactions,
+                   wallet_page)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service, run_in_system
 from private import ADMIN_CHAT_ID
 import requests
 
 
 telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
-requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'BOT START NOW!'})
+requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'BOT START NOW! | /start_timer'})
+create_database()
 
 def main():
     updater = Updater(telegram_bot_token)
-    create_database()
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler('start', bot_start))
@@ -31,11 +32,13 @@ def main():
     dp.add_handler(CommandHandler('run_in_system', run_in_system))
 
     dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu'))
+    dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu_in_new_message'))
     dp.add_handler(CallbackQueryHandler(help_sec, pattern='guidance'))
     dp.add_handler(CallbackQueryHandler(support, pattern='support'))
     dp.add_handler(CallbackQueryHandler(setting, pattern='setting'))
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='notification'))
     dp.add_handler(CallbackQueryHandler(financial_transactions, pattern='financial_transactions'))
+    dp.add_handler(CallbackQueryHandler(wallet_page, pattern='wallet_page'))
 
     dp.add_handler(CallbackQueryHandler(send_main_message, pattern='send_main_message'))
     dp.add_handler(CallbackQueryHandler(buy_service, pattern='select_server'))

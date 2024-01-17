@@ -145,7 +145,7 @@ def add_client_bot(purchased_id, personalization=None):
         now_data_add_day = now + timedelta(days=period)
         time_to_ms = second_to_ms(now_data_add_day)
         id_ = f"{get_client_db[0][4]}_{purchased_id}"
-        email_ = f"{purchased_id}_{get_service_db[0][4]}_{get_service_db[0][6]}GB"
+        email_ = f"{purchased_id}_{get_service_db[0][6]}GB"
         data = {
             "id": int(get_service_db[0][1]),
             "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,\"start_after_first_use\":true,"

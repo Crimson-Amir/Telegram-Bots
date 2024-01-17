@@ -108,7 +108,7 @@ class XuiApiClean:
 
     def get_client_url(self, client_email, inbound_id, domain=None, host="ponisha.ir", default_config_schematic=None):
         if not default_config_schematic:
-            default_config_schematic = "vless://{}@{}:{}?security=none&host={}&headerType=http&type={}#{}-{}"
+            default_config_schematic = "vless://{}@{}:{}?security=none&host={}&headerType=http&type={}#{} {}"
         get_in = self.get_inbound(inbound_id)
         domain = domain or 'human.ggkala.shop'
         if get_in['success']:

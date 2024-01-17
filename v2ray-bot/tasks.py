@@ -11,10 +11,15 @@ from admin_task import add_client_bot, api_operation, second_to_ms
 import qrcode
 from io import BytesIO
 import pytz
+import arrow
 
 sqlite_manager = ManageDb('v2ray')
 GET_EVIDENCE = 0
 GET_EVIDENCE_PER = 0
+
+
+def human_readable(number):
+    return arrow.get(number).humanize(locale="fa-ir")
 
 def not_ready_yet(update, context):
     query = update.callback_query
@@ -177,7 +182,8 @@ def send_clean_for_customer(query, context, id_):
                 buffer = BytesIO()
                 qr_image.save(buffer, format='PNG')
                 binary_data = buffer.getvalue()
-                keyboard = [[InlineKeyboardButton("🎛 سرویس های من", callback_data=f"my_service")],
+                keyboard = [[InlineKeyboardButton("صفحه اصلی ربات", callback_data=f"main_menu_in_new_message"),
+                             InlineKeyboardButton("🎛 سرویس های من", callback_data=f"my_service")],
                             [InlineKeyboardButton("دریافت به صورت فایل", callback_data=f"create_txt_file")]]
                 context.user_data['v2ray_client'] = returned
                 context.bot.send_photo(photo=binary_data,
@@ -252,8 +258,12 @@ def server_detail_customer(update, context):
     email = update.callback_query.data.replace('view_service_', '')
     try:
         get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
+        get_server_country = sqlite_manager.select(column='name', table='Product', where=f'id = {get_data[0][6]}')[0][0].replace('سرور ','')
+
         ret_conf = api_operation.get_client(email)
         keyboard = [[InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"personalization_service_lu_{get_data[0][0]}")],
+                    [InlineKeyboardButton("حذف سرویس ⇣",callback_data=f"remove_service_{email}"),
+                     InlineKeyboardButton("تازه سازی ⟳",callback_data=f"view_service_{email}")],
                     [InlineKeyboardButton("برگشت ↰", callback_data="my_service")]]
 
         upload_gb = round(int(ret_conf['obj']['up']) / (1024 ** 3), 2)
@@ -270,7 +280,7 @@ def server_detail_customer(update, context):
         expiry_month = expiry_date.strftime("%Y/%m/%d")
         days_lefts = (expiry_date - datetime.now()).days
 
-        change_active = '✅' if ret_conf['obj']['enable'] else '❌'
+        change_active = 'فعال ✅' if ret_conf['obj']['enable'] else 'غیرفعال ❌'
         purchase_date = datetime.strptime(get_data[0][12], "%Y-%m-%d %H:%M:%S.%f%z").replace(tzinfo=None)
         days_left_2 = abs(days_lefts)
         exist_day = f"({days_left_2} روز {'مانده' if days_lefts >= 0 else 'گذشته'})"
@@ -281,7 +291,8 @@ def server_detail_customer(update, context):
         text_ = (
             f"<b>اطلاعات سرویس انتخاب شده:</b>"
             f"\n\n🔷 نام سرویس: {email}"
-            f"\n💡 فعال: {change_active}"
+            f"\n🌎 موقعیت سرور: {get_server_country}"
+            f"\n💡 وضعیت: {change_active}"
             f"\n📅 تاریخ انقضا: {expiry_month} {exist_day}"
             f"\n🔼 آپلود↑: {upload_gb}"
             f"\n🔽 دانلود↓: {download_gb}"
@@ -710,8 +721,10 @@ def check_all_configs(context):
 def setting(update, context):
     query = update.callback_query
     keyboard = [
-        [InlineKeyboardButton("تنظیمات نوتیفیکیشن", callback_data="notification")],
-        [InlineKeyboardButton("تراکنش های مالی", callback_data="financial_transactions")],
+        [InlineKeyboardButton("• نوتیفیکیشن", callback_data="notification"),
+         InlineKeyboardButton("• رتبه‌بندی", callback_data="ranking_page")],
+        [InlineKeyboardButton("• تراکنش های مالی", callback_data="financial_transactions"),
+         InlineKeyboardButton("• کیف پول", callback_data="wallet_page")],
         [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]
     ]
     query.edit_message_text(text='*در این قسمت میتونید تنظیمات ربات رو مشاهده و یا شخصی سازی کنید:*', parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -779,3 +792,38 @@ def start_timer(update, context):
 def export_database(update, context):
     check = api_operation.create_backup()
     update.message.reply_text(f'OK | {check}')
+
+
+def wallet_page(update, context):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    try:
+        get_credit = sqlite_manager.select(column='wallet', table='User', where=f'chat_id = {chat_id}')[0][0]
+        lasts_operation = sqlite_manager.select(table='Credit_History', where=f'chat_id = {chat_id}', order_by='id DESC', limit=5)
+
+        if lasts_operation:
+            last_op = human_readable(f'{lasts_operation[0][7]}')
+            last_5 = ('• تراکنش های اخیر:\n\n'
+                      f'{"\n".join([f"{'💰 دریافت' if op[4] else '💸 برداشت'} {op[5]:,} تومان - {human_readable(op[7])}" for op in lasts_operation])}')
+        else:
+            last_op ='شما تا به حال تراکنشی در کیف پول نداشتید!'
+            last_5 = ''
+
+
+        keyboard = [
+            [InlineKeyboardButton("تازه سازی ⟳", callback_data=f"wallet_page"),
+            InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit")],
+            [InlineKeyboardButton("مشاهده تراکنش های کیف پول", callback_data=f"financial_transactions_wallet")],
+            [InlineKeyboardButton("برگشت ↰", callback_data="setting")]]
+
+
+        text_ = (
+            f"<b>اطلاعات کیف پول شما:</b>"
+            f"\n\n• موجودی حساب: {get_credit:,} تومان"
+            f"\n• آخرین تراکنش: {last_op}"
+            f"\n\n{last_5}"
+        )
+        query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+    except Exception as e:
+        query.answer('بروزرسانی نشد، احتمالا اطلاعات تغییری نکرده')
+        print(e)

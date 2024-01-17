@@ -9,6 +9,9 @@ def create_database():
               'date text, traffic integer, period integer, free_service integer, notification_gb integer,'
               ' notification_day integer, wallet integer)')
 
+    c.execute('CREATE TABLE IF NOT EXISTS Credit_History(id integer primary key, name text, user_name text, chat_id text,'
+              ' operation integer, value integer, value_now integer, date text)')
+
     c.execute('CREATE TABLE IF NOT EXISTS Rank(id integer primary key, name text, user_name text, chat_id text,'
               ' level integer, rank_name text)')
 
