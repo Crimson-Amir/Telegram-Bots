@@ -12,11 +12,14 @@ import qrcode
 from io import BytesIO
 import pytz
 import arrow
+from wallet import WalletManage
 
 sqlite_manager = ManageDb('v2ray')
 GET_EVIDENCE = 0
 GET_EVIDENCE_PER = 0
+GET_EVIDENCE_CREDIT = 0
 
+wallet_manage = WalletManage('User', 'wallet', 'v2ray', 'chat_id')
 
 def human_readable(number):
     return arrow.get(number).humanize(locale="fa-ir")
@@ -822,8 +825,10 @@ def wallet_page(update, context):
     query = update.callback_query
     chat_id = query.message.chat_id
     try:
+        sqlite_manager.delete({'Credit_History': ["active", 0]})
         get_credit = sqlite_manager.select(column='wallet', table='User', where=f'chat_id = {chat_id}')[0][0]
-        lasts_operation = sqlite_manager.select(table='Credit_History', where=f'chat_id = {chat_id}', order_by='id DESC', limit=5)
+        lasts_operation = sqlite_manager.select(table='Credit_History', where=f'chat_id = {chat_id} and active = 1',
+                                                order_by='id DESC', limit=5)
 
         if lasts_operation:
             last_op = human_readable(f'{lasts_operation[0][7]}')
@@ -835,7 +840,7 @@ def wallet_page(update, context):
 
         keyboard = [
             [InlineKeyboardButton("تازه سازی ⟳", callback_data=f"wallet_page"),
-            InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit")],
+             InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit")],
             [InlineKeyboardButton("مشاهده تراکنش های کیف پول", callback_data=f"financial_transactions_wallet")],
             [InlineKeyboardButton("برگشت ↰", callback_data="setting")]]
 
@@ -855,7 +860,7 @@ def financial_transactions_wallet(update, context):
     query = update.callback_query
     chat_id = query.message.chat_id
     try:
-        lasts_operation = sqlite_manager.select(table='Credit_History', where=f'chat_id = {chat_id}')
+        lasts_operation = sqlite_manager.select(table='Credit_History', where=f'chat_id = {chat_id} and active = 1')
 
         if lasts_operation:
             last_5 = ('• تراکنش های کیف پول شما:\n\n'
@@ -875,3 +880,166 @@ def financial_transactions_wallet(update, context):
         print(e)
 
 
+def buy_credit_volume(update, context):
+    query = update.callback_query
+    try:
+        if query.data == "buy_credit":
+            sqlite_manager.insert(table='Credit_History', rows=[{'active': 0, 'chat_id': query.message.chat_id, 'value': 25_000,
+                                                                 'name': query.from_user.name, 'user_name': query.from_user.username,
+                                                                 'operation': 1}])
+
+        get_credit = sqlite_manager.select(column='value, id', table='Credit_History', where=f'chat_id = {query.message.chat_id}',
+                                      order_by='id DESC', limit=1)
+        credit_id = get_credit[0][1]
+        value = get_credit[0][0]
+
+        if 'value_low_5000' in query.data or 'value_low_50000' in query.data:
+            value_low = int(query.data.replace('value_low_', ''))
+            value = value - value_low
+            value = value if value >= 1 else 5000
+        elif 'value_high_5000' in query.data or 'value_high_50000' in query.data:
+            value_high = int(query.data.replace('value_high_', ''))
+            value = value + value_high
+            value = value if value <= 2_000_000 else 2_000_000
+        elif 'set_credit_' in query.data:
+            value = int(query.data.replace('set_credit_', ''))
+
+        sqlite_manager.update({'Credit_History': {'value':value}},where=f'id = {credit_id}')
+
+        text = ('*• مشخص کنید چه مقدار اعتبار به کیف پولتون اضافه بشه:*'
+                f'*\n\n• مبلغ: {value:,} *تومان'
+                )
+        keyboard = [
+            [InlineKeyboardButton("«", callback_data="value_low_50000"),
+             InlineKeyboardButton("‹", callback_data="value_low_5000"),
+             InlineKeyboardButton(f"{value:,}", callback_data="just_for_show"),
+             InlineKeyboardButton("›", callback_data="value_high_5000"),
+             InlineKeyboardButton("»", callback_data="value_high_50000")],
+            [InlineKeyboardButton("250,000 تومن", callback_data="set_credit_250000"),
+            InlineKeyboardButton("100,000 تومن", callback_data="set_credit_100000")],
+            [InlineKeyboardButton("1,000,000 تومن", callback_data="set_credit_1000000"),
+             InlineKeyboardButton("500,000 تومن", callback_data="set_credit_500000")],
+            [InlineKeyboardButton("✓ تایید و ادامه", callback_data=f"pay_way_for_credit_{credit_id}")],
+            [InlineKeyboardButton("برگشت ↰", callback_data="wallet_page")]
+        ]
+        query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+    except Exception as e:
+        query.answer('بروزرسانی نشد، احتمالا اطلاعات تغییری نکرده')
+        print(e)
+
+
+def pay_way_for_credit(update, context):
+    query = update.callback_query
+    id_ = int(query.data.replace('pay_way_for_credit_', ''))
+    try:
+        package = sqlite_manager.select(column='value', table='Credit_History', where=f'id = {id_}')
+        keyboard = [
+            [InlineKeyboardButton("کارت به کارت", callback_data=f'pay_by_card_for_credit_{id_}')],
+            [InlineKeyboardButton("برگشت ↰", callback_data="buy_credit_volume")]
+        ]
+
+        text = (f"<b>❋ مبلغ انتخاب شده رو برای اضافه کردن به کیف پول تایید میکنید؟:</b>\n"
+                f"\n<b>مبلغ: {package[0][0]:,} تومان</b>"
+                f"\n\n<b>⤶ برای پرداخت میتونید یکی از روش های زیر رو استفاده کنید:</b>")
+        query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
+    except Exception as e:
+        print(e)
+        something_went_wrong(update, context)
+
+
+def pay_by_card_for_credit(update, context):
+    query = update.callback_query
+    id_ = int(query.data.replace('pay_by_card_for_credit_', ''))
+    try:
+        package = sqlite_manager.select(column='value', table='Credit_History', where=f'id = {id_}')
+        context.user_data['credit_package'] = package
+        context.user_data['credit_id'] = id_
+        keyboard = [[InlineKeyboardButton("صفحه اصلی ⤶", callback_data="send_main_message")]]
+        price = package[0][0]
+        text = (f"\n\nمدت اعتبار فاکتور: 10 دقیقه"
+                f"\n*قیمت*: `{price:,}`* تومان *"
+                f"\n\n*• لطفا مبلغ رو به شماره‌حساب زیر واریز کنید و اسکرین‌شات یا شماره‌پیگیری رو بعد از همین پیام ارسال کنید.*"
+                f"\n\n`6219861938619417` - امیرحسین نجفی"
+                f"\n\n*• بعد از تایید شدن پرداخت، سرویس برای شما ارسال میشه، زمان تقریبی 5 دقیقه الی 3 ساعت.*")
+        context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        query.answer('فاکتور برای شما ارسال شد.')
+        return GET_EVIDENCE_CREDIT
+    except Exception as e:
+        print(e)
+        something_went_wrong(update, context)
+
+
+def pay_by_card_for_credit_admin(update, context):
+    user = update.message.from_user
+    package = context.user_data['credit_package']
+    credit_id = context.user_data['credit_id']
+    price = package[0][0]
+    text = "- Check the new payment to the card [CHARGE CREDIT WALLET]:\n\n"
+    text += f"Name: {user['first_name']}\nUserName: @{user['username']}\nID: {user['id']}\n\n"
+    keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_credit_{credit_id}")]
+        , [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_credit_{credit_id}")]]
+    if update.message.photo:
+        file_id = update.message.photo[-1].file_id
+        text += f"caption: {update.message.caption}" or 'Witout caption!'
+        text += f"\n\nPrice: {price:,} T"
+        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        update.message.reply_text(f'*سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
+    elif update.message.text:
+        text += f"Text: {update.message.text}"
+        text += f"\n\nPrice: {price:,} T"
+        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
+    else:
+        update.message.reply_text('مشکلی وجود داره!')
+
+    context.user_data.clear()
+    return ConversationHandler.END
+
+
+credit_charge = ConversationHandler(
+    entry_points=[CallbackQueryHandler(pay_by_card_for_credit, pattern=r'pay_by_card_for_credit_\d+')],
+    states={
+        GET_EVIDENCE_CREDIT: [MessageHandler(Filters.all, pay_by_card_for_credit_admin)]
+    },
+    fallbacks=[],
+    conversation_timeout=600,
+    per_chat=True,
+    allow_reentry=True
+)
+
+def apply_card_pay_credit(update, context):
+    query = update.callback_query
+    try:
+        if 'accept_card_pay_credit_' in query.data or 'refuse_card_pay_credit_' in query.data:
+            status = query.data.replace('card_pay_credit_', '')
+            keyboard = [[InlineKeyboardButton("YES", callback_data=f"ok_card_pay_credit_{status}")]
+                , [InlineKeyboardButton("NO", callback_data=f"cancel_pay")]]
+            query.answer('Confirm Pleas!')
+            context.bot.send_message(text='Are You Sure?', reply_markup=InlineKeyboardMarkup(keyboard), chat_id=ADMIN_CHAT_ID)
+        elif 'ok_card_pay_credit_accept_' in query.data:
+            id_ = int(query.data.replace('ok_card_pay_credit_accept_', ''))
+            get_credit = sqlite_manager.select(column='chat_id,value', table='Credit_History', where=f'id = {id_}')
+
+            sqlite_manager.update({'Credit_History': {'active': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}}
+                                  ,where=f'id = "{id_}"')
+            wallet_manage.add_to_wallet(query.message.chat_id, get_credit[0][1])
+            context.bot.send_message(text='سفارش شما برای واریز وجه به کیف پول با موفقیت تایید شد ✅', chat_id=get_credit[0][0])
+            query.answer('Done ✅')
+            query.delete_message()
+            with open(f'financial_transactions/{get_credit[0][0]}.txt', 'a', encoding='utf-8') as e:
+                e.write(f"\n\n💰 دریافت پول: واریز به کیف پول | وضعیت: ✅\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
+
+        elif 'ok_card_pay_credit_refuse_' in query.data:
+            id_ = int(query.data.replace('ok_card_pay_credit_refuse_', ''))
+            get_credit = sqlite_manager.select(column='chat_id,value', table='Credit_History', where=f'id = {id_}')
+            context.bot.send_message(text=f'متاسفانه درخواست شما برای واریز به کیف پول پذیرفته نشد❌\n ارتباط با پشتیبانی: \n @Fupport ', chat_id=get_credit[0][0])
+            query.answer('Done ✅')
+            query.delete_message()
+            with open(f'financial_transactions/{get_credit[0][0]}.txt', 'a', encoding='utf-8') as e:
+                e.write(f"\n\n💸 دریافت پول: واریز به کیف پول | وضعیت: ❌ \nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
+            sqlite_manager.delete({'Credit_History': ["id", id_]})
+        elif 'cancel_pay' in query.data:
+            query.answer('Done ✅')
+            query.delete_message()
+    except Exception as e:
+        print('errot:', e)

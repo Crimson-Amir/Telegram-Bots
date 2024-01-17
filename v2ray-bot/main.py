@@ -6,7 +6,8 @@ from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, 
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
                    personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service, help_sec,
                    show_help, support, setting, change_notif, start_timer, export_database, financial_transactions,
-                   wallet_page, financial_transactions_wallet, payment_page_upgrade)
+                   wallet_page, financial_transactions_wallet, payment_page_upgrade, buy_credit_volume,
+                   pay_way_for_credit, credit_charge, apply_card_pay_credit)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service, run_in_system
 from private import ADMIN_CHAT_ID
 import requests
@@ -47,6 +48,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(payment_page_upgrade, pattern=r'service_upgrade_\d+'))
     dp.add_handler(get_service_con)
     dp.add_handler(get_service_con_per)
+    dp.add_handler(credit_charge)
 
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern=r'payment_by_wallet_\d+'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern=r'payment_by_crypto_\d+'))
@@ -62,6 +64,14 @@ def main():
     dp.add_handler(CallbackQueryHandler(apply_card_pay_lu, pattern=r'ok_card_pay_lu_refuse_\d+'))
     dp.add_handler(CallbackQueryHandler(apply_card_pay_lu, pattern='cancel_pay'))
     dp.add_handler(CallbackQueryHandler(get_free_service, pattern='get_free_service'))
+
+    dp.add_handler(CallbackQueryHandler(apply_card_pay_credit, pattern='accept_card_pay_credit_'))
+    dp.add_handler(CallbackQueryHandler(apply_card_pay_credit, pattern='refuse_card_pay_credit_'))
+    dp.add_handler(CallbackQueryHandler(apply_card_pay_credit, pattern='ok_card_pay_credit_'))
+    dp.add_handler(CallbackQueryHandler(apply_card_pay_credit, pattern='ok_card_pay_credit_accept_'))
+    dp.add_handler(CallbackQueryHandler(apply_card_pay_credit, pattern='ok_card_pay_credit_refuse_'))
+
+
 
     dp.add_handler(CallbackQueryHandler(server_detail_customer, pattern=r'view_service_(.*)'))
     dp.add_handler(CallbackQueryHandler(show_help, pattern=r'(.*)_help'))
@@ -88,6 +98,14 @@ def main():
     dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='period_low_lu_1'))
     dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='period_high_lu_10'))
     dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='period_high_lu_1'))
+
+    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='buy_credit'))
+    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='value_low_50000'))
+    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='value_low_5000'))
+    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='value_high_5000'))
+    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='value_high_50000'))
+    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='set_credit_\d+'))
+    dp.add_handler(CallbackQueryHandler(pay_way_for_credit, pattern='pay_way_for_credit_\d+'))
 
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='notif_traffic_low_5'))
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='notif_traffic_high_5'))
