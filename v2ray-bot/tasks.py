@@ -456,10 +456,34 @@ def personalization_service_lu(update, context):
          InlineKeyboardButton(f"{period}Day", callback_data="just_for_show"),
          InlineKeyboardButton("›", callback_data="period_high_lu_1"),
          InlineKeyboardButton("»", callback_data="period_high_lu_10")],
-        [InlineKeyboardButton("✓ تایید", callback_data=f"payment_by_card_lu_{id_}")],
+        [InlineKeyboardButton("✓ تایید", callback_data=f"service_upgrade_{id_}")],
         [InlineKeyboardButton("برگشت ↰", callback_data="my_service")]
     ]
     query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+def payment_page_upgrade(update, context):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    id_ = int(query.data.replace('service_upgrade_', ''))
+    try:
+        package = sqlite_manager.select(table='User', where=f'chat_id = {chat_id}')
+        keyboard = [
+            [InlineKeyboardButton("کارت به کارت", callback_data=f'payment_by_card_lu_{id_}')],
+            [InlineKeyboardButton("برگشت ↰", callback_data="select_server")]
+        ]
+        price = (package[0][5] * private.PRICE_PER_GB) + (package[0][6] * private.PRICE_PER_DAY)
+        text = (f"<b>❋ بسته انتخابی شامل مشخصات زیر میباشد:</b>\n"
+                f"\nدوره زمانی: {package[0][6]} روز"
+                f"\nترافیک (حجم): {package[0][5]} گیگابایت"
+                f"\nحداکثر کاربر مجاز: ∞"
+                f"\n<b>قیمت: {price:,} تومان</b>"
+                f"\n\n<b>⤶ برای پرداخت میتونید یکی از روش های زیر رو استفاده کنید:</b>")
+        query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
+    except Exception as e:
+        print(e)
+        something_went_wrong(update, context)
+
 
 
 def pay_page_get_evidence_per(update, context):
@@ -809,13 +833,11 @@ def wallet_page(update, context):
             last_op ='شما تا به حال تراکنشی در کیف پول نداشتید!'
             last_5 = ''
 
-
         keyboard = [
             [InlineKeyboardButton("تازه سازی ⟳", callback_data=f"wallet_page"),
             InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit")],
             [InlineKeyboardButton("مشاهده تراکنش های کیف پول", callback_data=f"financial_transactions_wallet")],
             [InlineKeyboardButton("برگشت ↰", callback_data="setting")]]
-
 
         text_ = (
             f"<b>اطلاعات کیف پول شما:</b>"
@@ -827,3 +849,29 @@ def wallet_page(update, context):
     except Exception as e:
         query.answer('بروزرسانی نشد، احتمالا اطلاعات تغییری نکرده')
         print(e)
+
+
+def financial_transactions_wallet(update, context):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    try:
+        lasts_operation = sqlite_manager.select(table='Credit_History', where=f'chat_id = {chat_id}')
+
+        if lasts_operation:
+            last_5 = ('• تراکنش های کیف پول شما:\n\n'
+                      f'{"\n".join([f"{'💰 دریافت' if op[4] else '💸 برداشت'} {op[5]:,} تومان - {human_readable(op[7])}" for op in lasts_operation])}')
+        else:
+            last_5 = 'شما تا به حال تراکنشی در کیف پول نداشتید!'
+
+        keyboard = [
+            [InlineKeyboardButton("تازه سازی ⟳", callback_data=f"financial_transactions_wallet")],
+            [InlineKeyboardButton("برگشت ↰", callback_data="wallet_page")]]
+
+        text_ = f"\n\n{last_5}"
+        query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+
+    except Exception as e:
+        query.answer('بروزرسانی نشد، احتمالا اطلاعات تغییری نکرده')
+        print(e)
+
+

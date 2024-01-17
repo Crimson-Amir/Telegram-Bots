@@ -6,7 +6,7 @@ from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, 
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
                    personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service, help_sec,
                    show_help, support, setting, change_notif, start_timer, export_database, financial_transactions,
-                   wallet_page)
+                   wallet_page, financial_transactions_wallet, payment_page_upgrade)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service, run_in_system
 from private import ADMIN_CHAT_ID
 import requests
@@ -37,12 +37,14 @@ def main():
     dp.add_handler(CallbackQueryHandler(support, pattern='support'))
     dp.add_handler(CallbackQueryHandler(setting, pattern='setting'))
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='notification'))
+    dp.add_handler(CallbackQueryHandler(financial_transactions_wallet, pattern='financial_transactions_wallet'))
     dp.add_handler(CallbackQueryHandler(financial_transactions, pattern='financial_transactions'))
     dp.add_handler(CallbackQueryHandler(wallet_page, pattern='wallet_page'))
 
     dp.add_handler(CallbackQueryHandler(send_main_message, pattern='send_main_message'))
     dp.add_handler(CallbackQueryHandler(buy_service, pattern='select_server'))
     dp.add_handler(CallbackQueryHandler(payment_page, pattern=r'service_\d+'))
+    dp.add_handler(CallbackQueryHandler(payment_page_upgrade, pattern=r'service_upgrade_\d+'))
     dp.add_handler(get_service_con)
     dp.add_handler(get_service_con_per)
 
