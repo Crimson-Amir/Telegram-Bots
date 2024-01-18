@@ -45,6 +45,7 @@ def main():
 
 
     dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu'))
+    dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='ranking_page'))
     dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu_in_new_message'))
     dp.add_handler(CallbackQueryHandler(help_sec, pattern='guidance'))
     dp.add_handler(CallbackQueryHandler(support, pattern='support'))

@@ -137,14 +137,14 @@ def send_evidence_to_admin(update, context):
     if update.message.photo:
         file_id = update.message.photo[-1].file_id
         text += f"caption: {update.message.caption}" or 'Witout caption!'
-        text += f"\n\nServer: `{package[0][4]}`\nInbound id: `{package[0][1]}`\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
-        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
-        update.message.reply_text(f'*سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
+        text += f"\n\nServer: {package[0][4]}\nInbound id: {package[0][1]}\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
+        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text , reply_markup=InlineKeyboardMarkup(keyboard))
+        update.message.reply_text(f'سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه')
     elif update.message.text:
         text += f"Text: {update.message.text}"
-        text += f"\n\nServer: `{package[0][4]}`\nInbound id: `{package[0][1]}`\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
-        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
-        update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
+        text += f"\n\nServer: {package[0][4]}\nInbound id: {package[0][1]}\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
+        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+        update.message.reply_text(f'درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه')
     else:
         update.message.reply_text('مشکلی وجود داره!')
 
@@ -248,10 +248,11 @@ def my_service(update, context):
         keyboard = [[InlineKeyboardButton(f"{'✅' if ser[11] == 1 else '❌'} {ser[9]}", callback_data=f"view_service_{ser[9]}")] for ser in get_purchased]
         keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="main_menu")])
         try:
-            query.edit_message_text('*برای مشاهده جزئیات، سرویس مورد نظر خودتان را انتخاب کنید:*', reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+            query.edit_message_text('<b>برای مشاهده جزئیات، سرویس مورد نظر خودتان را انتخاب کنید:</b>', reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
         except telegram.error.BadRequest:
             query.answer('در یک پیام جدید فرستادم!')
-            context.bot.send_message(chat_id=chat_id, text='*برای مشاهده جزئیات، سرویس مورد نظر خودتان را انتخاب کنید:*', reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+            context.bot.send_message(chat_id=chat_id, text='<b>برای مشاهده جزئیات، سرویس مورد نظر خودتان را انتخاب کنید:</b>',
+                                     reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     else:
         query.answer('سرویسی برای شما یافت نشد!')
 
@@ -342,9 +343,9 @@ def remove_service_from_db(update, context):
     try:
         email = query.data.replace('remove_service_from_db_', '')
         sqlite_manager.delete({'Purchased': ['client_email', email]})
-        text = '*سرویس با موفقیت حذف شد ✅*'
+        text = '<b>سرویس با موفقیت حذف شد ✅</b>'
         keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]]
-        query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+        query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     except Exception as e:
         query.answer('مشکلی در حذف این سرویس وجود داشت!')
         print(e)
@@ -567,12 +568,12 @@ def send_evidence_to_admin_lu(update, context):
         file_id = update.message.photo[-1].file_id
         text += f"caption: {update.message.caption}" or 'Witout caption!'
         text += f"\n\nPeriod: {package[0][6]} Day\n Traffic: {package[0][5]}GB\nPrice: {price:,} T"
-        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, reply_markup=InlineKeyboardMarkup(keyboard))
         update.message.reply_text(f'*سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
     elif update.message.text:
         text += f"Text: {update.message.text}"
         text += f"\n\nPeriod: {package[0][6]} Day\n Traffic: {package[0][5]}GB\nPrice: {price:,} T"
-        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
         update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
     else:
         update.message.reply_text('مشکلی وجود داره!')
@@ -873,8 +874,8 @@ def wallet_page(update, context):
 
         if lasts_operation:
             last_op = human_readable(f'{lasts_operation[0][7]}')
-            last_5 = ('• تراکنش های اخیر:\n\n'
-                      f'{"\n".join([f"{'💰 دریافت' if op[4] else '💸 برداشت'} {op[5]:,} تومان - {human_readable(op[7])}" for op in lasts_operation])}')
+            last_5 = "\n".join([f"{'💰 دریافت' if op[4] else '💸 برداشت'} {op[5]:,} تومان - {human_readable(op[7])}" for op in lasts_operation])
+
         else:
             last_op ='شما تا به حال تراکنشی در کیف پول نداشتید!'
             last_5 = ''
@@ -889,7 +890,7 @@ def wallet_page(update, context):
             f"<b>اطلاعات کیف پول شما:</b>"
             f"\n\n• موجودی حساب: {get_credit:,} تومان"
             f"\n• آخرین تراکنش: {last_op}"
-            f"\n\n{last_5}"
+            f"\n\n• تراکنش های اخیر:\n{last_5}"
         )
         query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     except Exception as e:
@@ -904,8 +905,8 @@ def financial_transactions_wallet(update, context):
         lasts_operation = sqlite_manager.select(table='Credit_History', where=f'chat_id = {chat_id} and active = 1')
 
         if lasts_operation:
-            last_5 = ('• تراکنش های کیف پول شما:\n\n'
-                      f'{"\n".join([f"{'💰 دریافت' if op[4] else '💸 برداشت'} {op[5]:,} تومان - {human_readable(op[7])}" for op in lasts_operation])}')
+            last_5 = "• تراکنش های کیف پول شما:\n\n"
+            last_5 += "\n".join([f"{'💰 دریافت' if op[4] else '💸 برداشت'} {op[5]:,} تومان - {human_readable(op[7])}" for op in lasts_operation])
         else:
             last_5 = 'شما تا به حال تراکنشی در کیف پول نداشتید!'
 
@@ -1023,12 +1024,12 @@ def pay_by_card_for_credit_admin(update, context):
         file_id = update.message.photo[-1].file_id
         text += f"caption: {update.message.caption}" or 'Witout caption!'
         text += f"\n\nPrice: {price:,} T"
-        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, reply_markup=InlineKeyboardMarkup(keyboard))
         update.message.reply_text(f'*سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
     elif update.message.text:
         text += f"Text: {update.message.text}"
         text += f"\n\nPrice: {price:,} T"
-        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
         update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
     else:
         update.message.reply_text('مشکلی وجود داره!')
@@ -1158,7 +1159,7 @@ def pay_from_wallet(update, context):
                                              'name': query.from_user.name, 'user_name': query.from_user.username,
                                              'operation': 0, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}])
                 keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="my_service")]]
-                query.edit_message_text(text='سرویس شما با موفقیت ارتقا یافت.✅', parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+                query.edit_message_text(text='سرویس شما با موفقیت ارتقا یافت.✅', reply_markup=InlineKeyboardMarkup(keyboard))
 
             except Exception as e:
                 print(e)
@@ -1278,11 +1279,13 @@ def remove_service(update, contetx):
 
 
 def say_to_every_one(update, context):
-    all_user = sqlite_manager.select('chat_id', 'User')
+    all_user = sqlite_manager.select('chat_id,name', 'User')
     text = update.message.reply_to_message.text
 
     for user in all_user:
         try:
+            print(f'SEND FOR {user[1]} | {user[0]}')
             context.bot.send_message(chat_id=user[0], text=text, parse_mode='html')
         except Exception as e:
+            print(f'BLOCKED BY USER {user[1]} | {user[0]}')
             print(e)
