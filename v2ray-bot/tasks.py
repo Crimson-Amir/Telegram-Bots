@@ -193,7 +193,6 @@ def send_clean_for_customer(query, context, id_):
                                        chat_id=get_client[0][4], reply_markup=InlineKeyboardMarkup(keyboard),
                                        parse_mode='markdown')
                 query.answer('Done ✅')
-                query.delete_message()
                 with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
                     e.write(
                         f"\n\n💸 پرداخت پول: خرید سرویس | وضعیت: ✅\nشماره سفارش:\n {get_client[0][5]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
@@ -205,7 +204,6 @@ def send_clean_for_customer(query, context, id_):
         except Exception as e:
             print(e)
             query.answer(f'Failed ❌ | {e}')
-            query.delete_message()
             return False
     else:
         query.answer('Failed ❌')
@@ -296,8 +294,8 @@ def server_detail_customer(update, context):
         text_ = (
             f"<b>اطلاعات سرویس انتخاب شده:</b>"
             f"\n\n🔷 نام سرویس: {email}"
-            f"\n🌎 موقعیت سرور: {get_server_country}"
             f"\n💡 وضعیت: {change_active}"
+            f"\n🌎 موقعیت سرور: {get_server_country}"
             f"\n📅 تاریخ انقضا: {expiry_month} {exist_day}"
             f"\n🔼 آپلود↑: {upload_gb}"
             f"\n🔽 دانلود↓: {download_gb}"
@@ -307,9 +305,50 @@ def server_detail_customer(update, context):
         )
         query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
         sqlite_manager.update({'Purchased': {'status': 1 if ret_conf['obj']['enable'] else 0}}, where=f'client_email = "{email}"')
+    except TypeError as e:
+        keyboard = [
+            [InlineKeyboardButton("پشتیبانی", callback_data="support")],
+            [InlineKeyboardButton("حذف سرویس ⇣", callback_data=f"remove_service_from_db_{email}"),
+             InlineKeyboardButton("تازه سازی ⟳", callback_data=f"view_service_{email}")],
+            [InlineKeyboardButton("برگشت ↰", callback_data="my_service")]]
+        text = ('*متاسفانه مشکلی در دریافت اطلاعات این کانفیگ وجود داشت*'
+                '*\n\n• اگر این کانفیگ مدتی تمام شده بوده، احتمال داره از سرور حذف شده باشه ولی هنوز تو دیتابیس باشه *'
+                '*\n\n• میتونید سرویس رو پاک کنید، اگر مشکل دیگه ای وجود داره با پشتیبانی در ارتباط باشید*'
+                )
+        query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+        print(e)
     except Exception as e:
+        keyboard = [
+            [InlineKeyboardButton("پشتیبانی", callback_data="support")],
+            [InlineKeyboardButton("حذف سرویس ⇣", callback_data=f"remove_service_from_db_{email}"),
+             InlineKeyboardButton("تازه سازی ⟳", callback_data=f"view_service_{email}")],
+            [InlineKeyboardButton("برگشت ↰", callback_data="my_service")]]
+        text = ('*متاسفانه مشکلی در دریافت اطلاعات این کانفیگ وجود داشت*'
+                '*\n\n• اطلاعات این کانفیگ و مشکل به وجود اومده به ادمین ارسال شد و نتیجه بهتون اعلام میشه *'
+                '*\n\n• علت خطا*'
+                f'{e}'
+                )
+        query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=f'WE HAVE PROBLEM WITH SOME CONFIG\n'
+                                                             f'OWNER_NAME:{query.from_user["name"]}\nOWENER_USER_ADN_ID:'
+                                                             f' {query.from_user["user_name"]} | {query.from_user["id"]}'
+                                                             f'\n\nERROR: {e} \nCONFIG_EMAIL: {email}')
         query.answer('مشکلی وجود دارد!')
         print(e)
+
+
+def remove_service_from_db(update, context):
+    query = update.callback_query
+    try:
+        email = query.data.replace('remove_service_from_db_', '')
+        sqlite_manager.delete({'Purchased': ['client_email', email]})
+        text = '*سرویس با موفقیت حذف شد ✅*'
+        keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]]
+        query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+    except Exception as e:
+        query.answer('مشکلی در حذف این سرویس وجود داشت!')
+        print(e)
+
 
 
 def create_file_and_return(update, context):
@@ -617,12 +656,10 @@ def apply_card_pay_lu(update, context):
 
 def get_free_service(update, context):
     user = update.callback_query.from_user
-    uuid_ = random.randint(0, 10000)
     sqlite_manager.update({'User': {'free_service': 1}}, where=f"chat_id = {user['id']}")
     ex = sqlite_manager.insert('Purchased', rows=[
         {'active': 1, 'status': 1, 'name': user["first_name"], 'user_name': user["username"],
-         'chat_id': int(user["id"]), 'product_id': 1, 'inbound_id': 1,
-         'client_email': f'Free Service|{uuid_}', 'client_id':user['id'], 'date': datetime.now(),
+         'chat_id': int(user["id"]), 'product_id': 1, 'inbound_id': 1, 'date': datetime.now(),
          'notif_day': 0, 'notif_gb': 0}])
     send_clean_for_customer(update.callback_query, context, ex)
 
@@ -700,6 +737,7 @@ def show_help(update, context):
                     [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]]
 
     query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+
 
 def support(update, context):
     query = update.callback_query
@@ -1167,3 +1205,84 @@ def pay_from_wallet(update, context):
     except Exception as e:
         print(e)
         something_went_wrong(update, context)
+
+
+def remove_service(update, contetx):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+
+    email = query.data.replace('remove_service_', '')
+    email = email.replace('accept_rm_ser_', '')
+    ret_conf = api_operation.get_client(email)
+
+    try:
+        upload_gb = int(ret_conf['obj']['up']) / (1024 ** 3)
+        download_gb = int(ret_conf['obj']['down']) / (1024 ** 3)
+        usage_traffic = round(upload_gb + download_gb, 2)
+        total_traffic = int(ret_conf['obj']['total']) / (1024 ** 3)
+        left_traffic = total_traffic - usage_traffic
+
+        expiry_timestamp = ret_conf['obj']['expiryTime'] / 1000
+        expiry_date = datetime.fromtimestamp(expiry_timestamp)
+        days_lefts = (expiry_date - datetime.now()).days
+        days_lefts = days_lefts if days_lefts >= 0 else 0
+
+        price = int((left_traffic * private.PRICE_PER_GB) + (days_lefts * private.PRICE_PER_DAY))
+
+        if 'remove_service_' in query.data:
+            keyboard = [[InlineKeyboardButton("✓ بله مطمئنم", callback_data=f"accept_rm_ser_{email}")],
+                        [InlineKeyboardButton("✗ منصرف شدم", callback_data="my_service")]]
+
+            text = ('*لطفا اطلاعات زیر رو بررسی کنید:*'
+                    f'\n\n• زمان باقی مانده سرویس: {days_lefts} روز'
+                    f'\n• ترافیک باقی مانده سرویس: {left_traffic}GB'
+                    f'\n• مبلغ قابل بازگشت به کیف پول:* {price:,} تومان*'
+                    f'\n\n*آیا از حذف این سرویس مطمئن هستید؟*'
+                    )
+
+            if not ret_conf['obj']['enable']:
+
+                text = ('*این سرویس تمام شده، اگر مایل به تمدید نیستید میتونید حذفش کنید:*'
+                        f'\n\n*آیا از حذف این سرویس مطمئن هستید؟*'
+                        )
+
+        elif 'accept_rm_ser_' in query.data:
+
+            get_uuid = sqlite_manager.select(column='client_id,inbound_id', table='Purchased', where=f'client_email = "{email}"')
+            api_operation.del_client(get_uuid[0][1], get_uuid[0][0])
+
+            sqlite_manager.delete({'Purchased': ['client_email', email]})
+
+            keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="my_service")]]
+
+            text = f'*سرویس با موفقیت حذف شد و مبلغ {price:,} تومان به کیف پول شما برگشت ✅*'
+            if not ret_conf['obj']['enable']:
+                text = '*سرویس با موفقیت حذف شد ✅*'
+            else:
+                wallet_manage.add_to_wallet(chat_id, price)
+
+                with open(f'financial_transactions/{chat_id}.txt', 'a', encoding='utf-8') as e:
+                    e.write(
+                        f"\n\n💰 دریافت پول: حذف سرویس و برگشت به کیف پول | وضعیت: ✅\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
+
+                sqlite_manager.insert(table='Credit_History',
+                                      rows=[{'active': 1, 'chat_id': query.message.chat_id, 'value': price,
+                                             'name': query.from_user.name, 'user_name': query.from_user.username,
+                                             'operation': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}])
+
+        query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+
+    except Exception as e:
+        print(e)
+        query.answer('مشکلی وجود دارد!')
+
+
+def say_to_every_one(update, context):
+    all_user = sqlite_manager.select('chat_id', 'User')
+    text = update.message.reply_to_message.text
+
+    for user in all_user:
+        try:
+            context.bot.send_message(chat_id=user[0], text=text, parse_mode='html')
+        except Exception as e:
+            print(e)

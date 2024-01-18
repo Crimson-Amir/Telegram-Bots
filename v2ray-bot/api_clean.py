@@ -91,8 +91,8 @@ class XuiApiClean:
         if self.check_json(inb):
             return inb.json()
 
-    def del_client(self, uuid):
-        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/delClient/{uuid}')
+    def del_client(self, inboundid, uuid):
+        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/{inboundid}/delClient/{uuid}')
         if self.check_json(inb):
             return inb.json()
 
