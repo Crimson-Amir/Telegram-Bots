@@ -826,7 +826,8 @@ def check_all_configs(context, context_2=None):
 
                     if not user[6] and traffic_percent >= list_of_notification[0][1]:
                         text = ("🔵 اطلاع رسانی حجم سرویس"
-                                f"\nدرود {list_of_notification[0][3]} عزیز، شما {int(traffic_percent)} درصد حجم ترافیک سرویس {user[2]} رو مصرف کردید، حجم باقی مونده از سرویس {format_traffic(traffic_left)} است. "
+                                f"\nدرود {list_of_notification[0][3]} عزیز، شما {int(traffic_percent)} درصد حجم ترافیک سرویس {user[2]} رو مصرف کردید، "
+                                f"\nحجم باقی مونده از سرویس {format_traffic(traffic_left)} است. "
                                 f"\nدر صورتی که تمایل دارید نسبت به بررسی و یا تمدید سرویس اقدام کنید.")
                         context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
                         sqlite_manager.update({'Purchased': {'notif_gb': 1}},where=f'id = "{user[0]}"')
