@@ -170,6 +170,16 @@ get_service_con = ConversationHandler(
 )
 
 
+def format_traffic(traffic, without_text=None):
+    if int(traffic) < 1:
+        megabytes = traffic * 1024
+        if without_text:
+            return int(megabytes)
+        return f"{int(megabytes)} مگابایت"
+    else:
+        return f"{traffic} گیگابایت"
+
+
 def send_clean_for_customer(query, context, id_):
     create = add_client_bot(id_)
     if create:
@@ -282,12 +292,17 @@ def server_detail_customer(update, context):
         expiry_timestamp = ret_conf['obj']['expiryTime'] / 1000
         expiry_date = datetime.fromtimestamp(expiry_timestamp)
         expiry_month = expiry_date.strftime("%Y/%m/%d")
-        days_lefts = (expiry_date - datetime.now()).days
+        days_lefts = (expiry_date - datetime.now())
+        days_lefts_days = days_lefts.days
 
         change_active = 'فعال ✅' if ret_conf['obj']['enable'] else 'غیرفعال ❌'
         purchase_date = datetime.strptime(get_data[0][12], "%Y-%m-%d %H:%M:%S.%f%z").replace(tzinfo=None)
-        days_left_2 = abs(days_lefts)
-        exist_day = f"({days_left_2} روز {'مانده' if days_lefts >= 0 else 'گذشته'})"
+        days_left_2 = abs(days_lefts_days)
+        if days_left_2 >= 1:
+            exist_day = f"({days_left_2} روز {'مانده' if days_lefts_days >= 0 else 'گذشته'})"
+        else:
+            days_left_2 = abs(int(days_lefts.seconds / 3600))
+            exist_day = f"({days_left_2} ساعت {'مانده' if days_left_2 >= 1 else 'گذشته'})"
 
         context.user_data['period_for_upgrade'] = (expiry_date - purchase_date).days
         context.user_data['traffic_for_upgrade'] = total_traffic
@@ -298,10 +313,10 @@ def server_detail_customer(update, context):
             f"\n💡 وضعیت: {change_active}"
             f"\n🌎 موقعیت سرور: {get_server_country}"
             f"\n📅 تاریخ انقضا: {expiry_month} {exist_day}"
-            f"\n🔼 آپلود↑: {upload_gb}"
-            f"\n🔽 دانلود↓: {download_gb}"
+            f"\n🔼 آپلود↑: {format_traffic(upload_gb)}"
+            f"\n🔽 دانلود↓: {format_traffic(download_gb)}"
             f"\n📊 مصرف کل: {usage_traffic}/{total_traffic}GB"
-            f"\n\n⏰ تاریخ خرید: {purchase_date.strftime('%H:%M:%S | %Y/%m/%d')}"
+            f"\n\n⏰ تاریخ خرید/تمدید: {purchase_date.strftime('%H:%M:%S | %Y/%m/%d')}"
             f"\n\n🌐 آدرس سرویس:\n <code>{get_data[0][8]}</code>"
         )
         query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
@@ -319,6 +334,8 @@ def server_detail_customer(update, context):
         query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
         print(e)
     except Exception as e:
+        if "specified new message content and reply markup are exactly the same" in str(e):
+            return query.answer('آپدیت نشد، احتمالا اطلاعات تغییری نکرده!')
         keyboard = [
             [InlineKeyboardButton("پشتیبانی", callback_data="support")],
             [InlineKeyboardButton("حذف سرویس ⇣", callback_data=f"remove_service_from_db_{email}"),
@@ -374,8 +391,8 @@ def personalization_service(update, context):
         context.user_data['personalization_service_id'] = int(query.data.replace('personalization_service_', ''))
     get_data_from_db = sqlite_manager.select(table='User', where=f'chat_id = {query.message.chat_id}')
 
-    traffic = get_data_from_db[0][5]
-    period = get_data_from_db[0][6]
+    traffic = abs(get_data_from_db[0][5])
+    period = abs(get_data_from_db[0][6])
     price = (traffic * private.PRICE_PER_GB) + (period * private.PRICE_PER_DAY)
 
     if 'traffic_low_10' in query.data or 'traffic_low_1' in query.data:
@@ -462,8 +479,8 @@ def personalization_service_lu(update, context):
     id_ = context.user_data['personalization_client_lu_id']
     get_data_from_db = sqlite_manager.select(table='User', where=f'chat_id = {query.message.chat_id}')
 
-    traffic = get_data_from_db[0][5]
-    period = get_data_from_db[0][6]
+    traffic = abs(get_data_from_db[0][5])
+    period = abs(get_data_from_db[0][6])
 
     if 'traffic_low_lu_10' in query.data or 'traffic_low_lu_1' in query.data:
         traffic_t = int(query.data.replace('traffic_low_lu_', ''))
@@ -623,6 +640,7 @@ def apply_card_pay_lu(update, context):
                 traffic = user_db[0][5] * (1024 ** 3)
                 my_data = now + timedelta(days=user_db[0][6])
                 my_data = int(my_data.timestamp() * 1000)
+                print(api_operation.reset_client_traffic(get_client[0][7], get_client[0][9]))
             data = {
                 "id": int(get_client[0][7]),
                 "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
@@ -747,18 +765,38 @@ def support(update, context):
     query.edit_message_text('از طریق روش های زیر میتونید با پشتیبان صحبت کنید', reply_markup=InlineKeyboardMarkup(keyboard))
 
 
-def check_all_configs(context):
+def check_all_configs(context, context_2=None):
+    if context_2:
+        context = context_2
     # query = update.callback_query
     get_all = api_operation.get_all_inbounds()
     get_from_db = sqlite_manager.select(column='id,chat_id,client_email,status,date,notif_day,notif_gb', table='Purchased')
-    get_users_notif = sqlite_manager.select(column='chat_id,notification_gb,notification_day', table='User')
+    get_users_notif = sqlite_manager.select(column='chat_id,notification_gb,notification_day,name,traffic,period', table='User')
     for config in get_all['obj']:
         for client in config['clientStats']:
             #  check ExpiryTime
             for user in get_from_db:
                 if user[2] == client['email']:
+                    list_of_notification = [notif for notif in get_users_notif if notif[0] == user[1]]
+                    context.user_data['user_for_edit_text'] = user[0]
+                    context.user_data['traffic_for_upgrade'] = get_users_notif[0][4]
+                    context.user_data['period_for_upgrade'] = get_users_notif[0][5]
+                    context.user_data['get_users_notif'] = get_users_notif
                     if not client['enable'] and user[3]:
-                        context.bot.send_message(user[1], text=f'🔴 سرویس شما با نام {user[2]} به پایان رسید!')
+                        text = ("🔴 اطلاع رسانی اتمام سرویس"
+                                f"\nدرود {list_of_notification[0][3]} عزیز، سرویس شما با نام {user[2]} به پایان رسید!"
+                                f"\nدر صورتی که تمایل دارید نسبت به بررسی و یا تمدید سرویس اقدام کنید.")
+                        context.user_data['config_end_message'] = text
+                        keyboard = [
+                            [InlineKeyboardButton("خرید سرویس جدید", callback_data=f"select_server"),
+                             InlineKeyboardButton("تمدید همین سرویس", callback_data=f"personalization_service_lu_{user[0]}")],
+                            [InlineKeyboardButton("❤️ تجربه استفاده از فری‌بایت رو به اشتراک بگذارید:", callback_data=f"just_for_show")],
+                            [InlineKeyboardButton("عالی بود", callback_data=f"rate_perfect_{list_of_notification[0][3]}_{list_of_notification[0][0]}")],
+                            [InlineKeyboardButton("معمولی و منصفانه بود", callback_data=f"rate_ok_{list_of_notification[0][3]}_{list_of_notification[0][0]}")],
+                            [InlineKeyboardButton("ناامید شدم", callback_data=f"rate_bad_{list_of_notification[0][3]}_{list_of_notification[0][0]}")],
+                            [InlineKeyboardButton("نظری ندارم", callback_data=f"rate_havenotidea_{list_of_notification[0][3]}_{list_of_notification[0][0]}")]
+                        ]
+                        context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
                         sqlite_manager.update({'Purchased': {'status': 0}}, where=f'id = {user[0]}')
                     elif client['enable'] and not user[3]:
                         sqlite_manager.update(
@@ -766,7 +804,7 @@ def check_all_configs(context):
                             , where=f'id = "{user[0]}"')
 
                     expiry = second_to_ms(client['expiryTime'], False)
-                    now = datetime.now()
+                    now = datetime.now(pytz.timezone('Asia/Tehran')).replace(tzinfo=None)
                     time_left = (expiry - now).days
 
                     upload_gb = client['up'] / (1024 ** 3)
@@ -774,17 +812,46 @@ def check_all_configs(context):
                     usage_traffic = upload_gb + download_gb
                     total_traffic = client['total'] / (1024 ** 3)
                     traffic_percent = (usage_traffic / total_traffic) * 100
+                    traffic_left = total_traffic - usage_traffic
 
-                    list_of_notification = [notif for notif in get_users_notif if notif[0] == user[1]]
+                    keyboard = [[InlineKeyboardButton("مشاهده جزئیات سرویس", callback_data=f"view_service_{user[2]}"),
+                                 InlineKeyboardButton("تمدید یا ارتقا سرویس", callback_data=f"personalization_service_lu_{user[0]}")]]
 
                     if not user[5] and time_left <= list_of_notification[0][2]:
-                        context.bot.send_message(user[1], text=f'🔵 از سرویس شما با نام {user[2]} کمتر از {int(time_left) + 1} روز باقی مونده')
-                        sqlite_manager.update(
-                            {'Purchased': {'notif_day': 1}},where=f'id = "{user[0]}"')
+                        text = ("🔵 اطلاع رسانی تاریخ انقضا سرویس"
+                                f"\nدرود {list_of_notification[0][3]} عزیز، از سرویس شما با نام {user[2]} کمتر از {int(time_left) + 1} روز باقی مونده."
+                                f"\nدر صورتی که تمایل دارید نسبت به بررسی و یا تمدید سرویس اقدام کنید.")
+                        context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+                        sqlite_manager.update({'Purchased': {'notif_day': 1}},where=f'id = "{user[0]}"')
+
                     if not user[6] and traffic_percent >= list_of_notification[0][1]:
-                        context.bot.send_message(user[1], text=f'🔵 شما {int(traffic_percent)} درصد از حجم سرویس {user[2]} را مصرف کردید.')
-                        sqlite_manager.update(
-                            {'Purchased': {'notif_gb': 1}},where=f'id = "{user[0]}"')
+                        text = ("🔵 اطلاع رسانی حجم سرویس"
+                                f"\nدرود {list_of_notification[0][3]} عزیز، شما {int(traffic_percent)} درصد حجم ترافیک سرویس {user[2]} رو مصرف کردید، حجم باقی مونده از سرویس {format_traffic(traffic_left)} است. "
+                                f"\nدر صورتی که تمایل دارید نسبت به بررسی و یا تمدید سرویس اقدام کنید.")
+                        context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+                        sqlite_manager.update({'Purchased': {'notif_gb': 1}},where=f'id = "{user[0]}"')
+
+
+def rate_service(update, context):
+    query = update.callback_query
+    try:
+        check = query.data.replace('_', ' ')
+        context.bot.send_message(ADMIN_CHAT_ID, text=check)
+        user = context.user_data['user_for_edit_text']
+        get_users_notif = context.user_data['get_users_notif']
+        context.user_data['traffic_for_upgrade'] = get_users_notif[0][4]
+        context.user_data['period_for_upgrade'] = get_users_notif[0][5]
+        config_end_message = context.user_data['config_end_message']
+        keyboard = [
+            [InlineKeyboardButton("خرید سرویس جدید", callback_data=f"select_server"),
+             InlineKeyboardButton("تمدید همین سرویس", callback_data=f"personalization_service_lu_{user}")]]
+        query.answer('متشکریم ❤️')
+        query.edit_message_text(text=config_end_message, reply_markup=InlineKeyboardMarkup(keyboard))
+    except Exception as e:
+        keyboard = [
+            [InlineKeyboardButton("خرید سرویس جدید", callback_data=f"select_server")]]
+        query.edit_message_text(text='مشکلی وجود داشت!', reply_markup=InlineKeyboardMarkup(keyboard))
+        print(e)
 
 
 def setting(update, context):
@@ -803,43 +870,47 @@ def change_notif(update, context):
     query = update.callback_query
     get_data_from_db = sqlite_manager.select(table='User', where=f'chat_id = {query.message.chat_id}')
 
-    traffic = get_data_from_db[0][8]
-    period = get_data_from_db[0][9]
+    try:
+        traffic = abs(get_data_from_db[0][8])
+        period = abs(get_data_from_db[0][9])
 
-    if 'notif_traffic_low_5' in query.data:
-        traffic_t = int(query.data.replace('notif_traffic_low_', ''))
-        traffic = traffic - traffic_t
-        traffic = traffic if traffic >= 1 else 0
-    elif 'notif_traffic_high_5' in query.data:
-        traffic_t = int(query.data.replace('notif_traffic_high_', ''))
-        traffic = traffic + traffic_t
-        traffic = traffic if traffic <= 100 else 100
-    elif 'notif_day_low_1' in query.data:
-        period_t = int(query.data.replace('notif_day_low_', ''))
-        period = period - period_t
-        period = period if period >= 1 else 0
-    elif 'notif_day_high_1' in query.data:
-        period_t = int(query.data.replace('notif_day_high_', ''))
-        period = period + period_t
-        period = period if period <= 100 else 100
+        if 'notif_traffic_low_5' in query.data:
+            traffic_t = int(query.data.replace('notif_traffic_low_', ''))
+            traffic = traffic - traffic_t
+            traffic = traffic if traffic >= 1 else 5
+        elif 'notif_traffic_high_5' in query.data:
+            traffic_t = int(query.data.replace('notif_traffic_high_', ''))
+            traffic = traffic + traffic_t
+            traffic = traffic if traffic <= 100 else 100
+        elif 'notif_day_low_1' in query.data:
+            period_t = int(query.data.replace('notif_day_low_', ''))
+            period = period - period_t
+            period = period if period >= 1 else 1
+        elif 'notif_day_high_1' in query.data:
+            period_t = int(query.data.replace('notif_day_high_', ''))
+            period = period + period_t
+            period = period if period <= 100 else 100
 
 
-    sqlite_manager.update({'User': {'notification_gb':traffic, 'notification_day': period}},where=f'chat_id = {query.message.chat_id}')
+        sqlite_manager.update({'User': {'notification_gb':traffic, 'notification_day': period}},where=f'chat_id = {query.message.chat_id}')
 
-    text = ('*• تنظیمات نوتیفیکشن رو مطابق میل خودتون تغییر بدید:*'
-            f'\n• ربات 10 دقیقه یک بار اطلاعات رو بررسی میکنه.'
-            f'\n\nدریافت اعلان بعد مصرف {traffic}% حجم'
-            f'\nدریافت اعلان {period} روز قبل تمام شدن سرویس')
-    keyboard = [
-        [InlineKeyboardButton("«", callback_data="notif_traffic_low_5"),
-         InlineKeyboardButton(f"{traffic}%", callback_data="just_for_show"),
-         InlineKeyboardButton("»", callback_data="notif_traffic_high_5")],
-        [InlineKeyboardButton("«", callback_data="notif_day_low_1"),
-         InlineKeyboardButton(f"{period}Day", callback_data="just_for_show"),
-         InlineKeyboardButton("»", callback_data="notif_day_high_1")],
-        [InlineKeyboardButton("برگشت ↰", callback_data="setting")]
-    ]
-    query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        text = ('*• تنظیمات نوتیفیکشن رو مطابق میل خودتون تغییر بدید:*'
+                f'\n• ربات 10 دقیقه یک بار اطلاعات رو بررسی میکنه.'
+                f'\n\nدریافت اعلان بعد مصرف {traffic}% حجم'
+                f'\nدریافت اعلان {period} روز قبل تمام شدن سرویس')
+        keyboard = [
+            [InlineKeyboardButton("«", callback_data="notif_traffic_low_5"),
+             InlineKeyboardButton(f"{traffic}%", callback_data="just_for_show"),
+             InlineKeyboardButton("»", callback_data="notif_traffic_high_5")],
+            [InlineKeyboardButton("«", callback_data="notif_day_low_1"),
+             InlineKeyboardButton(f"{period}Day", callback_data="just_for_show"),
+             InlineKeyboardButton("»", callback_data="notif_day_high_1")],
+            [InlineKeyboardButton("برگشت ↰", callback_data="setting")]
+        ]
+        query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+    except Exception as e:
+        query.answer('شما نمیتونید ولوم رو کمتر یا بیشتر از مقدار مجاز قرار بدید!')
+        print(e)
 
 
 def financial_transactions(update, context):
@@ -1064,7 +1135,7 @@ def apply_card_pay_credit(update, context):
 
             sqlite_manager.update({'Credit_History': {'active': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}}
                                   ,where=f'id = "{id_}"')
-            wallet_manage.add_to_wallet(query.message.chat_id, get_credit[0][1])
+            wallet_manage.add_to_wallet(get_credit[0][0], get_credit[0][1])
             context.bot.send_message(text='سفارش شما برای واریز وجه به کیف پول با موفقیت تایید شد ✅', chat_id=get_credit[0][0])
             query.answer('Done ✅')
             query.delete_message()
@@ -1139,6 +1210,7 @@ def pay_from_wallet(update, context):
                     traffic = user_db[0][5] * (1024 ** 3)
                     my_data = now + timedelta(days=user_db[0][6])
                     my_data = int(my_data.timestamp() * 1000)
+                    print(api_operation.reset_client_traffic(get_client[0][7], get_client[0][9]))
                 data = {
                     "id": int(get_client[0][7]),
                     "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
@@ -1254,7 +1326,7 @@ def remove_service(update, contetx):
 
             sqlite_manager.delete({'Purchased': ['client_email', email]})
 
-            keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="my_service")]]
+            keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]]
 
             text = f'*سرویس با موفقیت حذف شد و مبلغ {price:,} تومان به کیف پول شما برگشت ✅*'
             if not ret_conf['obj']['enable']:

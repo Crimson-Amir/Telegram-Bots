@@ -81,6 +81,11 @@ class XuiApiClean:
         if self.check_json(inb):
             return inb.json()
 
+    def reset_client_traffic(self, inbound_id, email):
+        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/{inbound_id}/resetClientTraffic/{email}')
+        if self.check_json(inb):
+            return inb.json()
+
     def update_client(self, uuid, data):
         inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/updateClient/{uuid}', json=data)
         if self.check_json(inb):

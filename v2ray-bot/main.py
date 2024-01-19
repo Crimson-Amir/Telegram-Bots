@@ -8,7 +8,7 @@ from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, 
                    show_help, support, setting, change_notif, start_timer, export_database, financial_transactions,
                    wallet_page, financial_transactions_wallet, payment_page_upgrade, buy_credit_volume,
                    pay_way_for_credit, credit_charge, apply_card_pay_credit, pay_from_wallet, remove_service,
-                   say_to_every_one, remove_service_from_db)
+                   say_to_every_one, remove_service_from_db, check_all_configs, rate_service)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service, run_in_system
 from private import ADMIN_CHAT_ID
 import requests
@@ -26,6 +26,7 @@ def main():
     dp.add_handler(CommandHandler('help', bot_start))
 
     dp.add_handler(CommandHandler('add_inbound', admin_add_update_inbound))
+    dp.add_handler(CommandHandler('check_all_configs', check_all_configs))
     dp.add_handler(CommandHandler('add_service', add_service))
     dp.add_handler(CommandHandler('all_service', all_service))
     dp.add_handler(CommandHandler('del_service', del_service))
@@ -34,6 +35,7 @@ def main():
     dp.add_handler(CommandHandler('run_in_system', run_in_system))
     dp.add_handler(CommandHandler('say_to_every_one', say_to_every_one))
 
+    dp.add_handler(CallbackQueryHandler(rate_service, pattern=r'rate_(.*)'))
     dp.add_handler(CallbackQueryHandler(remove_service_from_db, pattern=r'remove_service_from_db_(.*)'))
     dp.add_handler(CallbackQueryHandler(pay_from_wallet, pattern=r'accept_wallet_upgrade_pay_\d+'))
     dp.add_handler(CallbackQueryHandler(pay_from_wallet, pattern=r'payment_by_wallet_\d+'))
