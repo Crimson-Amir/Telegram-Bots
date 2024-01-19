@@ -59,7 +59,7 @@ def all_query_handler(update, context):
                 keyboard = [[InlineKeyboardButton(f"سرویس {pattern[5]} روزه - {pattern[6]} گیگابایت - {pattern[7]:,} تومان",
                                                   callback_data=f"service_{pattern[0]}")] for pattern in service_list]
 
-                keyboard.append([InlineKeyboardButton("سرویس دلخواه ४", callback_data=f"personalization_service_{plans[0][0]}")])
+                keyboard.append([InlineKeyboardButton("✪ سرویس دلخواه", callback_data=f"personalization_service_{plans[0][0]}")])
                 keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="select_server")])
                 query.edit_message_text(text= text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     except Exception as e:
