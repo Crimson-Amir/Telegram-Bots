@@ -8,7 +8,7 @@ from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, 
                    show_help, support, setting, change_notif, start_timer, export_database, financial_transactions,
                    wallet_page, financial_transactions_wallet, payment_page_upgrade, buy_credit_volume,
                    pay_way_for_credit, credit_charge, apply_card_pay_credit, pay_from_wallet, remove_service,
-                   say_to_every_one, remove_service_from_db, check_all_configs, rate_service)
+                   check_all_configs, say_to_every_one, remove_service_from_db, rate_service, get_pay_file, just_for_show)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service, run_in_system
 from private import ADMIN_CHAT_ID
 import requests
@@ -18,22 +18,27 @@ telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessag
 requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'BOT START NOW! | /start_timer'})
 create_database()
 
+
 def main():
     updater = Updater(telegram_bot_token)
     dp = updater.dispatcher
 
-    dp.add_handler(CommandHandler('start', bot_start))
-    dp.add_handler(CommandHandler('help', bot_start))
+    commands = {
+        'start': bot_start,
+        'help': bot_start,
+        'add_inbound': admin_add_update_inbound,
+        'check_all_configs': check_all_configs,
+        'add_service': add_service,
+        'all_service': all_service,
+        'del_service': del_service,
+        'start_timer': start_timer,
+        'export_database': export_database,
+        'run_in_system': run_in_system,
+        'say_to_every_one': say_to_every_one,
+    }
 
-    dp.add_handler(CommandHandler('add_inbound', admin_add_update_inbound))
-    dp.add_handler(CommandHandler('check_all_configs', check_all_configs))
-    dp.add_handler(CommandHandler('add_service', add_service))
-    dp.add_handler(CommandHandler('all_service', all_service))
-    dp.add_handler(CommandHandler('del_service', del_service))
-    dp.add_handler(CommandHandler('start_timer', start_timer))
-    dp.add_handler(CommandHandler('export_database', export_database))
-    dp.add_handler(CommandHandler('run_in_system', run_in_system))
-    dp.add_handler(CommandHandler('say_to_every_one', say_to_every_one))
+    for key, value in commands.items():
+        dp.add_handler(CommandHandler(key, value))
 
     dp.add_handler(CallbackQueryHandler(rate_service, pattern=r'rate_(.*)'))
     dp.add_handler(CallbackQueryHandler(remove_service_from_db, pattern=r'remove_service_from_db_(.*)'))
@@ -47,6 +52,8 @@ def main():
 
 
     dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu'))
+    dp.add_handler(CallbackQueryHandler(get_pay_file, pattern='get_pay_file'))
+    dp.add_handler(CallbackQueryHandler(just_for_show, pattern='just_for_show'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='ranking_page'))
     dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu_in_new_message'))
     dp.add_handler(CallbackQueryHandler(help_sec, pattern='guidance'))

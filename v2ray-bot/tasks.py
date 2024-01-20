@@ -5,7 +5,6 @@ import private
 from sqlite_manager import ManageDb
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
-import uuid
 from private import ADMIN_CHAT_ID
 from admin_task import add_client_bot, api_operation, second_to_ms
 import qrcode
@@ -32,6 +31,11 @@ def not_ready_yet(update, context):
 def something_went_wrong(update, context):
     query = update.callback_query
     query.answer(text="مشکلی وجود دارد!", show_alert=False)
+
+
+def just_for_show(update, context):
+    query = update.callback_query
+    query.answer(text="این دکمه برای نمایش دادن اطلاعات است!", show_alert=False)
 
 
 def buy_service(update, context):
@@ -206,13 +210,16 @@ def send_clean_for_customer(query, context, id_):
                 with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
                     e.write(
                         f"\n\n💸 پرداخت پول: خرید سرویس | وضعیت: ✅\nشماره سفارش:\n {get_client[0][5]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
+                context.bot.send_message(ADMIN_CHAT_ID, '1 - SEND SERVICE TO CUSTOMER SUCCSESFULL!')
                 return True
             else:
+                context.bot.send_message(ADMIN_CHAT_ID, '0 - SEND SERVICE TO CUSTOMER FAILED!')
                 print('wrong: ', returned)
                 query.answer('Wrong')
                 return False
         except Exception as e:
             print(e)
+            context.bot.send_message(ADMIN_CHAT_ID, '0 - SEND SERVICE TO CUSTOMER FAILED! ' + str(e))
             query.answer(f'Failed ❌ | {e}')
             return False
     else:
@@ -656,6 +663,7 @@ def apply_card_pay_lu(update, context):
             query.delete_message()
             with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
                 e.write(f"\n\n💸 پرداخت پول: تمدید یا ارتقا سرویس | وضعیت: ✅\nنام سرویس: {get_client[0][9]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
+            context.bot.send_message(ADMIN_CHAT_ID, '1 - SEND SERVICE TO CUSTOMER SUCCSESFULL!')
 
         elif 'ok_card_pay_lu_refuse_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_lu_refuse_', ''))
@@ -670,17 +678,22 @@ def apply_card_pay_lu(update, context):
             query.answer('Done ✅')
             query.delete_message()
     except Exception as e:
+        context.bot.send_message(ADMIN_CHAT_ID, '1 - SEND SERVICE TO CUSTOMER FAILED! ' + str(e))
         print('errot:', e)
 
 
 def get_free_service(update, context):
     user = update.callback_query.from_user
-    sqlite_manager.update({'User': {'free_service': 1}}, where=f"chat_id = {user['id']}")
-    ex = sqlite_manager.insert('Purchased', rows=[
-        {'active': 1, 'status': 1, 'name': user["first_name"], 'user_name': user["username"],
-         'chat_id': int(user["id"]), 'product_id': 1, 'inbound_id': 1, 'date': datetime.now(),
-         'notif_day': 0, 'notif_gb': 0}])
-    send_clean_for_customer(update.callback_query, context, ex)
+    try:
+        sqlite_manager.update({'User': {'free_service': 1}}, where=f"chat_id = {user['id']}")
+        ex = sqlite_manager.insert('Purchased', rows=[
+            {'active': 1, 'status': 1, 'name': user["first_name"], 'user_name': user["username"],
+             'chat_id': int(user["id"]), 'product_id': 1, 'inbound_id': 1, 'date': datetime.now(),
+             'notif_day': 0, 'notif_gb': 0}])
+        send_clean_for_customer(update.callback_query, context, ex)
+        context.bot.send_message(ADMIN_CHAT_ID, f'1 - {user["id"]} GET A FREE SERVICE')
+    except Exception as e:
+        context.bot.send_message(ADMIN_CHAT_ID, f'0 - {user["id"]} FAILED TO GET FREE SERVICE! {e}')
 
 
 def help_sec(update, context):
@@ -768,7 +781,10 @@ def support(update, context):
 def check_all_configs(context, context_2=None):
     if context_2:
         context = context_2
-    # query = update.callback_query
+        user_data = context.user_data
+    else:
+        user_data = context.job.context
+
     get_all = api_operation.get_all_inbounds()
     get_from_db = sqlite_manager.select(column='id,chat_id,client_email,status,date,notif_day,notif_gb', table='Purchased')
     get_users_notif = sqlite_manager.select(column='chat_id,notification_gb,notification_day,name,traffic,period', table='User')
@@ -778,15 +794,15 @@ def check_all_configs(context, context_2=None):
             for user in get_from_db:
                 if user[2] == client['email']:
                     list_of_notification = [notif for notif in get_users_notif if notif[0] == user[1]]
-                    context.user_data['user_for_edit_text'] = user[0]
-                    context.user_data['traffic_for_upgrade'] = get_users_notif[0][4]
-                    context.user_data['period_for_upgrade'] = get_users_notif[0][5]
-                    context.user_data['get_users_notif'] = get_users_notif
+                    user_data['user_for_edit_text'] = user[0]
+                    user_data['traffic_for_upgrade'] = get_users_notif[0][4]
+                    user_data['period_for_upgrade'] = get_users_notif[0][5]
+                    user_data['get_users_notif'] = get_users_notif
                     if not client['enable'] and user[3]:
                         text = ("🔴 اطلاع رسانی اتمام سرویس"
                                 f"\nدرود {list_of_notification[0][3]} عزیز، سرویس شما با نام {user[2]} به پایان رسید!"
                                 f"\nدر صورتی که تمایل دارید نسبت به بررسی و یا تمدید سرویس اقدام کنید.")
-                        context.user_data['config_end_message'] = text
+                        user_data['config_end_message'] = text
                         keyboard = [
                             [InlineKeyboardButton("خرید سرویس جدید", callback_data=f"select_server"),
                              InlineKeyboardButton("تمدید همین سرویس", callback_data=f"personalization_service_lu_{user[0]}")],
@@ -914,19 +930,27 @@ def change_notif(update, context):
         print(e)
 
 
+def get_pay_file(update, context):
+    query = update.callback_query
+    with open(f'financial_transactions/{query.message.chat_id}.txt', 'r', encoding='utf-8') as file:
+        context.bot.send_document(chat_id=query.message.chat_id, document= file,
+                                  filename=f'All transactions of {query.from_user["name"]}')
+    query.answer('فایل برای شما ارسال شد!')
+
+
 def financial_transactions(update, context):
     query = update.callback_query
     keyboard = [
+        [InlineKeyboardButton("دریافت فایل کامل", callback_data="get_pay_file")],
         [InlineKeyboardButton("برگشت ↰", callback_data="setting")]
     ]
     with open(f'financial_transactions/{query.message.chat_id}.txt', 'r', encoding='utf-8') as e:
         get_factors = e.read()
-    query.edit_message_text(text=f"لیست تراکنش های مالی شما: \n{get_factors}", reply_markup=InlineKeyboardMarkup(keyboard))
+    query.edit_message_text(text=f"لیست تراکنش های مالی شما: \n{get_factors[:4000]}", reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 def start_timer(update, context):
-    context.job_queue.run_repeating(check_all_configs, interval=600, first=0)
-
+    context.job_queue.run_repeating(check_all_configs, interval=600, first=0, context=context.user_data)
     update.message.reply_text('Timer started! ✅')
 
 
@@ -974,7 +998,8 @@ def financial_transactions_wallet(update, context):
     query = update.callback_query
     chat_id = query.message.chat_id
     try:
-        lasts_operation = sqlite_manager.select(table='Credit_History', where=f'chat_id = {chat_id} and active = 1')
+        lasts_operation = sqlite_manager.select(table='Credit_History', where=f'chat_id = {chat_id} and active = 1',
+                                                order_by='id DESC', limit=100)
 
         if lasts_operation:
             last_5 = "• تراکنش های کیف پول شما:\n\n"
@@ -1362,3 +1387,16 @@ def say_to_every_one(update, context):
         except Exception as e:
             print(f'BLOCKED BY USER {user[1]} | {user[0]}')
             print(e)
+
+
+def reserve_service(update, context):
+    """
+    user_message = 'chat_id,,inbound_id,period,traffic'
+    """
+    user_message = update.message.text.split(',')
+
+    user = sqlite_manager.select(column='name,user_name', table='User', where=f'chat_id = {user_message[0]}')
+
+    ex = sqlite_manager.insert('Purchased', rows=[
+        {'active': 0, 'status': 0, 'name': user[0][0], 'user_name': user[0][1],
+         'chat_id': user_message[0], 'product_id': user_message[2], 'notif_day': 0, 'notif_gb': 0}])
