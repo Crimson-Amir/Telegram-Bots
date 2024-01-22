@@ -10,8 +10,9 @@ from admin_task import add_client_bot, api_operation, second_to_ms
 import qrcode
 from io import BytesIO
 import pytz
-import arrow
 from wallet import WalletManage
+from utilities import *
+import re
 
 sqlite_manager = ManageDb('v2ray')
 GET_EVIDENCE = 0
@@ -20,41 +21,30 @@ GET_EVIDENCE_CREDIT = 0
 
 wallet_manage = WalletManage('User', 'wallet', 'v2ray', 'chat_id')
 
-def human_readable(number):
-    return arrow.get(number).humanize(locale="fa-ir")
-
-def not_ready_yet(update, context):
-    query = update.callback_query
-    query.answer(text="ببخشید، درحال توسعه است.", show_alert=False)
-
-
-def something_went_wrong(update, context):
-    query = update.callback_query
-    query.answer(text="مشکلی وجود دارد!", show_alert=False)
-
-
-def just_for_show(update, context):
-    query = update.callback_query
-    query.answer(text="این دکمه برای نمایش دادن اطلاعات است!", show_alert=False)
-
 
 def buy_service(update, context):
+    query = update.callback_query
     try:
-        query = update.callback_query
         plans = sqlite_manager.select(table='Product', where='active = 1')
-        server_name_unic = {name[3]:name[4] for name in plans}
-        keyboard = [[InlineKeyboardButton(ser, callback_data=cou)] for ser, cou in server_name_unic.items()]
+        unic_plans = {name[3]: name[4] for name in plans}
+
+        keyboard = [[InlineKeyboardButton(key, callback_data=value)] for key, value in unic_plans.items()]
         keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="main_menu")])
-        query.edit_message_text(text="<b>سرور مورد نظر خودتون رو انتخاب کنید:</b>", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+
+        query.edit_message_text(
+            text="<b>سرور مورد نظر خودتون رو انتخاب کنید:</b>",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='html'
+        )
     except Exception as e:
-        print(e)
+        ready_report_problem_to_admin(context, 'SELECT SERVICE', query.message.chat_id, e)
         something_went_wrong(update, context)
 
 
 def all_query_handler(update, context):
+    query = update.callback_query
     try:
         text = "<b>سرویس مناسب خودتون رو انتخاب کنید:\n\n✪ با انتخاب گزینه 'دلخواه' میتونید یک سرویس شخصی سازی شده بسازید!</b>"
-        query = update.callback_query
         plans = sqlite_manager.select(table='Product', where=f'active = 1 and country = "{query.data}"')
         country_unic = {name[4] for name in plans}
         for country in country_unic:
@@ -67,7 +57,7 @@ def all_query_handler(update, context):
                 keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="select_server")])
                 query.edit_message_text(text= text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     except Exception as e:
-        print(e)
+        ready_report_problem_to_admin(context, 'FIND PLANE', query.message.chat_id, e)
         something_went_wrong(update, context)
 
 
@@ -80,18 +70,19 @@ def payment_page(update, context):
             keyboard = [
                 [InlineKeyboardButton("پرداخت از کیف پول", callback_data=f'payment_by_wallet_{id_}'),
                  InlineKeyboardButton("کارت به کارت", callback_data=f'payment_by_card_{id_}')],
-                [InlineKeyboardButton("برگشت ↰", callback_data="select_server")]
+                [InlineKeyboardButton("برگشت ↰", callback_data=f"{package[0][4]}")]
             ]
         else:
-            free = sqlite_manager.select(column='free_service', table='User', where=f'chat_id = {query.message.chat_id}')
-            if free[0][0]:
-                query.answer('ببخشید، شما یک بار این بسته را دریافت کردید!')
+            free_service_is_taken = sqlite_manager.select(column='free_service', table='User', where=f'chat_id = {query.message.chat_id}')[0][0]
+            if free_service_is_taken:
+                query.answer('ببخشید، شما یک بار این بسته رو دریافت کردید!')
                 return
             else:
                 keyboard = [
                     [InlineKeyboardButton("دریافت ⤓", callback_data=f'get_free_service')],
                     [InlineKeyboardButton("برگشت ↰", callback_data="select_server")]
                 ]
+
         text = (f"<b>❋ بسته انتخابی شامل مشخصات زیر میباشد:</b>\n"
                 f"\nسرور: {package[0][3]}"
                 f"\nدوره زمانی: {package[0][5]} روز"
@@ -101,11 +92,11 @@ def payment_page(update, context):
                 f"\n\n<b>⤶ برای پرداخت میتونید یکی از روش های زیر رو استفاده کنید:</b>")
         query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
     except Exception as e:
-        print(e)
+        ready_report_problem_to_admin(context, 'PAYMENT PAGE', query.message.chat_id, e)
         something_went_wrong(update, context)
 
 
-def pay_page_get_evidence(update, context):
+def get_card_pay_evidence(update, context):
     query = update.callback_query
     user = query.from_user
     id_ = int(query.data.replace('payment_by_card_', ''))
@@ -126,35 +117,42 @@ def pay_page_get_evidence(update, context):
         query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         return GET_EVIDENCE
     except Exception as e:
-        print(e)
+        ready_report_problem_to_admin(context, 'GET CARD PAY EVIDENCE', query.message.chat_id, e)
         something_went_wrong(update, context)
 
 
 def send_evidence_to_admin(update, context):
     user = update.message.from_user
-    package = context.user_data['package']
-    purchased_id = context.user_data['purchased_id']
-    text = "- Check the new payment to the card:\n\n"
-    text += f"Name: {user['first_name']}\nUserName: @{user['username']}\nID: {user['id']}\n\n"
-    keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_{purchased_id}")]
-        , [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_{purchased_id}")]]
-    if update.message.photo:
-        file_id = update.message.photo[-1].file_id
-        text += f"caption: {update.message.caption}" or 'Witout caption!'
-        text += f"\n\nServer: {package[0][4]}\nInbound id: {package[0][1]}\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
-        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text , reply_markup=InlineKeyboardMarkup(keyboard))
-        update.message.reply_text(f'سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه')
-    elif update.message.text:
-        text += f"Text: {update.message.text}"
-        text += f"\n\nServer: {package[0][4]}\nInbound id: {package[0][1]}\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
-        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
-        update.message.reply_text(f'درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه')
-    else:
-        update.message.reply_text('مشکلی وجود داره!')
+    try:
+        package = context.user_data['package']
+        purchased_id = context.user_data['purchased_id']
+        text = "- Check the new payment to the card:\n\n"
+        text += f"Name: {user['first_name']}\nUserName: @{user['username']}\nID: {user['id']}\n\n"
+        keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_{purchased_id}")]
+            , [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_{purchased_id}")]]
+        if update.message.photo:
+            file_id = update.message.photo[-1].file_id
+            text += f"caption: {update.message.caption}" or 'Witout caption!'
+            text += f"\n\nServer: {package[0][4]}\nInbound id: {package[0][1]}\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
+            context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text , reply_markup=InlineKeyboardMarkup(keyboard))
+            update.message.reply_text(f'سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه')
+        elif update.message.text:
+            text += f"Text: {update.message.text}"
+            text += f"\n\nServer: {package[0][4]}\nInbound id: {package[0][1]}\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
+            context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+            update.message.reply_text(f'درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه')
+        else:
+            update.message.reply_text('مشکلی وجود داره! فقط متن یا عکس قابل قبوله.')
 
-    context.user_data.clear()
-    return ConversationHandler.END
-
+        context.user_data.clear()
+        return ConversationHandler.END
+    except Exception as e:
+        ready_report_problem_to_admin(context,'SEND EVIDENCE TO ADMIN', user['id'], e)
+        text = ("مشکلی وجود داشت!"
+                "گزارش به ادمین ها ارسال شد، نتیجه به زودی بهتون اعلام میشه")
+        keyboard = [[InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]]
+        update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        return ConversationHandler.END
 
 def cancel(update, context):
     query = update.callback_query
@@ -163,32 +161,22 @@ def cancel(update, context):
 
 
 get_service_con = ConversationHandler(
-    entry_points=[CallbackQueryHandler(pay_page_get_evidence, pattern=r'payment_by_card_\d+')],
+    entry_points=[CallbackQueryHandler(get_card_pay_evidence, pattern=r'payment_by_card_\d+')],
     states={
         GET_EVIDENCE: [MessageHandler(Filters.all, send_evidence_to_admin)]
     },
     fallbacks=[CallbackQueryHandler(cancel, pattern='cancel')],
     conversation_timeout=600,
     per_chat=True,
-    allow_reentry=True
+    allow_reentry=True,
 )
-
-
-def format_traffic(traffic, without_text=None):
-    if int(traffic) < 1:
-        megabytes = traffic * 1024
-        if without_text:
-            return int(megabytes)
-        return f"{int(megabytes)} مگابایت"
-    else:
-        return f"{traffic} گیگابایت"
 
 
 def send_clean_for_customer(query, context, id_):
     create = add_client_bot(id_)
     if create:
+        get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
         try:
-            get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
             get_domain = sqlite_manager.select(table='Product', where=f'id = {get_client[0][6]}')[0][10]
             returned = api_operation.get_client_url(client_email=get_client[0][9], inbound_id=get_client[0][7], domain=get_domain)
             if returned:
@@ -210,20 +198,21 @@ def send_clean_for_customer(query, context, id_):
                 with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
                     e.write(
                         f"\n\n💸 پرداخت پول: خرید سرویس | وضعیت: ✅\nشماره سفارش:\n {get_client[0][5]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
-                context.bot.send_message(ADMIN_CHAT_ID, '1 - SEND SERVICE TO CUSTOMER SUCCSESFULL!')
+                context.bot.send_message(ADMIN_CHAT_ID, f'🟢 SEND SERVICE TO CUSTOMER SUCCESSFULLY\nUSER: {get_client[0][4]}')
                 return True
             else:
-                context.bot.send_message(ADMIN_CHAT_ID, '0 - SEND SERVICE TO CUSTOMER FAILED!')
+                context.bot.send_message(ADMIN_CHAT_ID, f'🔴 SEND SERVICE TO CUSTOMER FAILED\nUSER: {get_client[0][4]}\nREASON: {returned}')
                 print('wrong: ', returned)
                 query.answer('Wrong')
                 return False
         except Exception as e:
             print(e)
-            context.bot.send_message(ADMIN_CHAT_ID, '0 - SEND SERVICE TO CUSTOMER FAILED! ' + str(e))
+            context.bot.send_message(ADMIN_CHAT_ID, f'🔴 SEND SERVICE TO CUSTOMER FAILED\nUSER: {get_client[0][4]}\nERROR REASON: {e}')
             query.answer(f'Failed ❌ | {e}')
             return False
     else:
         query.answer('Failed ❌')
+        context.bot.send_message(ADMIN_CHAT_ID, f'🔴 SEND SERVICE TO CUSTOMER FAILED\nADD CLIENT statUS: {create}')
         return False
 
 
@@ -254,6 +243,8 @@ def apply_card_pay(update, context):
             query.answer('Done ✅')
             query.delete_message()
     except Exception as e:
+        ready_report_problem_to_admin(context,'APLLY CARD PAY', query.message.chat_id, e)
+        query.answer('Fail')
         print('errot:', e)
 
 
@@ -372,6 +363,7 @@ def remove_service_from_db(update, context):
         query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     except Exception as e:
         query.answer('مشکلی در حذف این سرویس وجود داشت!')
+        ready_report_problem_to_admin(context,'REMOVE SERVICE FROM DATABASE', query.message.chat_id, e)
         print(e)
 
 
@@ -477,10 +469,11 @@ def personalization_service(update, context):
 def personalization_service_lu(update, context):
     query = update.callback_query
     if 'personalization_service_lu_' in query.data:
-        period_for_upgrade = context.user_data['period_for_upgrade']
-        traffic_for_upgrade = context.user_data['traffic_for_upgrade']
-        sqlite_manager.update({'User': {'period': int(period_for_upgrade), 'traffic': int(traffic_for_upgrade)}},
-                              where=f'chat_id = {query.message.chat_id}')
+        if 'period_for_upgrade' in context.user_data and 'traffic_for_upgrade' in context.user_data:
+            period_for_upgrade = context.user_data['period_for_upgrade']
+            traffic_for_upgrade = context.user_data['traffic_for_upgrade']
+            sqlite_manager.update({'User': {'period': int(period_for_upgrade), 'traffic': int(traffic_for_upgrade)}},
+                                  where=f'chat_id = {query.message.chat_id}')
         context.user_data['personalization_client_lu_id'] = int(query.data.replace('personalization_service_lu_', ''))
 
     id_ = context.user_data['personalization_client_lu_id']
@@ -556,7 +549,7 @@ def payment_page_upgrade(update, context):
 
 
 
-def pay_page_get_evidence_per(update, context):
+def pay_page_get_evidence_for_upgrade(update, context):
     query = update.callback_query
     id_ = int(query.data.replace('payment_by_card_lu_', ''))
     try:
@@ -576,40 +569,48 @@ def pay_page_get_evidence_per(update, context):
         return GET_EVIDENCE
     except Exception as e:
         print(e)
+        ready_report_problem_to_admin(context, text='PAY PAGE GET EVIDENCE UPGRADE', chat_id=query.message.chat_id, error=e)
         something_went_wrong(update, context)
 
 
-def send_evidence_to_admin_lu(update, context):
+def send_evidence_to_admin_for_upgrade(update, context):
     user = update.message.from_user
-    package = context.user_data['package']
-    price = (package[0][5] * private.PRICE_PER_GB) + (package[0][6] * private.PRICE_PER_DAY)
-    purchased_id = context.user_data['purchased_id']
-    text = "- Check the new payment to the card [UPGRADE SERVICE]:\n\n"
-    text += f"Name: {user['first_name']}\nUserName: @{user['username']}\nID: {user['id']}\n\n"
-    keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_lu_{purchased_id}")]
-        , [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_lu_{purchased_id}")]]
-    if update.message.photo:
-        file_id = update.message.photo[-1].file_id
-        text += f"caption: {update.message.caption}" or 'Witout caption!'
-        text += f"\n\nPeriod: {package[0][6]} Day\n Traffic: {package[0][5]}GB\nPrice: {price:,} T"
-        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, reply_markup=InlineKeyboardMarkup(keyboard))
-        update.message.reply_text(f'*سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
-    elif update.message.text:
-        text += f"Text: {update.message.text}"
-        text += f"\n\nPeriod: {package[0][6]} Day\n Traffic: {package[0][5]}GB\nPrice: {price:,} T"
-        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
-        update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
-    else:
-        update.message.reply_text('مشکلی وجود داره!')
+    try:
+        package = context.user_data['package']
+        price = (package[0][5] * private.PRICE_PER_GB) + (package[0][6] * private.PRICE_PER_DAY)
+        purchased_id = context.user_data['purchased_id']
+        text = "- Check the new payment to the card [UPGRADE SERVICE]:\n\n"
+        text += f"Name: {user['first_name']}\nUserName: @{user['username']}\nID: {user['id']}\n\n"
+        keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_lu_{purchased_id}")]
+            , [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_lu_{purchased_id}")]]
+        if update.message.photo:
+            file_id = update.message.photo[-1].file_id
+            text += f"caption: {update.message.caption}" or 'Witout caption!'
+            text += f"\n\nPeriod: {package[0][6]} Day\n Traffic: {package[0][5]}GB\nPrice: {price:,} T"
+            context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, reply_markup=InlineKeyboardMarkup(keyboard))
+            update.message.reply_text(f'*سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
+        elif update.message.text:
+            text += f"Text: {update.message.text}"
+            text += f"\n\nPeriod: {package[0][6]} Day\n Traffic: {package[0][5]}GB\nPrice: {price:,} T"
+            context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+            update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
+        else:
+            update.message.reply_text('مشکلی وجود داره!')
 
-    context.user_data.clear()
-    return ConversationHandler.END
-
+        context.user_data.clear()
+        return ConversationHandler.END
+    except Exception as e:
+        ready_report_problem_to_admin(context, 'SEND EVIDENCE TO ADMIN', user['id'], e)
+        text = ("مشکلی وجود داشت!"
+                "گزارش به ادمین ها ارسال شد، نتیجه به زودی بهتون اعلام میشه")
+        keyboard = [[InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]]
+        update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        return ConversationHandler.END
 
 get_service_con_per = ConversationHandler(
-    entry_points=[CallbackQueryHandler(pay_page_get_evidence_per, pattern=r'payment_by_card_lu_\d+')],
+    entry_points=[CallbackQueryHandler(pay_page_get_evidence_for_upgrade, pattern=r'payment_by_card_lu_\d+')],
     states={
-        GET_EVIDENCE_PER: [MessageHandler(Filters.all, send_evidence_to_admin_lu)]
+        GET_EVIDENCE_PER: [MessageHandler(Filters.all, send_evidence_to_admin_for_upgrade)]
     },
     fallbacks=[],
     conversation_timeout=600,
@@ -678,12 +679,13 @@ def apply_card_pay_lu(update, context):
             query.answer('Done ✅')
             query.delete_message()
     except Exception as e:
-        context.bot.send_message(ADMIN_CHAT_ID, '1 - SEND SERVICE TO CUSTOMER FAILED! ' + str(e))
+        ready_report_problem_to_admin(context, text='APPLY CARD PAY LU (FOR UPGRADE)', chat_id=query.message.chat_id, error=e)
         print('errot:', e)
 
 
 def get_free_service(update, context):
-    user = update.callback_query.from_user
+    query = update.callback_query
+    user = query.from_user
     try:
         sqlite_manager.update({'User': {'free_service': 1}}, where=f"chat_id = {user['id']}")
         ex = sqlite_manager.insert('Purchased', rows=[
@@ -691,84 +693,67 @@ def get_free_service(update, context):
              'chat_id': int(user["id"]), 'product_id': 1, 'inbound_id': 1, 'date': datetime.now(),
              'notif_day': 0, 'notif_gb': 0}])
         send_clean_for_customer(update.callback_query, context, ex)
-        context.bot.send_message(ADMIN_CHAT_ID, f'1 - {user["id"]} GET A FREE SERVICE')
+        context.bot.send_message(ADMIN_CHAT_ID, f'🟢 User {user["name"]} With ID: {user["id"]} GET A FREE SERVICE')
     except Exception as e:
-        context.bot.send_message(ADMIN_CHAT_ID, f'0 - {user["id"]} FAILED TO GET FREE SERVICE! {e}')
-
+        ready_report_problem_to_admin(context, text='TAKE A FREE SERVICE', chat_id=query.message.chat_id, error=e)
+        query.answer('ببخشید، مشکلی وجود داشت!')
 
 def help_sec(update, context):
     query = update.callback_query
-    text = "*برای کدوم دیوایس یا سیستم عامل راهنمایی لازم دارید؟*"
+    text = ("<b>به بخش راهنمای ربات خوش آمدید!</b>"
+            "\n\nدر اینجا میتونید در مورد نحوه اتصال، تجربه شخصی‌سازی ربات، انواع سرویس و موارد مرتبط مطالعه کنید.")
     keyboard = [
-        [InlineKeyboardButton("اندروید", callback_data=f"android_help"),
-         InlineKeyboardButton("ویندوز", callback_data=f"windows_help")],
-        [InlineKeyboardButton("آیفون و مک‌", callback_data=f"mac_help"),
-         InlineKeyboardButton("لینوکس", callback_data=f"linux_help")],
-        [InlineKeyboardButton("در مورد v2ray بیشتر بدانید", callback_data=f"v2ray_help")],
-        [InlineKeyboardButton("صفحه اصلی ⤶", callback_data="main_menu")]
+        [InlineKeyboardButton("• اپلیکیشن های مناسب برای اتصال", callback_data=f"apps_help")],
+        [InlineKeyboardButton("شخصی سازی و ویژگی ها", callback_data=f"personalize_help"),
+         InlineKeyboardButton("انواع سرویس های ربات", callback_data=f"robots_service_help")],
+        [InlineKeyboardButton("• سوالات متداول", callback_data=f"not_ready_yet")],
+        [InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]
     ]
-    query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+    query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
 
 def show_help(update, context):
     query = update.callback_query
     help_what = query.data.replace('_help', '')
-    if help_what == 'android':
-        text = ("*برای اندروید میتونید از نرم‌افزار v2rayNG استفاده کنید.*"
-                "\n\nراهنما اتصال:"
-                "\n• بعد از دانلود و نصب وارد برنامه بشید و روی گزینه + کلیک کنید"
-                "\n• از لیست تاشو انتخاب کنید چطور کانفیگ رو وارد میکنید"
-                "\n• اگر لینک کانفیگ رو کپی کردید، با انتخاب گزینه from clipboard "
-                "کانفیگ رو وارد برنامه کنید و با دکمه پایین، اتصال رو برقرار کنید")
+    if help_what == 'apps':
+        text = "<b>از طریق گزینه های زیر به صفحه رسمی نرم افزار برید \nو نسخه مرتبط با دستگاه خودتون رو دانلود کنید.</b>"
         keyboard = [
-            [InlineKeyboardButton("دانلود از پلی استور", url="https://play.google.com/store/apps/details?id=com.v2ray.ang&pcampaignid=web_share")],
-            [InlineKeyboardButton("دانلود از صفحه رسمی", url="https://github.com/2dust/v2rayNG/releases/")],
+            [InlineKeyboardButton("V2RayNG", url="https://play.google.com/store/apps/details?id=com.v2ray.ang&hl=en&gl=US"),
+             InlineKeyboardButton("اندروید:", callback_data="just_for_show")],
+            [InlineKeyboardButton("V2Box", url="https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690"),
+             InlineKeyboardButton("آیفون و مک:", callback_data="just_for_show")],
+            [InlineKeyboardButton("V2RayN (core)", url="https://github.com/2dust/v2rayN/releases"),
+             InlineKeyboardButton("ویندوز:", callback_data="just_for_show")],
             [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]
         ]
-    elif help_what == 'mac':
-        text = "*برای آیفون و مک میتونید از نرم‌افزار V2Box استفاده کنید.*"
+    elif help_what == 'personalize':
+        text = ("<b>شخصی سازی ربات از قسمت تنظیمات قابل انجام است</b>"
+                f"\n\n• کیف پول:"
+                f"\nبا شارژ کردن کیف پول خودتون میتونید تمام تراکنش ها رو بدون نیاز به تایید و بدون تاخیر انجام بدید"
+                f"\nهمچنین بازپرداخت حذف سرویس به کیف پولتون برمیگرده."
+                f"\nاگر سرویس شما قطع بشه و مشکل از سمت سرور باشه، مبلغ خسارت محاسبه و به کیف پول اضافه میشه"
+                f"\n\n• :نوتیفیکبشن"
+                f"\nبا تنظیم نوتیفیکیشن ربات اعلان های مربوط به تاریخ انقضا سرویس و همچنین حجم ترافیک باقیمونده شما رو به اطلاعاتون میرسونه"
+                f"\nربات 5 دقیقه یک بار اطلاعات رو بررسی میکنه"
+                f"\n\n• :مشاهده تراکنش ها"
+                f"\nهمه تراکنش های شما توسط ربات ثبت میشه و همیشه میتونید بهشون دسترسی داشته باشید"
+                )
         keyboard = [
-            [InlineKeyboardButton("دانلود از apple.com", url="https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690?platform=mac")],
-            [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]
-        ]
-    elif help_what == 'windows':
-        text = ("*برای ویندوز میتونید از نرم‌افزار v2rayN یا nekoray استفاده کنید.*"
-                "\n\n• برای اتصال کافیه نرم افزار رو باز کنید و کانفیگ کپی شده رو paste کنید."
-                "\n\n*حتما نسخه core نرم افزار 2rayN رو دانلود کنید.*")
-        keyboard = [
-            [InlineKeyboardButton("دانلود v2rayN", url="https://github.com/2dust/v2rayN/releases")],
-            [InlineKeyboardButton("دانلود nekoray", url="https://github.com/Matsuridayo/nekoray/releases")],
-            [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]
-        ]
-    elif help_what == 'linux':
-        text = "*به دلیل طولانی بودن مطلب، در ربات قرار نگرفته و شما میتونید از طریق سایت های زیر توضیحات فنی و دقیق رو بخونید*"
-        keyboard = [
-            [InlineKeyboardButton("نحوه پروکسی کردن اوبونتو، سایت linuxbabe", url="https://www.linuxbabe.com/ubuntu/set-up-v2ray-proxy-server")],
-            [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]
-        ]
+            [InlineKeyboardButton("تنظیمات ⚙️", callback_data="setting")],
+            [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]]
 
-    elif help_what == 'v2ray':
-        text = ('نتیجه گیری V2Ray یک سرویس VPN قدرتمند است که عملکردهای پیشرفته پروکسی مانند مبهم سازی داده ها، شکل دادن به ترافیک و نظارت بر شبکه را ارائه می دهد. چه بخواهید سانسور را دور بزنید، از حریم خصوصی آنلاین خود محافظت کنید یا عملکرد VPN خود را بهینه کنید، V2Ray شما را تحت پوشش قرار می دهد.'
-                '\n\nبیاید قسمت های مختلف یک کانفیگ v2ray رو بررسی کنیم:'
-                '\nvless://81462468231_1@admin.ggkala.shop:30508?security=&type=tcp&path=/&headerType=http&host=ponisha.ir&encryption=none#zahra-nylwsc07'
-                '\n\nاولین قسمت یک کانفیگ نوع پروتکول رو مشخص میکنه که در این کانفیگ از vless استفاده شده که یک پروتوکل سبک و سریع و متمرکز بر امنیته:'
-                '\nvlees://'
-                '\n\nقسمت بعد آیدی یک کانفیگ یا uuid هست، که یک ایدی یونیک بین همه کانفیگ های دیگست و از اون برای مشخص کردن کانفیگ شما از بقیه استفاده میشه'
-                '\n81462468231_1'
-                '\n\nقسمت بعدی آدرس و پورت سرور متصل رو مشخص میکنه که اینجا از دامنه استفاده شده که به ip سرور ما اشاره میکنه'
-                '\n@admin.ggkala.shop:30508'
-                '\n\nبعد از اون امنیت یک کانفیگ و روش اتصال ما به سرور مشخص میشه که این کانیفگ از روش های امن کردن اتصال استفاده نمیکنه و روش اتصال با سرور هم tcp هست'
-                '\nsecurity=&type=tcp'
-                '\n\nبعد از اون مسیر اتصال سرور و مدل هدر مشخص میشه که این کانفیگ مسیر روت داره و هدر تایپ http'
-                '\npath=/&headerType=http'
-                '\n\nدر آخر هاست که برای گمراه کردن ترافیکاستفاده میشه که تو این کانفیگ از پونیشا استفاده شده تا باعث دیرتر فیلتر شدن کانفیگ بشه، میتونید این رو عوض کنید و یک سایت دلخواه بزارید، همچنین encryption اشاره به مدل رمزنگاره داره که اینجا از چیزی استفاده نشده'
-                '\nhost=ponisha.ir&encryption=none'
-                '\n\nهرچیزی که بعد از # تو کانفیگ بیاد حساب نمیشه و صرفا یک توضیح و راهنماییه که ما از اسم کاربر استفاده کردیم'
-                '\nzahra-nylwsc07')
-        keyboard = [[InlineKeyboardButton("بیشتر یاد بگیرید", url="https://www.v2ray.com/en/")],
-                    [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]]
+    elif help_what == 'robots_service':
+        text = ("<b>ربات سرویس های مختلفی ارائه میده، لطفا سرویس ها رو بررسی کنید و مطمئن بشید کدوم مناسب شماست</b>"
+                "\n\n• سرویس آماده:"
+                "\nاین سرویس ها حجم و ترافیک مشخصی دارن و انتخاب راحتی محسوب میشن"
+                "\n\n• سرویس دلخواه:"
+                "\nاین سرویس به شما اجازه میده حجم و ترافیک رو مطابق میل خودتون تنظیم کنید و انتخاب بهتری داشته باشید")
 
-    query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+        keyboard = [
+            [InlineKeyboardButton("🛒 خرید سرویس", callback_data="select_server")],
+            [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]]
+
+    query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
 
 def support(update, context):
@@ -781,9 +766,6 @@ def support(update, context):
 def check_all_configs(context, context_2=None):
     if context_2:
         context = context_2
-        user_data = context.user_data
-    else:
-        user_data = context.job.context
 
     get_all = api_operation.get_all_inbounds()
     get_from_db = sqlite_manager.select(column='id,chat_id,client_email,status,date,notif_day,notif_gb', table='Purchased')
@@ -794,23 +776,19 @@ def check_all_configs(context, context_2=None):
             for user in get_from_db:
                 if user[2] == client['email']:
                     list_of_notification = [notif for notif in get_users_notif if notif[0] == user[1]]
-                    user_data['user_for_edit_text'] = user[0]
-                    user_data['traffic_for_upgrade'] = get_users_notif[0][4]
-                    user_data['period_for_upgrade'] = get_users_notif[0][5]
-                    user_data['get_users_notif'] = get_users_notif
                     if not client['enable'] and user[3]:
                         text = ("🔴 اطلاع رسانی اتمام سرویس"
                                 f"\nدرود {list_of_notification[0][3]} عزیز، سرویس شما با نام {user[2]} به پایان رسید!"
                                 f"\nدر صورتی که تمایل دارید نسبت به بررسی و یا تمدید سرویس اقدام کنید.")
-                        user_data['config_end_message'] = text
                         keyboard = [
                             [InlineKeyboardButton("خرید سرویس جدید", callback_data=f"select_server"),
                              InlineKeyboardButton("تمدید همین سرویس", callback_data=f"personalization_service_lu_{user[0]}")],
                             [InlineKeyboardButton("❤️ تجربه استفاده از فری‌بایت رو به اشتراک بگذارید:", callback_data=f"just_for_show")],
-                            [InlineKeyboardButton("عالی بود", callback_data=f"rate_perfect_{list_of_notification[0][3]}_{list_of_notification[0][0]}")],
-                            [InlineKeyboardButton("معمولی و منصفانه بود", callback_data=f"rate_ok_{list_of_notification[0][3]}_{list_of_notification[0][0]}")],
-                            [InlineKeyboardButton("ناامید شدم", callback_data=f"rate_bad_{list_of_notification[0][3]}_{list_of_notification[0][0]}")],
-                            [InlineKeyboardButton("نظری ندارم", callback_data=f"rate_havenotidea_{list_of_notification[0][3]}_{list_of_notification[0][0]}")]
+                            [InlineKeyboardButton("عالی بود", callback_data=f"rate_perfect&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}")],
+                            [InlineKeyboardButton("معمولی و منصفانه بود", callback_data=f"rate_ok&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}")],
+                            [InlineKeyboardButton("نا امید شدم", callback_data=f"rate_bad&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}")],
+                            [InlineKeyboardButton("مشکل اتصال داشتم", callback_data=f"rate_connectionProblem&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}"),
+                             InlineKeyboardButton("نظری ندارم", callback_data=f"rate_haveNotIdea&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}")]
                         ]
                         context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
                         sqlite_manager.update({'Purchased': {'status': 0}}, where=f'id = {user[0]}')
@@ -852,23 +830,24 @@ def check_all_configs(context, context_2=None):
 def rate_service(update, context):
     query = update.callback_query
     try:
+        purchased_id = int(re.sub(r'rate_(.*)_', '', query.data))
         check = query.data.replace('_', ' ')
-        context.bot.send_message(ADMIN_CHAT_ID, text=check)
-        user = context.user_data['user_for_edit_text']
-        get_users_notif = context.user_data['get_users_notif']
-        context.user_data['traffic_for_upgrade'] = get_users_notif[0][4]
-        context.user_data['period_for_upgrade'] = get_users_notif[0][5]
-        config_end_message = context.user_data['config_end_message']
+        context.bot.send_message(ADMIN_CHAT_ID, text=check.replace('&', ' '))
+        server_name = sqlite_manager.select(column='client_email', table='Purchased', where=f'id = {purchased_id}')[0][0]
+        text = ("🔴 اطلاع رسانی اتمام سرویس"
+                f"\nدرود {query.from_user['name']} عزیز، سرویس شما با نام {server_name} به پایان رسید!"
+                f"\nدر صورتی که تمایل دارید نسبت به بررسی و یا تمدید سرویس اقدام کنید.")
+
         keyboard = [
             [InlineKeyboardButton("خرید سرویس جدید", callback_data=f"select_server"),
-             InlineKeyboardButton("تمدید همین سرویس", callback_data=f"personalization_service_lu_{user}")]]
+             InlineKeyboardButton("تمدید همین سرویس", callback_data=f"personalization_service_lu_{purchased_id}")]]
         query.answer('متشکریم ❤️')
-        query.edit_message_text(text=config_end_message, reply_markup=InlineKeyboardMarkup(keyboard))
+        query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard))
     except Exception as e:
         keyboard = [
             [InlineKeyboardButton("خرید سرویس جدید", callback_data=f"select_server")]]
         query.edit_message_text(text='مشکلی وجود داشت!', reply_markup=InlineKeyboardMarkup(keyboard))
-        print(e)
+        ready_report_problem_to_admin(context, 'RATE SERVICE', query.message.chat_id, e)
 
 
 def setting(update, context):
@@ -950,13 +929,8 @@ def financial_transactions(update, context):
 
 
 def start_timer(update, context):
-    context.job_queue.run_repeating(check_all_configs, interval=600, first=0, context=context.user_data)
+    context.job_queue.run_repeating(check_all_configs, interval=300, first=0, context=context.user_data)
     update.message.reply_text('Timer started! ✅')
-
-
-def export_database(update, context):
-    check = api_operation.create_backup()
-    update.message.reply_text(f'OK | {check}')
 
 
 def wallet_page(update, context):
@@ -1110,29 +1084,33 @@ def pay_by_card_for_credit(update, context):
 
 def pay_by_card_for_credit_admin(update, context):
     user = update.message.from_user
-    package = context.user_data['credit_package']
-    credit_id = context.user_data['credit_id']
-    price = package[0][0]
-    text = "- Check the new payment to the card [CHARGE CREDIT WALLET]:\n\n"
-    text += f"Name: {user['first_name']}\nUserName: @{user['username']}\nID: {user['id']}\n\n"
-    keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_credit_{credit_id}")]
-        , [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_credit_{credit_id}")]]
-    if update.message.photo:
-        file_id = update.message.photo[-1].file_id
-        text += f"caption: {update.message.caption}" or 'Witout caption!'
-        text += f"\n\nPrice: {price:,} T"
-        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, reply_markup=InlineKeyboardMarkup(keyboard))
-        update.message.reply_text(f'*سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
-    elif update.message.text:
-        text += f"Text: {update.message.text}"
-        text += f"\n\nPrice: {price:,} T"
-        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
-        update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
-    else:
-        update.message.reply_text('مشکلی وجود داره!')
+    try:
+        package = context.user_data['credit_package']
+        credit_id = context.user_data['credit_id']
+        price = package[0][0]
+        text = "- Check the new payment to the card [CHARGE CREDIT WALLET]:\n\n"
+        text += f"Name: {user['first_name']}\nUserName: @{user['username']}\nID: {user['id']}\n\n"
+        keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_credit_{credit_id}")]
+            , [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_credit_{credit_id}")]]
+        if update.message.photo:
+            file_id = update.message.photo[-1].file_id
+            text += f"caption: {update.message.caption}" or 'Witout caption!'
+            text += f"\n\nPrice: {price:,} T"
+            context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, reply_markup=InlineKeyboardMarkup(keyboard))
+            update.message.reply_text(f'*سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
+        elif update.message.text:
+            text += f"Text: {update.message.text}"
+            text += f"\n\nPrice: {price:,} T"
+            context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+            update.message.reply_text(f'*درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه*', parse_mode='markdown')
+        else:
+            update.message.reply_text('مشکلی وجود داره!')
 
-    context.user_data.clear()
-    return ConversationHandler.END
+        context.user_data.clear()
+        return ConversationHandler.END
+    except Exception as e:
+        ready_report_problem_to_admin(context, 'SEND EVIDENCE FOR CHARGE CREDIT TO ADMIN', update.message.from_user['id'], e)
+        update.message.reply_text('مشکلی در ارسال پیش اومد!\nگزارش به ادمین ارسلا شد و به زودی نتیجه بهتون اعلام میشه.')
 
 
 credit_charge = ConversationHandler(
@@ -1181,6 +1159,8 @@ def apply_card_pay_credit(update, context):
             query.answer('Done ✅')
             query.delete_message()
     except Exception as e:
+        ready_report_problem_to_admin(context, 'APPLY CARD PAY FOR CREDIT',
+                                      query.message.chat_id, e)
         print('errot:', e)
 
 
@@ -1260,8 +1240,10 @@ def pay_from_wallet(update, context):
                 query.edit_message_text(text='سرویس شما با موفقیت ارتقا یافت.✅', reply_markup=InlineKeyboardMarkup(keyboard))
 
             except Exception as e:
+                ready_report_problem_to_admin(context, 'PAY FROM WAWLLET FOR UPGRADE',
+                                              update.message.from_user['id'], e)
                 print(e)
-                query.answer('مشکلی وجود دارد!')
+                query.answer('مشکلی وجود دارد! گزارش مشکل به ادمین ارسال شد')
         elif 'payment_by_wallet_' in query.data:
             id_ = int(query.data.replace('payment_by_wallet_', ''))
             package = sqlite_manager.select(table='Product', where=f'id = {id_}')
@@ -1303,10 +1285,12 @@ def pay_from_wallet(update, context):
 
     except Exception as e:
         print(e)
+        ready_report_problem_to_admin(context, 'PAY FROM WAWLLET',
+                                      update.message.from_user['id'], e)
         something_went_wrong(update, context)
 
 
-def remove_service(update, contetx):
+def remove_service(update, context):
     query = update.callback_query
     chat_id = query.message.chat_id
 
@@ -1373,6 +1357,8 @@ def remove_service(update, contetx):
 
     except Exception as e:
         print(e)
+        ready_report_problem_to_admin(context, 'REMOVE SERVICE',
+                                      update.message.from_user['id'], e)
         query.answer('مشکلی وجود دارد!')
 
 
@@ -1382,21 +1368,22 @@ def say_to_every_one(update, context):
 
     for user in all_user:
         try:
-            print(f'SEND FOR {user[1]} | {user[0]}')
             context.bot.send_message(chat_id=user[0], text=text, parse_mode='html')
         except Exception as e:
-            print(f'BLOCKED BY USER {user[1]} | {user[0]}')
+            context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=f'BLOCKED BY USER {user[1]} | {user[0]}', parse_mode='html')
             print(e)
 
 
 def reserve_service(update, context):
     """
-    user_message = 'chat_id,,inbound_id,period,traffic'
+    user_message = 'chat_id,product_id'
     """
-    user_message = update.message.text.split(',')
-
+    user_message = update.message.text.replace('/reserve_service ', '').split(',')
+    print(user_message)
     user = sqlite_manager.select(column='name,user_name', table='User', where=f'chat_id = {user_message[0]}')
 
     ex = sqlite_manager.insert('Purchased', rows=[
         {'active': 0, 'status': 0, 'name': user[0][0], 'user_name': user[0][1],
-         'chat_id': user_message[0], 'product_id': user_message[2], 'notif_day': 0, 'notif_gb': 0}])
+         'chat_id': user_message[0], 'product_id': user_message[1], 'notif_day': 0, 'notif_gb': 0}])
+
+    print(ex)

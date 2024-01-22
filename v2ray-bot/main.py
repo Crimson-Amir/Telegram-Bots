@@ -5,14 +5,18 @@ from database import create_database
 from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, get_service_con, apply_card_pay,
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
                    personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service, help_sec,
-                   show_help, support, setting, change_notif, start_timer, export_database, financial_transactions,
+                   show_help, support, setting, change_notif, start_timer, financial_transactions,
                    wallet_page, financial_transactions_wallet, payment_page_upgrade, buy_credit_volume,
                    pay_way_for_credit, credit_charge, apply_card_pay_credit, pay_from_wallet, remove_service,
-                   check_all_configs, say_to_every_one, remove_service_from_db, rate_service, get_pay_file, just_for_show)
+                   check_all_configs, say_to_every_one, remove_service_from_db, rate_service, get_pay_file, just_for_show,
+                   reserve_service)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service, run_in_system
 from private import ADMIN_CHAT_ID
 import requests
+import logging
 
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
 requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'BOT START NOW! | /start_timer'})
@@ -32,9 +36,9 @@ def main():
         'all_service': all_service,
         'del_service': del_service,
         'start_timer': start_timer,
-        'export_database': export_database,
         'run_in_system': run_in_system,
         'say_to_every_one': say_to_every_one,
+        'reserve_service': reserve_service,
     }
 
     for key, value in commands.items():
@@ -141,9 +145,13 @@ def main():
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='get_test_service'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='guidance'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='support'))
+    dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='not_ready_yet'))
     dp.add_handler(CallbackQueryHandler(all_query_handler))
 
-    updater.start_polling(1)
+    job = updater.job_queue
+    job.run_repeating(check_all_configs, interval=300, first=0)
+
+    updater.start_polling(0)
     updater.idle()
 
 
