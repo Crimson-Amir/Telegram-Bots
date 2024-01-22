@@ -9,7 +9,7 @@ from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, 
                    wallet_page, financial_transactions_wallet, payment_page_upgrade, buy_credit_volume,
                    pay_way_for_credit, credit_charge, apply_card_pay_credit, pay_from_wallet, remove_service,
                    check_all_configs, say_to_every_one, remove_service_from_db, rate_service, get_pay_file, just_for_show,
-                   reserve_service)
+                   admin_reserve_service, message_to_user)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service, run_in_system
 from private import ADMIN_CHAT_ID
 import requests
@@ -38,7 +38,8 @@ def main():
         'start_timer': start_timer,
         'run_in_system': run_in_system,
         'say_to_every_one': say_to_every_one,
-        'reserve_service': reserve_service,
+        'admin_reserve_service': admin_reserve_service,
+        'message_to_user': message_to_user,
     }
 
     for key, value in commands.items():
@@ -126,7 +127,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='period_high_lu_10'))
     dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='period_high_lu_1'))
 
-    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='buy_credit'))
+    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='buy_credit_volume'))
     dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='value_low_50000'))
     dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='value_low_5000'))
     dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='value_high_5000'))

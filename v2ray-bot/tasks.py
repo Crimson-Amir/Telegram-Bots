@@ -194,7 +194,6 @@ def send_clean_for_customer(query, context, id_):
                                        caption=f' سرویس شما با موفقیت فعال شد✅\n\n*• میتونید جزئیات سرویس رو از بخش "سرویس های من" مشاهده کنید.\n\n✪ لطفا سرویس رو به صورت مستقیم از طریق پیام رسان های ایرانی یا پیامک ارسال نکنید، با کلیک روی گزینه "دانلود به صورت فایل" سرویس رو به صورت فایل ارسال کنید.* \n\n\nلینک:\n{returned_copy}',
                                        chat_id=get_client[0][4], reply_markup=InlineKeyboardMarkup(keyboard),
                                        parse_mode='markdown')
-                query.answer('Done ✅')
                 with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
                     e.write(
                         f"\n\n💸 پرداخت پول: خرید سرویس | وضعیت: ✅\nشماره سفارش:\n {get_client[0][5]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
@@ -203,15 +202,12 @@ def send_clean_for_customer(query, context, id_):
             else:
                 context.bot.send_message(ADMIN_CHAT_ID, f'🔴 SEND SERVICE TO CUSTOMER FAILED\nUSER: {get_client[0][4]}\nREASON: {returned}')
                 print('wrong: ', returned)
-                query.answer('Wrong')
                 return False
         except Exception as e:
             print(e)
             context.bot.send_message(ADMIN_CHAT_ID, f'🔴 SEND SERVICE TO CUSTOMER FAILED\nUSER: {get_client[0][4]}\nERROR REASON: {e}')
-            query.answer(f'Failed ❌ | {e}')
             return False
     else:
-        query.answer('Failed ❌')
         context.bot.send_message(ADMIN_CHAT_ID, f'🔴 SEND SERVICE TO CUSTOMER FAILED\nADD CLIENT statUS: {create}')
         return False
 
@@ -431,8 +427,8 @@ def personalization_service(update, context):
                   f'\n\nحجم سرویس: {traffic}GB'
                   f'\nدوره زمانی: {period} روز'
                   f'\n*قیمت: {price:,}*')
-        keyboard = [[InlineKeyboardButton("خیر❌", callback_data=f"personalization_service_{id_}"),
-                     InlineKeyboardButton("بله✅", callback_data=f"service_{new_id}"),]]
+        keyboard = [[InlineKeyboardButton("خیر", callback_data=f"personalization_service_{id_}"),
+                     InlineKeyboardButton("بله", callback_data=f"service_{new_id}"),]]
 
         query.edit_message_text(text=texted, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         context.user_data.clear()
@@ -704,7 +700,7 @@ def help_sec(update, context):
             "\n\nدر اینجا میتونید در مورد نحوه اتصال، تجربه شخصی‌سازی ربات، انواع سرویس و موارد مرتبط مطالعه کنید.")
     keyboard = [
         [InlineKeyboardButton("• اپلیکیشن های مناسب برای اتصال", callback_data=f"apps_help")],
-        [InlineKeyboardButton("شخصی سازی و ویژگی ها", callback_data=f"personalize_help"),
+        [InlineKeyboardButton("شخصی‌سازی و ویژگی‌ها", callback_data=f"personalize_help"),
          InlineKeyboardButton("انواع سرویس های ربات", callback_data=f"robots_service_help")],
         [InlineKeyboardButton("• سوالات متداول", callback_data=f"not_ready_yet")],
         [InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]
@@ -728,15 +724,15 @@ def show_help(update, context):
         ]
     elif help_what == 'personalize':
         text = ("<b>شخصی سازی ربات از قسمت تنظیمات قابل انجام است</b>"
-                f"\n\n• کیف پول:"
-                f"\nبا شارژ کردن کیف پول خودتون میتونید تمام تراکنش ها رو بدون نیاز به تایید و بدون تاخیر انجام بدید"
+                f"\n\n<b>• کیف پول:</b>"
+                f"\nبا شارژ کردن کیف پول خودتون میتونید تمام تراکنش ها رو بدون نیاز به تایید و بدون تاخیر انجام بدید."
                 f"\nهمچنین بازپرداخت حذف سرویس به کیف پولتون برمیگرده."
-                f"\nاگر سرویس شما قطع بشه و مشکل از سمت سرور باشه، مبلغ خسارت محاسبه و به کیف پول اضافه میشه"
-                f"\n\n• :نوتیفیکبشن"
-                f"\nبا تنظیم نوتیفیکیشن ربات اعلان های مربوط به تاریخ انقضا سرویس و همچنین حجم ترافیک باقیمونده شما رو به اطلاعاتون میرسونه"
-                f"\nربات 5 دقیقه یک بار اطلاعات رو بررسی میکنه"
-                f"\n\n• :مشاهده تراکنش ها"
-                f"\nهمه تراکنش های شما توسط ربات ثبت میشه و همیشه میتونید بهشون دسترسی داشته باشید"
+                f"\nاگر سرویس شما قطع بشه و مشکل از سمت سرور باشه، مبلغ خسارت محاسبه و به کیف پول اضافه میشه."
+                f"\n\n<b>• نوتیفیکبشن:</b>"
+                f"\nبا تنظیم نوتیفیکیشن ربات اعلان های مربوط به تاریخ انقضا سرویس و همچنین حجم ترافیک باقیمونده شما رو به اطلاعاتون میرسونه."
+                f"\nربات 5 دقیقه یک بار اطلاعات رو بررسی میکنه."
+                f"\n\n<b>• تراکنش ها:</b>"
+                f"\nهمه تراکنش های شما توسط ربات ثبت میشه و همیشه میتونید بهشون دسترسی داشته باشید."
                 )
         keyboard = [
             [InlineKeyboardButton("تنظیمات ⚙️", callback_data="setting")],
@@ -744,10 +740,10 @@ def show_help(update, context):
 
     elif help_what == 'robots_service':
         text = ("<b>ربات سرویس های مختلفی ارائه میده، لطفا سرویس ها رو بررسی کنید و مطمئن بشید کدوم مناسب شماست</b>"
-                "\n\n• سرویس آماده:"
-                "\nاین سرویس ها حجم و ترافیک مشخصی دارن و انتخاب راحتی محسوب میشن"
-                "\n\n• سرویس دلخواه:"
-                "\nاین سرویس به شما اجازه میده حجم و ترافیک رو مطابق میل خودتون تنظیم کنید و انتخاب بهتری داشته باشید")
+                "\n\n<b>• سرویس های آماده:</b>"
+                "\nاین سرویس ها حجم و ترافیک مشخصی دارن و انتخاب راحتی هستن، مانند:\n سرویس 30 روزه - 15 گیگابایت - 30,000 تومن"
+                "\n\n<b>• سرویس دلخواه:</b>"
+                "\nاین سرویس به شما اجازه میده حجم و ترافیک رو مطابق میل خودتون تنظیم کنید و انتخاب شخصی سازی شده داشته باشید")
 
         keyboard = [
             [InlineKeyboardButton("🛒 خرید سرویس", callback_data="select_server")],
@@ -890,8 +886,8 @@ def change_notif(update, context):
 
         sqlite_manager.update({'User': {'notification_gb':traffic, 'notification_day': period}},where=f'chat_id = {query.message.chat_id}')
 
-        text = ('*• تنظیمات نوتیفیکشن رو مطابق میل خودتون تغییر بدید:*'
-                f'\n• ربات 10 دقیقه یک بار اطلاعات رو بررسی میکنه.'
+        text = ('*• تنظیمات رو مطابق میل خودتون تغییر بدید:*'
+                f'\n• ربات 5 دقیقه یک بار اطلاعات رو بررسی میکنه.'
                 f'\n\nدریافت اعلان بعد مصرف {traffic}% حجم'
                 f'\nدریافت اعلان {period} روز قبل تمام شدن سرویس')
         keyboard = [
@@ -944,7 +940,8 @@ def wallet_page(update, context):
 
         if lasts_operation:
             last_op = human_readable(f'{lasts_operation[0][7]}')
-            last_5 = "\n".join([f"{'💰 دریافت' if op[4] else '💸 برداشت'} {op[5]:,} تومان - {human_readable(op[7])}" for op in lasts_operation])
+            last_5 = "• تراکنش های اخیر:\n"
+            last_5 += "\n".join([f"{'💰 دریافت' if op[4] else '💸 برداشت'} {op[5]:,} تومان - {human_readable(op[7])}" for op in lasts_operation])
 
         else:
             last_op ='شما تا به حال تراکنشی در کیف پول نداشتید!'
@@ -952,7 +949,7 @@ def wallet_page(update, context):
 
         keyboard = [
             [InlineKeyboardButton("تازه سازی ⟳", callback_data=f"wallet_page"),
-             InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit")],
+             InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")],
             [InlineKeyboardButton("مشاهده تراکنش های کیف پول", callback_data=f"financial_transactions_wallet")],
             [InlineKeyboardButton("برگشت ↰", callback_data="setting")]]
 
@@ -960,7 +957,7 @@ def wallet_page(update, context):
             f"<b>اطلاعات کیف پول شما:</b>"
             f"\n\n• موجودی حساب: {get_credit:,} تومان"
             f"\n• آخرین تراکنش: {last_op}"
-            f"\n\n• تراکنش های اخیر:\n{last_5}"
+            f"\n\n{last_5}"
         )
         query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     except Exception as e:
@@ -996,7 +993,7 @@ def financial_transactions_wallet(update, context):
 def buy_credit_volume(update, context):
     query = update.callback_query
     try:
-        if query.data == "buy_credit":
+        if query.data == "buy_credit_volume":
             sqlite_manager.insert(table='Credit_History', rows=[{'active': 0, 'chat_id': query.message.chat_id, 'value': 25_000,
                                                                  'name': query.from_user.name, 'user_name': query.from_user.username,
                                                                  'operation': 1}])
@@ -1139,12 +1136,14 @@ def apply_card_pay_credit(update, context):
 
             sqlite_manager.update({'Credit_History': {'active': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}}
                                   ,where=f'id = "{id_}"')
+
             wallet_manage.add_to_wallet(get_credit[0][0], get_credit[0][1])
             context.bot.send_message(text='سفارش شما برای واریز وجه به کیف پول با موفقیت تایید شد ✅', chat_id=get_credit[0][0])
             query.answer('Done ✅')
             query.delete_message()
             with open(f'financial_transactions/{get_credit[0][0]}.txt', 'a', encoding='utf-8') as e:
                 e.write(f"\n\n💰 دریافت پول: واریز به کیف پول | وضعیت: ✅\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
+            context.bot.send_message(ADMIN_CHAT_ID, '🟢 WALLET OPERATOIN SUCCESSFULL')
 
         elif 'ok_card_pay_credit_refuse_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_credit_refuse_', ''))
@@ -1374,16 +1373,36 @@ def say_to_every_one(update, context):
             print(e)
 
 
-def reserve_service(update, context):
-    """
-    user_message = 'chat_id,product_id'
-    """
-    user_message = update.message.text.replace('/reserve_service ', '').split(',')
-    print(user_message)
-    user = sqlite_manager.select(column='name,user_name', table='User', where=f'chat_id = {user_message[0]}')
+def message_to_user(update, context, message=None, chat_id=None):
+    if not message:
+        chat_id = update.message.text.replace('/message_to_user ', '')
+        message = update.message.reply_to_message.text
+    text  = ("<b>🟠 یک پیام جدید از ادمین دریافت کردید:</b>"
+             f"\n\n{message}")
+    try:
+        context.bot.send_message(chat_id, text, parse_mode='html')
+        update.message.reply_text('SEND MESSAGE TO USER OK')
+    except Exception as e:
+        update.message.reply_text('somthing went wrong!')
+        ready_report_problem_to_admin(context, 'MESSAGE TO USER', update.message.from_user['id'], e)
 
-    ex = sqlite_manager.insert('Purchased', rows=[
-        {'active': 0, 'status': 0, 'name': user[0][0], 'user_name': user[0][1],
-         'chat_id': user_message[0], 'product_id': user_message[1], 'notif_day': 0, 'notif_gb': 0}])
+def admin_reserve_service(update, context):
+    """
+    user_message = 'chat_id,product_id, message'
+    """
+    user_message = update.message.text.replace('/admin_reserve_service ', '').split(',')
+    try:
+        user = sqlite_manager.select(column='name,user_name', table='User', where=f'chat_id = {user_message[0]}')
 
-    print(ex)
+        ex = sqlite_manager.insert('Purchased', rows=[
+            {'active': 0, 'status': 0, 'name': user[0][0], 'user_name': user[0][1],
+             'chat_id': user_message[0], 'product_id': user_message[1], 'notif_day': 0, 'notif_gb': 0}])
+
+        send_clean_for_customer(None, context, ex)
+
+        if user_message[2]:
+            message_to_user(update, context, user_message[2], user_message[0])
+        update.message.reply_text('RESERVE SERVICE OK')
+    except Exception as e:
+        update.message.reply_text('something went wrong')
+        ready_report_problem_to_admin(context, 'ADMIN RESERVE SERIVE', update.message.from_user['id'], e)
