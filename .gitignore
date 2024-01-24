@@ -3,3 +3,4 @@ __pycache__
 venv
 fifa.db
 *ApiKey.py
+v2ray-bot/private.py
