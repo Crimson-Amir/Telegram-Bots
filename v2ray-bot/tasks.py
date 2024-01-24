@@ -5,14 +5,16 @@ import private
 from sqlite_manager import ManageDb
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
-from private import ADMIN_CHAT_ID
 from admin_task import add_client_bot, api_operation, second_to_ms
 import qrcode
 from io import BytesIO
 import pytz
 from wallet import WalletManage
-from utilities import *
+from utilities import (human_readable,not_ready_yet,something_went_wrong,just_for_show,report_problem_to_admin,
+                       ready_report_problem_to_admin,format_traffic,record_operation_in_file,
+                       send_service_to_customer_report)
 import re
+from private import ADMIN_CHAT_ID
 
 sqlite_manager = ManageDb('v2ray')
 GET_EVIDENCE = 0
@@ -177,7 +179,8 @@ def send_clean_for_customer(query, context, id_):
     if create:
         get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
         try:
-            get_domain = sqlite_manager.select(table='Product', where=f'id = {get_client[0][6]}')[0][10]
+            get_product = sqlite_manager.select(table='Product', where=f'id = {get_client[0][6]}')
+            get_domain = get_product[0][10]
             returned = api_operation.get_client_url(client_email=get_client[0][9], inbound_id=get_client[0][7], domain=get_domain)
             if returned:
                 returned_copy = f'`{returned}`'
@@ -190,25 +193,31 @@ def send_clean_for_customer(query, context, id_):
                              InlineKeyboardButton("🎛 سرویس های من", callback_data=f"my_service")],
                             [InlineKeyboardButton("دریافت به صورت فایل", callback_data=f"create_txt_file")]]
                 context.user_data['v2ray_client'] = returned
+
                 context.bot.send_photo(photo=binary_data,
                                        caption=f' سرویس شما با موفقیت فعال شد✅\n\n*• میتونید جزئیات سرویس رو از بخش "سرویس های من" مشاهده کنید.\n\n✪ لطفا سرویس رو به صورت مستقیم از طریق پیام رسان های ایرانی یا پیامک ارسال نکنید، با کلیک روی گزینه "دانلود به صورت فایل" سرویس رو به صورت فایل ارسال کنید.* \n\n\nلینک:\n{returned_copy}',
                                        chat_id=get_client[0][4], reply_markup=InlineKeyboardMarkup(keyboard),
                                        parse_mode='markdown')
-                with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
-                    e.write(
-                        f"\n\n💸 پرداخت پول: خرید سرویس | وضعیت: ✅\nشماره سفارش:\n {get_client[0][5]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
-                context.bot.send_message(ADMIN_CHAT_ID, f'🟢 SEND SERVICE TO CUSTOMER SUCCESSFULLY\nUSER: {get_client[0][4]}')
+
+                record_operation_in_file(chat_id=get_client[0][4], price=get_product[0][7],
+                                         name_of_operation=f'خرید سرویس {get_client[0][2]}', operation=0,
+                                         status_of_pay=1, context=context)
+
+
+                send_service_to_customer_report(context, status=1, chat_id=get_client[0][4], service_name=get_client[0][2])
                 return True
             else:
-                context.bot.send_message(ADMIN_CHAT_ID, f'🔴 SEND SERVICE TO CUSTOMER FAILED\nUSER: {get_client[0][4]}\nREASON: {returned}')
+                send_service_to_customer_report(context, status=0, chat_id=get_client[0][4], service_name=get_client[0][2], more_detail=returned)
                 print('wrong: ', returned)
                 return False
         except Exception as e:
             print(e)
-            context.bot.send_message(ADMIN_CHAT_ID, f'🔴 SEND SERVICE TO CUSTOMER FAILED\nUSER: {get_client[0][4]}\nERROR REASON: {e}')
+            send_service_to_customer_report(context, status=0, chat_id=get_client[0][4], service_name=get_client[0][2],
+                                            more_detail='ERROR IN SEND CLEAN FOR CUSTOMER', error=e)
             return False
     else:
-        context.bot.send_message(ADMIN_CHAT_ID, f'🔴 SEND SERVICE TO CUSTOMER FAILED\nADD CLIENT statUS: {create}')
+        send_service_to_customer_report(context, status=0, chat_id=None, service_name=None,
+                                        more_detail=f'EEROR IN ADD CLIENT (SEND CLEAN FOR CUSTOMER)\n{create}')
         return False
 
 
@@ -231,9 +240,9 @@ def apply_card_pay(update, context):
             context.bot.send_message(text=f'متاسفانه درخواست شما برای ثبت سرویس پذیرفته نشد❌\n ارتباط با پشتیبانی: \n @Fupport ', chat_id=get_client[0][4])
             query.answer('Done ✅')
             query.delete_message()
-            with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
-                e.write(f"\n\n💸 پرداخت پول: خرید سرویس | وضعیت: ❌\nشماره سفارش:\n {get_client[0][5]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
-
+            record_operation_in_file(chat_id=get_client[0][4], price=0,
+                                     name_of_operation=f'خرید سرویس {get_client[0][2]}', operation=0,
+                                     status_of_pay=0, context=context)
 
         elif 'cancel_pay' in query.data:
             query.answer('Done ✅')
@@ -628,6 +637,8 @@ def apply_card_pay_lu(update, context):
             get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
             user_db = sqlite_manager.select(table='User', where=f'chat_id = {get_client[0][4]}')
 
+            price = (user_db[0][5] * private.PRICE_PER_GB) + (user_db[0][6] * private.PRICE_PER_DAY)
+
             ret_conf = api_operation.get_client(get_client[0][9])
             now = datetime.now(pytz.timezone('Asia/Tehran'))
 
@@ -658,18 +669,24 @@ def apply_card_pay_lu(update, context):
             context.bot.send_message(text='سفارش شما برای تمدید و یا ارتقا با موفقیت تایید شد ✅', chat_id=get_client[0][4])
             query.answer('Done ✅')
             query.delete_message()
-            with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
-                e.write(f"\n\n💸 پرداخت پول: تمدید یا ارتقا سرویس | وضعیت: ✅\nنام سرویس: {get_client[0][9]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
-            context.bot.send_message(ADMIN_CHAT_ID, '1 - SEND SERVICE TO CUSTOMER SUCCSESFULL!')
+
+            record_operation_in_file(chat_id=get_client[0][4], price=price,
+                                     name_of_operation=f'تمدید یا ارتقا سرویس {get_client[0][2]}', operation=0,
+                                     status_of_pay=1, context=context)
+
+            send_service_to_customer_report(context, status=1, service_name=get_client[0][2], chat_id=get_client[0][4],)
 
         elif 'ok_card_pay_lu_refuse_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_lu_refuse_', ''))
             get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
+
             context.bot.send_message(text=f'متاسفانه درخواست شما برای تمدید یا ارتقا سرویس پذیرفته نشد❌\n ارتباط با پشتیبانی: \n @Fupport ', chat_id=get_client[0][4])
             query.answer('Done ✅')
             query.delete_message()
-            with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
-                e.write(f"\n\n💸 پرداخت پول: تمدید یا ارتقا سرویس | وضعیت: ❌\nنام سرویس: {get_client[0][9]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
+
+            record_operation_in_file(chat_id=get_client[0][4], price=0,
+                                     name_of_operation=f'تمدید یا ارتقا سرویس {get_client[0][2]}', operation=0,
+                                     status_of_pay=0, context=context)
 
         elif 'cancel_pay' in query.data:
             query.answer('Done ✅')
@@ -694,15 +711,16 @@ def get_free_service(update, context):
         ready_report_problem_to_admin(context, text='TAKE A FREE SERVICE', chat_id=query.message.chat_id, error=e)
         query.answer('ببخشید، مشکلی وجود داشت!')
 
+
 def help_sec(update, context):
     query = update.callback_query
     text = ("<b>به بخش راهنمای ربات خوش آمدید!</b>"
-            "\n\nدر اینجا میتونید در مورد نحوه اتصال، تجربه شخصی‌سازی ربات، انواع سرویس و موارد مرتبط مطالعه کنید.")
+            "\n\nمیتونید در مورد نحوه اتصال، تجربه شخصی‌سازی ربات، انواع سرویس و موارد مرتبط مطالعه کنید.")
     keyboard = [
-        [InlineKeyboardButton("• اپلیکیشن های مناسب برای اتصال", callback_data=f"apps_help")],
-        [InlineKeyboardButton("شخصی‌سازی و ویژگی‌ها", callback_data=f"personalize_help"),
-         InlineKeyboardButton("انواع سرویس های ربات", callback_data=f"robots_service_help")],
-        [InlineKeyboardButton("• سوالات متداول", callback_data=f"not_ready_yet")],
+        [InlineKeyboardButton("اپلیکیشن های مناسب برای اتصال", callback_data=f"apps_help")],
+        [InlineKeyboardButton("شخصی‌سازی-ویژگی‌ها", callback_data=f"personalize_help"),
+         InlineKeyboardButton("آشنایی با سرویس‌ها", callback_data=f"robots_service_help")],
+        [InlineKeyboardButton("• سوالات متداول", callback_data=f"people_ask_help")],
         [InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]
     ]
     query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
@@ -749,8 +767,43 @@ def show_help(update, context):
             [InlineKeyboardButton("🛒 خرید سرویس", callback_data="select_server")],
             [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]]
 
+    elif help_what == 'people_ask':
+        text = "<b>در این قسمت میتونید جواب سوالات متداول رو پیدا کنید:</b>"
+
+        keyboard = [
+            [InlineKeyboardButton("استفاده از vpn مصرف اینترنت رو افزایش میدهد؟", callback_data="ask_vpn_increase_traffic")],
+            [InlineKeyboardButton("میتوانم سرویس خریداری شده را حذف و مبلغ رو برگردانم؟", callback_data="ask_can_i_remove_service")],
+            [InlineKeyboardButton("در صورت قطعی و فیلتر شدن سرویس، تکلیف چیست؟", callback_data="ask_what_if_service_blocked")],
+            [InlineKeyboardButton("چرا با v2ray، نمیتوانم وارد سایت های ایرانی شوم؟", callback_data="ask_persian_web_dont_open")],
+            [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]]
+
     query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
+
+def people_ask(update, context):
+    query = update.callback_query
+    help_what = query.data.replace('ask_', '')
+
+    if help_what == 'vpn_increase_traffic':
+        text = ("<b>خیر، به طول کلی استفاده از vpn باعث افزایش مصرف ترافیک نمیشه!"
+                "\n\nدر جهان، vpn برای افزایش امنیت استفاده میشه، بعضی از vpn ها رمزنگاری رو به درخواست های شما اضافه میکنن"
+                " که باعث امنیت بالاتر میشه و حجم مصرف رو مقدار خیلی کمی افزایش میده."
+                "\n\nدر دیگر موارد، vpn ها مصرف ترافیک رو افزایش نمیدن</b>")
+
+    elif help_what == 'can_i_remove_service':
+        text = "<b>بله، میتونید به هر دلیلی سرویس مورد نظر خودتون رو بعد از خرید حذف کنید و مبلغ باقی مونده از سرویس به حساب شما برمیگرده.</b>"
+
+    elif help_what == 'what_if_service_blocked':
+        text = ("<b>اگر سرویس شما بلاک بشه، بعد از حل مشکل مبلغ خسارت حساب میشه و به کیف پول شما اضافه میشه."
+                "همچنین فورا یک سرویس جدید از طریق ایمیل و ربات براتون ارسال میشه که میتونید استفاده کنید.</b>")
+
+    elif help_what == 'persian_web_dont_open':
+        text = "<b>دلیل این امر، افزایش امنیت سرویس ها است، بعضی از سایت های ایرانی ip شمارو در صورتی که از ایران نباشه گزارش میکنن و این باعث فیلتر شدن سرور ها میشه.</b>"
+
+    keyboard = [
+        [InlineKeyboardButton("برگشت ⤶", callback_data="people_ask_help")]
+    ]
+    query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
 def support(update, context):
     query = update.callback_query
@@ -788,6 +841,7 @@ def check_all_configs(context, context_2=None):
                         ]
                         context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
                         sqlite_manager.update({'Purchased': {'status': 0}}, where=f'id = {user[0]}')
+                        context.bot.send_message(ADMIN_CHAT_ID, text=f'SERVICE OF {list_of_notification[0][3]} NAMED {user[0]} ', reply_markup=InlineKeyboardMarkup(keyboard))
                     elif client['enable'] and not user[3]:
                         sqlite_manager.update(
                             {'Purchased': {'status': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran')), 'notif_day': 0, 'notif_gb': 0}}
@@ -915,14 +969,19 @@ def get_pay_file(update, context):
 
 def financial_transactions(update, context):
     query = update.callback_query
-    keyboard = [
-        [InlineKeyboardButton("دریافت فایل کامل", callback_data="get_pay_file")],
-        [InlineKeyboardButton("برگشت ↰", callback_data="setting")]
-    ]
-    with open(f'financial_transactions/{query.message.chat_id}.txt', 'r', encoding='utf-8') as e:
-        get_factors = e.read()
-    query.edit_message_text(text=f"لیست تراکنش های مالی شما: \n{get_factors[:4000]}", reply_markup=InlineKeyboardMarkup(keyboard))
-
+    try:
+        keyboard = [
+            [InlineKeyboardButton("دریافت فایل کامل", callback_data="get_pay_file")],
+            [InlineKeyboardButton("برگشت ↰", callback_data="setting")]
+        ]
+        with open(f'financial_transactions/{query.message.chat_id}.txt', 'r', encoding='utf-8') as e:
+            get_factors = e.read()
+        query.edit_message_text(text=f"لیست تراکنش های مالی شما: \n{get_factors[:4000]}", reply_markup=InlineKeyboardMarkup(keyboard))
+    except FileNotFoundError:
+        query.answer('شما تا به حال تراکنشی نداشتید!')
+    except Exception as e:
+        query.answer('مشکلی وجود داشت!')
+        ready_report_problem_to_admin(context,chat_id=query.message.chat_id, error=e, text='Error In Financial Transactions')
 
 def start_timer(update, context):
     context.job_queue.run_repeating(check_all_configs, interval=300, first=0, context=context.user_data)
@@ -1141,8 +1200,11 @@ def apply_card_pay_credit(update, context):
             context.bot.send_message(text='سفارش شما برای واریز وجه به کیف پول با موفقیت تایید شد ✅', chat_id=get_credit[0][0])
             query.answer('Done ✅')
             query.delete_message()
-            with open(f'financial_transactions/{get_credit[0][0]}.txt', 'a', encoding='utf-8') as e:
-                e.write(f"\n\n💰 دریافت پول: واریز به کیف پول | وضعیت: ✅\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
+
+            record_operation_in_file(chat_id=get_credit[0][0], price=get_credit[0][1],
+                                     name_of_operation=f'واریز به کیف پول', operation=1,
+                                     status_of_pay=1, context=context)
+
             context.bot.send_message(ADMIN_CHAT_ID, '🟢 WALLET OPERATOIN SUCCESSFULL')
 
         elif 'ok_card_pay_credit_refuse_' in query.data:
@@ -1151,15 +1213,17 @@ def apply_card_pay_credit(update, context):
             context.bot.send_message(text=f'متاسفانه درخواست شما برای واریز به کیف پول پذیرفته نشد❌\n ارتباط با پشتیبانی: \n @Fupport ', chat_id=get_credit[0][0])
             query.answer('Done ✅')
             query.delete_message()
-            with open(f'financial_transactions/{get_credit[0][0]}.txt', 'a', encoding='utf-8') as e:
-                e.write(f"\n\n💸 دریافت پول: واریز به کیف پول | وضعیت: ❌ \nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
+
+            record_operation_in_file(chat_id=get_credit[0][0], price=get_credit[0][1],
+                                     name_of_operation=f'واریز به کیف پول', operation=1,
+                                     status_of_pay=0, context=context)
+
             sqlite_manager.delete({'Credit_History': ["id", id_]})
         elif 'cancel_pay' in query.data:
             query.answer('Done ✅')
             query.delete_message()
     except Exception as e:
-        ready_report_problem_to_admin(context, 'APPLY CARD PAY FOR CREDIT',
-                                      query.message.chat_id, e)
+        ready_report_problem_to_admin(context, 'APPLY CARD PAY FOR CREDIT', query.message.chat_id, e)
         print('errot:', e)
 
 
@@ -1226,15 +1290,19 @@ def pay_from_wallet(update, context):
                 print(api_operation.update_client(get_client[0][10], data))
                 sqlite_manager.update({'Purchased': {'status': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran')), 'notif_day': 0, 'notif_gb': 0}}
                                       ,where=f'client_email = "{get_client[0][9]}"')
-                with open(f'financial_transactions/{get_client[0][4]}.txt', 'a', encoding='utf-8') as e:
-                    e.write(f"\n\n💸 پرداخت پول: تمدید یا ارتقا سرویس | وضعیت: ✅\nنام سرویس: {get_client[0][9]}\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
+
+                record_operation_in_file(chat_id=get_client[0][4], price=price,
+                                         name_of_operation=f'تمدید یا ارتقا سرویس {get_client[0][2]}', operation=0,
+                                         status_of_pay=1, context=context)
 
                 get_db = price
                 wallet_manage.less_from_wallet(query.from_user['id'], get_db)
+
                 sqlite_manager.insert(table='Credit_History',
                                       rows=[{'active': 1, 'chat_id': query.message.chat_id, 'value': get_db,
                                              'name': query.from_user.name, 'user_name': query.from_user.username,
                                              'operation': 0, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}])
+
                 keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="my_service")]]
                 query.edit_message_text(text='سرویس شما با موفقیت ارتقا یافت.✅', reply_markup=InlineKeyboardMarkup(keyboard))
 
@@ -1330,7 +1398,7 @@ def remove_service(update, context):
 
         elif 'accept_rm_ser_' in query.data:
 
-            get_uuid = sqlite_manager.select(column='client_id,inbound_id', table='Purchased', where=f'client_email = "{email}"')
+            get_uuid = sqlite_manager.select(column='client_id,inbound_id,name', table='Purchased', where=f'client_email = "{email}"')
             api_operation.del_client(get_uuid[0][1], get_uuid[0][0])
 
             sqlite_manager.delete({'Purchased': ['client_email', email]})
@@ -1343,9 +1411,10 @@ def remove_service(update, context):
             else:
                 wallet_manage.add_to_wallet(chat_id, price)
 
-                with open(f'financial_transactions/{chat_id}.txt', 'a', encoding='utf-8') as e:
-                    e.write(
-                        f"\n\n💰 دریافت پول: حذف سرویس و برگشت به کیف پول | وضعیت: ✅\nتاریخ: {datetime.now(pytz.timezone('Asia/Tehran'))}")
+                record_operation_in_file(chat_id=chat_id, price=price,
+                                         name_of_operation=f'حذف سرویس و بازپرداخت به کیف پول {get_uuid[0][2]}', operation=1,
+                                         status_of_pay=1, context=context)
+
 
                 sqlite_manager.insert(table='Credit_History',
                                       rows=[{'active': 1, 'chat_id': query.message.chat_id, 'value': price,

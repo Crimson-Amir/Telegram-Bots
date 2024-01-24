@@ -9,7 +9,7 @@ from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, 
                    wallet_page, financial_transactions_wallet, payment_page_upgrade, buy_credit_volume,
                    pay_way_for_credit, credit_charge, apply_card_pay_credit, pay_from_wallet, remove_service,
                    check_all_configs, say_to_every_one, remove_service_from_db, rate_service, get_pay_file, just_for_show,
-                   admin_reserve_service, message_to_user)
+                   admin_reserve_service, message_to_user, people_ask)
 from admin_task import admin_add_update_inbound, add_service, all_service, del_service, run_in_system
 from private import ADMIN_CHAT_ID
 import requests
@@ -46,6 +46,7 @@ def main():
         dp.add_handler(CommandHandler(key, value))
 
     dp.add_handler(CallbackQueryHandler(rate_service, pattern=r'rate_(.*)'))
+    dp.add_handler(CallbackQueryHandler(people_ask, pattern=r'ask_(.*)'))
     dp.add_handler(CallbackQueryHandler(remove_service_from_db, pattern=r'remove_service_from_db_(.*)'))
     dp.add_handler(CallbackQueryHandler(pay_from_wallet, pattern=r'accept_wallet_upgrade_pay_\d+'))
     dp.add_handler(CallbackQueryHandler(pay_from_wallet, pattern=r'payment_by_wallet_\d+'))

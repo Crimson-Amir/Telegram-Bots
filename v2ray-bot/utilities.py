@@ -1,4 +1,8 @@
+import datetime
+
 import arrow
+import pytz
+
 from private import ADMIN_CHAT_ID
 
 
@@ -44,3 +48,44 @@ def format_traffic(traffic, without_text=None):
         return f"{int(megabytes)} مگابایت"
     else:
         return f"{traffic} گیگابایت"
+
+def record_operation_in_file(chat_id, status_of_pay, price, name_of_operation, context, operation=1):
+    try:
+        if operation:
+            pay_emoji = '💰'
+            status_of_operation = 'دریافت پول'
+        else:
+            pay_emoji = '💸'
+            status_of_operation = 'پرداخت پول'
+
+        status_text = '🟢 تایید شده' if status_of_pay else '🔴 تایید نشده'
+        date = datetime.datetime.now(pytz.timezone('Asia/Tehran')).strftime('%Y/%m/%d - %H:%M:%S')
+
+        text = (f"\n\n{pay_emoji} {status_of_operation} | {status_text}"
+                f"\nمبلغ تراکنش: {price:,} تومان"
+                f"\nنام تراکنش: {name_of_operation}"
+                f"\nتاریخ: {date}")
+
+        with open(f'financial_transactions/{chat_id}.txt', 'a', encoding='utf-8') as e:
+            e.write(text)
+        return True
+
+    except Exception as e:
+        ready_report_problem_to_admin(context,'APLLY CARD PAY', chat_id, e)
+        return False
+
+
+def send_service_to_customer_report(context, status, chat_id, error=None, service_name=None, more_detail=None):
+    text = 'SEND SERVICE TO USER'
+    text = f'🟢 {text} SUCCESSFULL' if status else f'🔴 {text} FAILED'
+    text += f'\n\nUSER ID: {chat_id}'
+    text += f'\nSERVICE NAME: {service_name}'
+
+    if not more_detail:
+        context.bot.send_message(ADMIN_CHAT_ID, text)
+    else:
+        if error:
+            text += f'\nERROR TYPE: {type(error).__name__}'
+            text += f'\nERROR REASON:\n {error}'
+        text += f'\nMORE DETAIL:\n {more_detail}'
+        context.bot.send_message(ADMIN_CHAT_ID, text)
