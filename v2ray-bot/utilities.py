@@ -1,9 +1,9 @@
 import datetime
-
 import arrow
 import pytz
-
+from private import telegram_bot_token, ADMIN_CHAT_ID
 from private import ADMIN_CHAT_ID
+import requests
 
 
 def human_readable(number):
@@ -30,12 +30,14 @@ def report_problem_to_admin(context, text):
     context.bot.send_message(ADMIN_CHAT_ID, text, parse_mode='html')
 
 
-def ready_report_problem_to_admin(context, text, chat_id, error):
+def ready_report_problem_to_admin(context, text, chat_id, error, detail=None):
     text = ("🔴 Report Problem in Bot\n\n"
             f"Something Went Wrong In <b>{text}</b> Section."
             f"\nUser ID: {chat_id}"
             f"\nError Type: {type(error).__name__}"
             f"\nError Reason:\n{error}")
+
+    text += f"\nDetail:\n {detail}" if detail else ''
     context.bot.send_message(ADMIN_CHAT_ID, text, parse_mode='html')
     print(f'* REPORT TO ADMIN SUCCESS: ERR: {error}')
 
@@ -89,3 +91,15 @@ def send_service_to_customer_report(context, status, chat_id, error=None, servic
             text += f'\nERROR REASON:\n {error}'
         text += f'\nMORE DETAIL:\n {more_detail}'
         context.bot.send_message(ADMIN_CHAT_ID, text)
+
+
+def report_problem_to_admin_witout_context(text, chat_id, error, detail=None):
+    text = ("🔴 Report Problem in Bot\n\n"
+            f"Something Went Wrong In <b>{text}</b> Section."
+            f"\nUser ID: {chat_id}"
+            f"\nError Type: {type(error).__name__}"
+            f"\nError Reason:\n{error}")
+    text += f"\nDetail:\n {detail}" if detail else ''
+    telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
+    requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text': text})
+    print(f'* REPORT TO ADMIN SUCCESS: ERR: {error}')

@@ -2,15 +2,21 @@ from telegram.ext import (Updater, CommandHandler, CallbackQueryHandler)
 from private import telegram_bot_token
 from bot_start import bot_start, main_menu, send_main_message
 from database import create_database
-from tasks import (not_ready_yet, buy_service, all_query_handler, payment_page, get_service_con, apply_card_pay,
+
+from tasks import (buy_service, all_query_handler, payment_page, get_service_con, apply_card_pay,
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
                    personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service, help_sec,
                    show_help, support, setting, change_notif, start_timer, financial_transactions,
                    wallet_page, financial_transactions_wallet, payment_page_upgrade, buy_credit_volume,
                    pay_way_for_credit, credit_charge, apply_card_pay_credit, pay_from_wallet, remove_service,
-                   check_all_configs, say_to_every_one, remove_service_from_db, rate_service, get_pay_file, just_for_show,
-                   admin_reserve_service, message_to_user, people_ask)
-from admin_task import admin_add_update_inbound, add_service, all_service, del_service, run_in_system
+                   check_all_configs, remove_service_from_db, rate_service, get_pay_file,
+                   admin_reserve_service, people_ask)
+
+from utilities import not_ready_yet, just_for_show
+
+from admin_task import (admin_add_update_inbound, add_service, all_service, del_service, run_in_system,
+                        say_to_every_one, message_to_user, clear_depleted_service)
+
 from private import ADMIN_CHAT_ID
 import requests
 import logging
@@ -19,7 +25,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
-requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'BOT START NOW! | /start_timer'})
+requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'🟠 THE BOT STARTED'})
 create_database()
 
 
@@ -40,10 +46,15 @@ def main():
         'say_to_every_one': say_to_every_one,
         'admin_reserve_service': admin_reserve_service,
         'message_to_user': message_to_user,
+        'clear_depleted_service': clear_depleted_service
     }
 
     for key, value in commands.items():
         dp.add_handler(CommandHandler(key, value))
+
+    dp.add_handler(get_service_con)
+    dp.add_handler(get_service_con_per)
+    dp.add_handler(credit_charge)
 
     dp.add_handler(CallbackQueryHandler(rate_service, pattern=r'rate_(.*)'))
     dp.add_handler(CallbackQueryHandler(people_ask, pattern=r'ask_(.*)'))
@@ -55,7 +66,6 @@ def main():
 
     dp.add_handler(CallbackQueryHandler(remove_service, pattern=r'remove_service_(.*)'))
     dp.add_handler(CallbackQueryHandler(remove_service, pattern=r'accept_rm_ser_(.*)'))
-
 
     dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu'))
     dp.add_handler(CallbackQueryHandler(get_pay_file, pattern='get_pay_file'))
@@ -74,9 +84,6 @@ def main():
     dp.add_handler(CallbackQueryHandler(buy_service, pattern='select_server'))
     dp.add_handler(CallbackQueryHandler(payment_page, pattern=r'service_\d+'))
     dp.add_handler(CallbackQueryHandler(payment_page_upgrade, pattern=r'service_upgrade_\d+'))
-    dp.add_handler(get_service_con)
-    dp.add_handler(get_service_con_per)
-    dp.add_handler(credit_charge)
 
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern=r'payment_by_wallet_\d+'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern=r'payment_by_crypto_\d+'))
@@ -85,7 +92,6 @@ def main():
     dp.add_handler(CallbackQueryHandler(apply_card_pay, pattern=r'ok_card_pay_accept_\d+'))
     dp.add_handler(CallbackQueryHandler(apply_card_pay, pattern=r'ok_card_pay_refuse_\d+'))
     dp.add_handler(CallbackQueryHandler(apply_card_pay, pattern='cancel_pay'))
-
 
     dp.add_handler(CallbackQueryHandler(apply_card_pay_lu, pattern=r'accept_card_pay_lu_\d+'))
     dp.add_handler(CallbackQueryHandler(apply_card_pay_lu, pattern=r'refuse_card_pay_lu_\d+'))
@@ -101,7 +107,6 @@ def main():
     dp.add_handler(CallbackQueryHandler(apply_card_pay_credit, pattern='ok_card_pay_credit_refuse_'))
 
 
-
     dp.add_handler(CallbackQueryHandler(server_detail_customer, pattern=r'view_service_(.*)'))
     dp.add_handler(CallbackQueryHandler(show_help, pattern=r'(.*)_help'))
 
@@ -110,30 +115,20 @@ def main():
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern=r'personalization_service_\d+'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern='accept_personalization'))
 
-    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_low_10'))
-    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_low_1'))
-    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_high_1'))
-    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_high_10'))
-    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='period_low_10'))
-    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='period_low_1'))
-    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='period_high_1'))
-    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='period_high_10'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_low_\d+'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='traffic_high_\d+'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='period_low_\d+'))
+    dp.add_handler(CallbackQueryHandler(personalization_service, pattern='period_high_\d+'))
 
-    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='traffic_low_lu_10'))
-    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='traffic_low_lu_1'))
-    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='traffic_high_lu_10'))
-    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='traffic_high_lu_1'))
-    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='period_low_lu_10'))
-    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='period_low_lu_1'))
-    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='period_high_lu_10'))
-    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern='period_high_lu_1'))
+    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern=r'traffic_low_lu_\d+'))
+    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern=r'traffic_high_lu_\d+'))
+    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern=r'period_low_lu_\d+'))
+    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern=r'period_high_lu_\d+'))
 
     dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='buy_credit_volume'))
-    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='value_low_50000'))
-    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='value_low_5000'))
-    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='value_high_5000'))
-    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='value_high_50000'))
-    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern='set_credit_\d+'))
+    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern=r'value_low_\d+'))
+    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern=r'value_high_\d+'))
+    dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern=r'set_credit_\d+'))
     dp.add_handler(CallbackQueryHandler(pay_way_for_credit, pattern='pay_way_for_credit_\d+'))
 
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='notif_traffic_low_5'))

@@ -75,6 +75,21 @@ class ManageDb:
         self.db.commit()
 
     @connecting_manage
+    def advanced_delete(self, table):
+        """
+        :param table: {"table_name": [["name", "something"],['id', 2]]}
+        :return: delete column where name is somthing, from table_name
+        """
+        for key, value in table.items():
+            where = ''
+            for arg in value:
+                key_ = arg[0]
+                val_ = arg[1] if type(arg[1]) is int else f'"{arg[1]}"'
+                where += f'{key_} = {val_} AND '
+            self.cursor.execute(f"DELETE FROM {key} WHERE {where[:-4]}")
+        self.db.commit()
+
+    @connecting_manage
     def drop_table(self, table: str):
         self.cursor.execute(f"DROP TABLE IF EXISTS {table}")
         self.db.commit()

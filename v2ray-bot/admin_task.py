@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 import pytz
 from sqlite_manager import ManageDb
 from api_clean import XuiApiClean
+from private import ADMIN_CHAT_ID
+from utilities import ready_report_problem_to_admin
 
 sqlite_manager = ManageDb('v2ray')
 api_operation = XuiApiClean()
@@ -162,9 +164,9 @@ def add_client_bot(purchased_id, personalization=None):
                               where=f'id = {purchased_id}')
         print(create)
         if create['success']:
-            return True
+            return True, create
         else:
-            return False
+            return False, create
     except Exception as e:
         print(e)
         return False
@@ -177,3 +179,47 @@ def run_in_system(update, context):
     except Exception as e:
         text = f'There Is Problem\n{e}'
     update.message.reply_text(text=text)
+
+
+def say_to_every_one(update, context):
+    all_user = sqlite_manager.select('chat_id,name', 'User')
+    text = update.message.reply_to_message.text
+
+    for user in all_user:
+        try:
+            context.bot.send_message(chat_id=user[0], text=text, parse_mode='html')
+        except Exception as e:
+            context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=f'BLOCKED BY USER {user[1]} | {user[0]}', parse_mode='html')
+            print(e)
+
+
+def message_to_user(update, context, message=None, chat_id=None):
+    if not message:
+        chat_id = update.message.text.replace('/message_to_user ', '')
+        message = update.message.reply_to_message.text
+    text  = ("<b>🟠 یک پیام جدید دریافت کردید:</b>"
+             f"\n\n{message}")
+    try:
+        context.bot.send_message(chat_id, text, parse_mode='html')
+    except Exception as e:
+        update.message.reply_text('somthing went wrong!')
+        ready_report_problem_to_admin(context, 'MESSAGE TO USER', update.message.from_user['id'], e)
+
+
+def clear_depleted_service(update, context):
+    try:
+        get_inbound_id = int(update.message.text.replace('/clear_depleted_service ', ''))
+        customer_service = sqlite_manager.select(column='chat_id,name', table='Purchased', where=f'status = 0 and inbound_id = {get_inbound_id}')
+
+        reason = update.message.reply_to_message.text if update.message.reply_to_message else 'عدم تمدید و یا ارتقا سرویس'
+        text = f'سرویس شما با نام {0} که قبلا منقضی شده بود، حذف شد!\nعلت: {reason}'
+
+        for service in customer_service:
+            message_to_user(update, context, message=text.format(service[1]), chat_id=service[0])
+
+        api_operation.delete_depleted_clients(get_inbound_id)
+        sqlite_manager.advanced_delete({'Purchased': [['status', 0], ['inbound_id', get_inbound_id]]})
+        update.message.reply_text('Clear Depleted Service Successfull')
+
+    except Exception as e:
+        ready_report_problem_to_admin(context, 'Clear Depleted Service', update.message.from_user['id'], e)

@@ -134,6 +134,10 @@ class XuiApiClean:
         if self.check_json(inb):
             return inb.json()
 
+    def delete_depleted_clients(self, inbound_id):
+        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/delDepletedClients/{inbound_id}')
+        if self.check_json(inb):
+            return inb.json()
 
 # test = XuiApiClean()
 # print(test.get_ips('kyhm2hhk'))
