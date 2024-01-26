@@ -5,9 +5,11 @@ from sqlite_manager import ManageDb
 from api_clean import XuiApiClean
 from private import ADMIN_CHAT_ID
 from utilities import ready_report_problem_to_admin
+from wallet import WalletManage
 
 sqlite_manager = ManageDb('v2ray')
 api_operation = XuiApiClean()
+wallet_manage = WalletManage('User', 'wallet', 'v2ray', 'chat_id')
 
 
 def admin_add_update_inbound(update, context):
@@ -206,6 +208,30 @@ def message_to_user(update, context, message=None, chat_id=None):
         ready_report_problem_to_admin(context, 'MESSAGE TO USER', update.message.from_user['id'], e)
 
 
+def say_to_customer_of_server(update, context):
+    # user_message = '/say_to_customer_of_server country'
+
+    get_server_country = update.message.text.replace('/say_to_customer_of_server ', '')
+    text = update.message.reply_to_message.text
+    get_country_inbound_id = sqlite_manager.select(column='id', table='Product',
+                                             where=f'country = "{get_server_country}"')
+
+    id_tuple = [str(id_[0]) for id_ in get_country_inbound_id]
+
+    customer_of_service = sqlite_manager.select(column='chat_id,name', table='Purchased',
+                                             where=f'status = 1 and product_id IN ({", ".join(id_tuple)})')
+
+
+    for user in customer_of_service:
+        try:
+            message_to_user(update, context, chat_id=user[0], message=text)
+        except Exception as e:
+            context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=f'BLOCKED BY USER {user[1]} | {user[0]}', parse_mode='html')
+            print(e)
+
+    update.message.reply_text('Send Message To server Customer Success/')
+
+
 def clear_depleted_service(update, context):
     try:
         get_inbound_id = int(update.message.text.replace('/clear_depleted_service ', ''))
@@ -223,3 +249,59 @@ def clear_depleted_service(update, context):
 
     except Exception as e:
         ready_report_problem_to_admin(context, 'Clear Depleted Service', update.message.from_user['id'], e)
+
+
+def add_credit_to_server_customer_wallet(update, context):
+    # get_admin_order = '/add_credit_to_customer_wallet country, credit'
+    try:
+        get_admin_order = update.message.text.replace('/add_credit_to_customer_wallet ', '').split(', ')
+        get_server_country = get_admin_order[0]
+        get_credit = int(get_admin_order[1])
+
+        processed_chat_ids = set()
+
+        get_country_inbound_id = sqlite_manager.select(column='id,active,is_personalization', table='Product',
+                                                       where=f'country = "{get_server_country}"')
+
+        id_tuple = [str(id_[0]) for id_ in get_country_inbound_id if id_[1] == 1 or id_[2]]
+
+        customer_of_service = sqlite_manager.select(column='chat_id,name,user_name', table='Purchased',
+                                                 where=f'status = 1 and product_id IN ({", ".join(id_tuple)})')
+
+        reason = update.message.reply_to_message.text if update.message.reply_to_message else 'برای قطعی اخیر سرور متاسفیم، مبلغ خسارت محاسبه و جبران خسارت انجام شد.'
+        text = f'<b>مبلغ {get_credit:,} تومان به کیف پول شما اضافه شد.</b>' + f'\n\n{reason}'
+
+        for service in customer_of_service:
+            if service[0] not in processed_chat_ids:
+                wallet_manage.add_to_wallet(service[0], get_credit, user_detail={'name': service[1], 'username': service[2]})
+                message_to_user(update, context, message=text, chat_id=service[0])
+                processed_chat_ids.add(service[0])
+
+        update.message.reply_text('Add to Wallet Successfull')
+
+    except Exception as e:
+        ready_report_problem_to_admin(context, 'add credit to server customer wallet', update.message.from_user['id'], e)
+
+
+def add_credit_to_customer(update, context):
+    try:
+        get_admin_order = update.message.text.replace('/add_credit_to_customer ', '').split(', ')
+        get_user_chat_id = get_admin_order[0]
+        get_credit = int(get_admin_order[1])
+
+        reason = update.message.reply_to_message.text if update.message.reply_to_message else 'برای قطعی اخیر سرور متاسفیم، مبلغ خسارت محاسبه و جبران خسارت انجام شد.'
+        text = f'<b>مبلغ {get_credit:,} تومان به کیف پول شما اضافه شد.</b>' + f'\n\n{reason}'
+
+        customer_of_service = sqlite_manager.select(column='name,user_name', table='User',
+                                                    where=f'chat_id = {get_user_chat_id}')
+
+        wallet_manage.add_to_wallet(get_user_chat_id, get_credit,
+                                    user_detail={'name': customer_of_service[0], 'username': customer_of_service[1]})
+
+        message_to_user(update, context, message=text, chat_id=get_user_chat_id)
+
+        update.message.reply_text('Add to User Wallet Successfull')
+
+    except Exception as e:
+        ready_report_problem_to_admin(context, 'add credit to customer', update.message.from_user['id'], e)
+

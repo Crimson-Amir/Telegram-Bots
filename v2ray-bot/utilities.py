@@ -7,7 +7,12 @@ import requests
 
 
 def human_readable(number):
-    return arrow.get(number).humanize(locale="fa-ir")
+    try:
+        return arrow.get(number).humanize(locale="fa-ir")
+
+    except Exception as e:
+        print(e)
+        return arrow.get(number).humanize()
 
 def not_ready_yet(update, context):
     query = update.callback_query

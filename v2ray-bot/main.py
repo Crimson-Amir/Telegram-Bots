@@ -15,7 +15,8 @@ from tasks import (buy_service, all_query_handler, payment_page, get_service_con
 from utilities import not_ready_yet, just_for_show
 
 from admin_task import (admin_add_update_inbound, add_service, all_service, del_service, run_in_system,
-                        say_to_every_one, message_to_user, clear_depleted_service)
+                        say_to_every_one, message_to_user, clear_depleted_service, say_to_customer_of_server,
+                        add_credit_to_server_customer_wallet, add_credit_to_customer)
 
 from private import ADMIN_CHAT_ID
 import requests
@@ -46,7 +47,10 @@ def main():
         'say_to_every_one': say_to_every_one,
         'admin_reserve_service': admin_reserve_service,
         'message_to_user': message_to_user,
-        'clear_depleted_service': clear_depleted_service
+        'clear_depleted_service': clear_depleted_service,
+        'say_to_customer_of_server': say_to_customer_of_server,
+        'add_credit_to_customer_wallet': add_credit_to_server_customer_wallet,
+        'add_credit_to_customer': add_credit_to_customer,
     }
 
     for key, value in commands.items():

@@ -2,26 +2,21 @@ import random
 from datetime import datetime, timedelta
 import telegram.error
 import private
-from sqlite_manager import ManageDb
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
-from admin_task import add_client_bot, api_operation, second_to_ms, message_to_user
+from admin_task import add_client_bot, api_operation, second_to_ms, message_to_user, wallet_manage, sqlite_manager
 import qrcode
 from io import BytesIO
 import pytz
-from wallet import WalletManage
 from utilities import (human_readable,something_went_wrong,
                        ready_report_problem_to_admin,format_traffic,record_operation_in_file,
                        send_service_to_customer_report)
 import re
 from private import ADMIN_CHAT_ID
 
-sqlite_manager = ManageDb('v2ray')
 GET_EVIDENCE = 0
 GET_EVIDENCE_PER = 0
 GET_EVIDENCE_CREDIT = 0
-
-wallet_manage = WalletManage('User', 'wallet', 'v2ray', 'chat_id')
 
 
 def buy_service(update, context):
@@ -371,7 +366,6 @@ def remove_service_from_db(update, context):
         print(e)
 
 
-
 def create_file_and_return(update, context):
     query = update.callback_query
     try:
@@ -548,7 +542,6 @@ def payment_page_upgrade(update, context):
         print(e)
         ready_report_problem_to_admin(context, text='PAYMENT PAGER FOR UPGRADE (payment_page_upgrade)', chat_id=chat_id, error=e)
         something_went_wrong(update, context)
-
 
 
 def pay_page_get_evidence_for_upgrade(update, context):
@@ -838,7 +831,7 @@ def check_all_configs(context, context_2=None):
                         ]
                         context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
                         sqlite_manager.update({'Purchased': {'status': 0}}, where=f'id = {user[0]}')
-                        context.bot.send_message(ADMIN_CHAT_ID, text=f'SERVICE OF {list_of_notification[0][3]} NAMED {user[0]} ', reply_markup=InlineKeyboardMarkup(keyboard))
+                        context.bot.send_message(ADMIN_CHAT_ID, text=f'Service OF {list_of_notification[0][3]} Named {user[0]} Has Be Ended')
                     elif client['enable'] and not user[3]:
                         sqlite_manager.update(
                             {'Purchased': {'status': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran')), 'notif_day': 0, 'notif_gb': 0}}
@@ -1018,8 +1011,11 @@ def wallet_page(update, context):
         )
         query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     except Exception as e:
-        query.answer('بروزرسانی نشد، احتمالا اطلاعات تغییری نکرده')
-        print(e)
+        if "specified new message content and reply markup are exactly the same" in str(e):
+            print(e)
+            return query.answer('بروزرسانی نشد، احتمالا اطلاعات تغییری نکرده')
+        query.answer('مشکلی وجود داشت، گزارش به ادمین ارسال شد')
+        ready_report_problem_to_admin(context, chat_id=query.message.chat_id, error=e, text='WALLET PAGE')
 
 
 def financial_transactions_wallet(update, context):
@@ -1240,7 +1236,7 @@ def pay_from_wallet(update, context):
             price = (package[0][5] * private.PRICE_PER_GB) + (package[0][6] * private.PRICE_PER_DAY)
 
             keyboard = [[InlineKeyboardButton("تایید و پرداخت ✅", callback_data=f"accept_wallet_upgrade_pay_{id_}")]
-                        if get_wallet[0][0] >= price else [InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit")],
+                        if get_wallet[0][0] >= price else [InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")],
                         [InlineKeyboardButton("برگشت ⤶", callback_data="my_service")]]
 
             available_or_not = "اطلاعات زیر رو بررسی کنید و در صورت تایید پرداخت رو نهایی کنید:" \
@@ -1343,7 +1339,7 @@ def pay_from_wallet(update, context):
 
     except Exception as e:
         print(e)
-        ready_report_problem_to_admin(context, 'PAY FROM WAWLLET', update.message.from_user['id'], e)
+        ready_report_problem_to_admin(context, 'PAY FROM WAWLLET', query.from_user['id'], e)
         something_went_wrong(update, context)
 
 
@@ -1393,7 +1389,7 @@ def remove_service(update, context):
 
             sqlite_manager.delete({'Purchased': ['client_email', email]})
 
-            keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]]
+            keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="my_service")]]
 
             text = f'*سرویس با موفقیت حذف شد و مبلغ {price:,} تومان به کیف پول شما برگشت ✅*'
             if not ret_conf['obj']['enable']:
@@ -1500,3 +1496,5 @@ def admin_reserve_service(update, context):
     except Exception as e:
         update.message.reply_text('something went wrong')
         ready_report_problem_to_admin(context, 'ADMIN RESERVE SERIVE', update.message.from_user['id'], e)
+
+
