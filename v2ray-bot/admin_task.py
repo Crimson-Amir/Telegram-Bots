@@ -235,13 +235,13 @@ def say_to_customer_of_server(update, context):
 def clear_depleted_service(update, context):
     try:
         get_inbound_id = int(update.message.text.replace('/clear_depleted_service ', ''))
-        customer_service = sqlite_manager.select(column='chat_id,name', table='Purchased', where=f'status = 0 and inbound_id = {get_inbound_id}')
+        customer_service = sqlite_manager.select(column='chat_id,name,client_email', table='Purchased', where=f'status = 0 and inbound_id = {get_inbound_id}')
 
         reason = update.message.reply_to_message.text if update.message.reply_to_message else 'عدم تمدید و یا ارتقا سرویس'
-        text = f'سرویس شما با نام {0} که قبلا منقضی شده بود، حذف شد!\nعلت: {reason}'
+        text = 'سرویس شما با نام {} که قبلا منقضی شده بود، حذف شد!\nعلت: '
 
         for service in customer_service:
-            message_to_user(update, context, message=text.format(service[1]), chat_id=service[0])
+            message_to_user(update, context, message=f"{text.format(service[2])}{reason}", chat_id=service[0])
 
         api_operation.delete_depleted_clients(get_inbound_id)
         sqlite_manager.advanced_delete({'Purchased': [['status', 0], ['inbound_id', get_inbound_id]]})
@@ -304,4 +304,5 @@ def add_credit_to_customer(update, context):
 
     except Exception as e:
         ready_report_problem_to_admin(context, 'add credit to customer', update.message.from_user['id'], e)
+
 

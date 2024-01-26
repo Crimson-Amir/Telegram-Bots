@@ -22,6 +22,7 @@ GET_EVIDENCE_CREDIT = 0
 def buy_service(update, context):
     query = update.callback_query
     try:
+        sqlite_manager.delete({'Purchased': ['active', 0]})
         plans = sqlite_manager.select(table='Product', where='active = 1')
         unic_plans = {name[3]: name[4] for name in plans}
 
@@ -77,7 +78,7 @@ def payment_page(update, context):
             else:
                 keyboard = [
                     [InlineKeyboardButton("دریافت ⤓", callback_data=f'get_free_service')],
-                    [InlineKeyboardButton("برگشت ↰", callback_data="select_server")]
+                    [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]
                 ]
 
         text = (f"<b>❋ بسته انتخابی شامل مشخصات زیر میباشد:</b>\n"
@@ -146,7 +147,7 @@ def send_evidence_to_admin(update, context):
     except Exception as e:
         ready_report_problem_to_admin(context,'SEND EVIDENCE TO ADMIN', user['id'], e)
         text = ("مشکلی وجود داشت!"
-                "گزارش به ادمین ها ارسال شد، نتیجه به زودی بهتون اعلام میشه")
+                "گزارش به ادمین ها ارسال شد، نتیجه بهتون اعلام میشه")
         keyboard = [[InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]]
         update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
         return ConversationHandler.END
@@ -282,29 +283,37 @@ def server_detail_customer(update, context):
         upload_gb = round(int(ret_conf['obj']['up']) / (1024 ** 3), 2)
         download_gb = round(int(ret_conf['obj']['down']) / (1024 ** 3), 2)
         usage_traffic = round(upload_gb + download_gb, 2)
+
+        change_active = 'فعال ✅' if ret_conf['obj']['enable'] else 'غیرفعال ❌'
+
         if int(ret_conf['obj']['total']) != 0:
             total_traffic = round(int(ret_conf['obj']['total']) / (1024 ** 3), 2)
         else:
             total_traffic = '∞'
 
-
-        expiry_timestamp = ret_conf['obj']['expiryTime'] / 1000
-        expiry_date = datetime.fromtimestamp(expiry_timestamp)
-        expiry_month = expiry_date.strftime("%Y/%m/%d")
-        days_lefts = (expiry_date - datetime.now())
-        days_lefts_days = days_lefts.days
-
-        change_active = 'فعال ✅' if ret_conf['obj']['enable'] else 'غیرفعال ❌'
         purchase_date = datetime.strptime(get_data[0][12], "%Y-%m-%d %H:%M:%S.%f%z").replace(tzinfo=None)
-        days_left_2 = abs(days_lefts_days)
-        if days_left_2 >= 1:
-            exist_day = f"({days_left_2} روز {'مانده' if days_lefts_days >= 0 else 'گذشته'})"
-        else:
-            days_left_2 = abs(int(days_lefts.seconds / 3600))
-            exist_day = f"({days_left_2} ساعت {'مانده' if days_left_2 >= 1 else 'گذشته'})"
 
-        context.user_data['period_for_upgrade'] = (expiry_date - purchase_date).days
-        context.user_data['traffic_for_upgrade'] = total_traffic
+        if int(ret_conf['obj']['expiryTime']) != 0:
+            expiry_timestamp = ret_conf['obj']['expiryTime'] / 1000
+            expiry_date = datetime.fromtimestamp(expiry_timestamp)
+            expiry_month = expiry_date.strftime("%Y/%m/%d")
+            days_lefts = (expiry_date - datetime.now())
+            days_lefts_days = days_lefts.days
+
+            days_left_2 = abs(days_lefts_days)
+
+            if days_left_2 >= 1:
+                exist_day = f"({days_left_2} روز {'مانده' if days_lefts_days >= 0 else 'گذشته'})"
+            else:
+                days_left_2 = abs(int(days_lefts.seconds / 3600))
+                exist_day = f"({days_left_2} ساعت {'مانده' if days_left_2 >= 1 else 'گذشته'})"
+
+            context.user_data['period_for_upgrade'] = (expiry_date - purchase_date).days
+            context.user_data['traffic_for_upgrade'] = total_traffic
+
+        else:
+            expiry_month = '∞'
+            exist_day = 'بدون محدودیت زمانی'
 
         text_ = (
             f"<b>اطلاعات سرویس انتخاب شده:</b>"
@@ -358,7 +367,7 @@ def remove_service_from_db(update, context):
         email = query.data.replace('remove_service_from_db_', '')
         sqlite_manager.delete({'Purchased': ['client_email', email]})
         text = '<b>سرویس با موفقیت حذف شد ✅</b>'
-        keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]]
+        keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="my_service")]]
         query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     except Exception as e:
         query.answer('مشکلی در حذف این سرویس وجود داشت!')
@@ -1498,3 +1507,14 @@ def admin_reserve_service(update, context):
         ready_report_problem_to_admin(context, 'ADMIN RESERVE SERIVE', update.message.from_user['id'], e)
 
 
+def pay_per_use(update, context):
+    query = update.callback_query()
+    country = query.data.replace('pay_per_use_', '')
+    get_infinite = sqlite_manager.select('id', 'Product', where=f'country = {country} AND period = 0 AND traffic = 0')
+    if not get_infinite:
+        get_data = {'inbound_id': inbound_id[0][0], 'active': 0,
+                    'name': inbound_id[0][1], 'country': inbound_id[0][2],
+                    'period': period, 'traffic': traffic,
+                    'price': price, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
+                    'is_personalization': query.message.chat_id, 'domain': 'human.ggkala.shop'}
+        sqlite_manager.insert('Product', rows=[{''}])
