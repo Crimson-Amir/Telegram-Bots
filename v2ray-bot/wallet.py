@@ -26,7 +26,7 @@ class WalletManage(ManageDb):
     def get_wallet_credit(self, user_id):
         get_credit = self.select(column=self.WALLET_COLUMN, table=self.WALLET_TABALE,
                                  where=f'{self.USER_ID} = {user_id}')
-        return get_credit
+        return get_credit[0][0]
 
     @try_except
     def get_all_wallet(self):

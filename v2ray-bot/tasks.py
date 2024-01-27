@@ -8,6 +8,10 @@ from admin_task import add_client_bot, api_operation, second_to_ms, message_to_u
 import qrcode
 from io import BytesIO
 import pytz
+
+# dont delete that:
+import os
+
 from utilities import (human_readable,something_went_wrong,
                        ready_report_problem_to_admin,format_traffic,record_operation_in_file,
                        send_service_to_customer_report)
@@ -18,6 +22,8 @@ GET_EVIDENCE = 0
 GET_EVIDENCE_PER = 0
 GET_EVIDENCE_CREDIT = 0
 
+PAY_PER_USE_INBOUND_ID = 4
+PAY_PER_USE_DOMAIN = 'human.ggkala.shop'
 
 def buy_service(update, context):
     query = update.callback_query
@@ -1316,7 +1322,7 @@ def pay_from_wallet(update, context):
             context.user_data['package'] = package
 
             keyboard = [[InlineKeyboardButton("تایید و پرداخت ✅", callback_data=f"accept_wallet_pay_{id_}")]
-                        if get_wallet[0][0] >= package[0][7] else [InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit")],
+                        if get_wallet[0][0] >= package[0][7] else [InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")],
                         [InlineKeyboardButton("برگشت ⤶", callback_data="select_server")]]
 
             available_or_not = "اطلاعات زیر رو بررسی کنید و در صورت تایید پرداخت رو نهایی کنید:" \
@@ -1510,11 +1516,39 @@ def admin_reserve_service(update, context):
 def pay_per_use(update, context):
     query = update.callback_query()
     country = query.data.replace('pay_per_use_', '')
-    get_infinite = sqlite_manager.select('id', 'Product', where=f'country = {country} AND period = 0 AND traffic = 0')
-    if not get_infinite:
-        get_data = {'inbound_id': inbound_id[0][0], 'active': 0,
-                    'name': inbound_id[0][1], 'country': inbound_id[0][2],
-                    'period': period, 'traffic': traffic,
-                    'price': price, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
-                    'is_personalization': query.message.chat_id, 'domain': 'human.ggkala.shop'}
-        sqlite_manager.insert('Product', rows=[{''}])
+
+    user_credit = wallet_manage.get_wallet_credit(query.message.chat_id)
+
+    get_infinite_product = sqlite_manager.select('id', 'Product', where=f'name = "pay_per_use_{country}"')
+    get_infinite_product_id = get_infinite_product[0][0]
+
+    if not get_infinite_product:
+        get_data = {'inbound_id': PAY_PER_USE_INBOUND_ID, 'active': 0,
+                    'name': f'pay_per_use_{country}', 'country': country,
+                    'period': 0, 'traffic': 0,
+                    'price': 0, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
+                    'is_personalization': None, 'domain': PAY_PER_USE_DOMAIN}
+        get_infinite_product_id = sqlite_manager.insert('Product', rows=[get_data])
+
+    chrge_for_next_24_hours = private.PRICE_PER_DAY
+
+    if chrge_for_next_24_hours < user_credit:
+        status_of_user = ("• اعتبار کیف پول شما کافی نیست، اگر تمایل به فعال کردن این سرویس دارید، لطفا کیف پول خودتون رو شارژ کنید."
+                          f"\nاعتبار مورد نیاز برای فعال کردن سرویس: {chrge_for_next_24_hours:,} ")
+        keyboard = [[InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")]]
+
+    else:
+        status_of_user = "• با استفاده از گزینه زیر، میتونید سرویس رو فعال کنید"
+        keyboard = [[InlineKeyboardButton("فعال سازی سرویس ✔", callback_data=f"active_pay_per_use")]]
+
+    text = ("<b>این سرویس به ازای مصرف شما در هر ساعت، هزینه رو از کیف پول کم میکنه. </b>"
+            "\n\nدر این سرویس محدودیت حجم و زمان وجود نداره، سرویس شما با به پایان رسیدن اعتبار کیف پول غیرفعال میشه."
+            "\nو با شارژ شدن کیف پول، سرویس به صورت خودکار فعال میشه."
+            f"\n\n<b>اعتبار کیف پول: {user_credit:,}</b>"
+            f"\n{status_of_user}"
+            f"\n\nهزینه 24 ساعت: {private.PRICE_PER_DAY}"
+            f"\nهزینه هر گیگابایت: {private.PRICE_PER_GB}"
+            )
+
+    keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data=f"{country}")])
+    query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
