@@ -26,20 +26,26 @@ class WalletManage(ManageDb):
     def get_wallet_credit(self, user_id):
         get_credit = self.select(column=self.WALLET_COLUMN, table=self.WALLET_TABALE,
                                  where=f'{self.USER_ID} = {user_id}')
-        return get_credit[0][0]
+        return int(get_credit[0][0])
 
     @try_except
     def get_all_wallet(self):
         get_credit = self.select(column=self.WALLET_COLUMN, table=self.WALLET_TABALE)
         return get_credit
 
+
+    def clear_wallet_notif(self, chat_id):
+        self.update({'User': {'notif_wallet': 0,'notif_low_wallet': 0}}, where=f'chat_id = {chat_id}')
+
+
     @try_except
     def add_to_wallet(self, user_id, credit, user_detail):
         try:
-            credit_all = self.get_wallet_credit(user_id)[0][0] + credit
+            credit_all = int(self.get_wallet_credit(user_id) + credit)
             get_credit = self.update(table={self.WALLET_TABALE: {self.WALLET_COLUMN: credit_all}},
                                      where=f'{self.USER_ID} = {user_id}')
 
+            self.clear_wallet_notif(user_id)
             self.insert(table='Credit_History',
                                   rows=[{'active': 1, 'chat_id': user_id, 'value': credit,
                                          'name': user_detail['name'], 'user_name': user_detail['username'],
@@ -52,9 +58,11 @@ class WalletManage(ManageDb):
 
     def add_to_wallet_without_history(self, user_id, credit):
         try:
-            credit = self.get_wallet_credit(user_id)[0][0] + credit
+            credit = int(self.get_wallet_credit(user_id) + credit)
             get_credit = self.update(table={self.WALLET_TABALE: {self.WALLET_COLUMN: credit}},
                                      where=f'{self.USER_ID} = {user_id}')
+
+            self.clear_wallet_notif(user_id)
 
             return get_credit
         except Exception as e:
@@ -64,7 +72,7 @@ class WalletManage(ManageDb):
     @try_except
     def less_from_wallet(self, user_id, credit, user_detail):
         try:
-            credit_all = self.get_wallet_credit(user_id)[0][0] - credit
+            credit_all = int(self.get_wallet_credit(user_id) - credit)
             get_credit = self.update(table={self.WALLET_TABALE: {self.WALLET_COLUMN: credit_all}},
                                      where=f'{self.USER_ID} = {user_id}')
 
@@ -77,6 +85,26 @@ class WalletManage(ManageDb):
         except Exception as e:
             report_problem_to_admin_witout_context(chat_id=user_id, text='LESS FROM WALLET [wallet script]', error=e)
             return False
+
+    @try_except
+    def less_from_wallet_with_condition_to_make_history(self, user_id, credit, user_detail, con):
+        try:
+            credit_all = int(self.get_wallet_credit(user_id) - credit)
+            get_credit = self.update(table={self.WALLET_TABALE: {self.WALLET_COLUMN: credit_all}},
+                                     where=f'{self.USER_ID} = {user_id}')
+
+            if credit > con:
+                self.insert(table='Credit_History',
+                            rows=[{'active': 1, 'chat_id': user_id, 'value': credit,
+                                   'name': user_detail['name'], 'user_name': user_detail['username'],
+                                   'operation': 0, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}])
+
+            return get_credit
+        except Exception as e:
+            report_problem_to_admin_witout_context(chat_id=user_id, text='LESS FROM WALLET [wallet script]', error=e)
+            return False
+
+
     @try_except
     def set_credit(self, user_id, credit):
         get_credit = self.update(table={self.WALLET_TABALE: {self.WALLET_COLUMN: credit}},

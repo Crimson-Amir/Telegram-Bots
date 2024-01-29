@@ -95,12 +95,12 @@ def send_service_to_customer_report(context, status, chat_id, error=None, servic
             text += f'\nERROR TYPE: {type(error).__name__}'
             text += f'\nERROR REASON:\n {error}'
         text += f'\nMORE DETAIL:\n {more_detail}'
-        context.bot.send_message(ADMIN_CHAT_ID, text)
+        context.bot.send_message(ADMIN_CHAT_ID, text, parse_mode='html')
 
 
 def report_problem_to_admin_witout_context(text, chat_id, error, detail=None):
     text = ("🔴 Report Problem in Bot\n\n"
-            f"Something Went Wrong In <b>{text}</b> Section."
+            f"Something Went Wrong In {text} Section."
             f"\nUser ID: {chat_id}"
             f"\nError Type: {type(error).__name__}"
             f"\nError Reason:\n{error}")

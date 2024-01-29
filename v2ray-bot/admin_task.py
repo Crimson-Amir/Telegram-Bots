@@ -145,13 +145,24 @@ def add_client_bot(purchased_id, personalization=None):
         random_number = random.randint(0, 10_000_000)
         get_client_db = sqlite_manager.select(table='Purchased', where=f'id = {purchased_id}')
         get_service_db = sqlite_manager.select(table='Product', where=f'id = {get_client_db[0][6]}')
-        traffic_to_gb_ = traffic_to_gb(get_service_db[0][6], False)
-        now = datetime.now(pytz.timezone('Asia/Tehran'))
-        period = get_service_db[0][5]
-        now_data_add_day = now + timedelta(days=period)
-        time_to_ms = second_to_ms(now_data_add_day)
+
         id_ = f"{get_client_db[0][4]}_{random_number}"
         email_ = f"{purchased_id}_{get_service_db[0][6]}GB"
+
+        if get_service_db[0][6]:
+            traffic_to_gb_ = traffic_to_gb(get_service_db[0][6], False)
+        else:
+            email_ = f"{purchased_id}_Infinite_Service"
+            traffic_to_gb_ = 0
+
+        if get_service_db[0][5]:
+            now = datetime.now(pytz.timezone('Asia/Tehran'))
+            period = get_service_db[0][5]
+            now_data_add_day = now + timedelta(days=period)
+            time_to_ms = second_to_ms(now_data_add_day)
+        else:
+            time_to_ms = 0
+
         data = {
             "id": int(get_service_db[0][1]),
             "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,\"start_after_first_use\":true,"

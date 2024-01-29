@@ -10,7 +10,7 @@ from tasks import (buy_service, all_query_handler, payment_page, get_service_con
                    wallet_page, financial_transactions_wallet, payment_page_upgrade, buy_credit_volume,
                    pay_way_for_credit, credit_charge, apply_card_pay_credit, pay_from_wallet, remove_service,
                    check_all_configs, remove_service_from_db, rate_service, get_pay_file,
-                   admin_reserve_service, people_ask)
+                   admin_reserve_service, people_ask, pay_per_use, pay_per_use_calculator)
 
 from utilities import not_ready_yet, just_for_show
 
@@ -71,7 +71,12 @@ def main():
     dp.add_handler(CallbackQueryHandler(remove_service, pattern=r'remove_service_(.*)'))
     dp.add_handler(CallbackQueryHandler(remove_service, pattern=r'accept_rm_ser_(.*)'))
 
+    dp.add_handler(CallbackQueryHandler(change_notif, pattern='service_notification'))
+    dp.add_handler(CallbackQueryHandler(change_notif, pattern='wallet_notification'))
+
     dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu'))
+    dp.add_handler(CallbackQueryHandler(pay_per_use, pattern='pay_per_use_'))
+    dp.add_handler(CallbackQueryHandler(pay_per_use, pattern=r'active_ppu_\d+'))
     dp.add_handler(CallbackQueryHandler(get_pay_file, pattern='get_pay_file'))
     dp.add_handler(CallbackQueryHandler(just_for_show, pattern='just_for_show'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='ranking_page'))
@@ -79,7 +84,6 @@ def main():
     dp.add_handler(CallbackQueryHandler(help_sec, pattern='guidance'))
     dp.add_handler(CallbackQueryHandler(support, pattern='support'))
     dp.add_handler(CallbackQueryHandler(setting, pattern='setting'))
-    dp.add_handler(CallbackQueryHandler(change_notif, pattern='notification'))
     dp.add_handler(CallbackQueryHandler(financial_transactions_wallet, pattern='financial_transactions_wallet'))
     dp.add_handler(CallbackQueryHandler(financial_transactions, pattern='financial_transactions'))
     dp.add_handler(CallbackQueryHandler(wallet_page, pattern='wallet_page'))
@@ -135,10 +139,12 @@ def main():
     dp.add_handler(CallbackQueryHandler(buy_credit_volume, pattern=r'set_credit_\d+'))
     dp.add_handler(CallbackQueryHandler(pay_way_for_credit, pattern='pay_way_for_credit_\d+'))
 
-    dp.add_handler(CallbackQueryHandler(change_notif, pattern='notif_traffic_low_5'))
-    dp.add_handler(CallbackQueryHandler(change_notif, pattern='notif_traffic_high_5'))
-    dp.add_handler(CallbackQueryHandler(change_notif, pattern='notif_day_low_1'))
-    dp.add_handler(CallbackQueryHandler(change_notif, pattern='notif_day_high_1'))
+    dp.add_handler(CallbackQueryHandler(change_notif, pattern=r'notif_traffic_low_\d+'))
+    dp.add_handler(CallbackQueryHandler(change_notif, pattern=r'notif_traffic_high_\d+'))
+    dp.add_handler(CallbackQueryHandler(change_notif, pattern=r'notif_day_low_\d+'))
+    dp.add_handler(CallbackQueryHandler(change_notif, pattern=r'notif_day_high_\d+'))
+    dp.add_handler(CallbackQueryHandler(change_notif, pattern=r'notif_wallet_low_\d+'))
+    dp.add_handler(CallbackQueryHandler(change_notif, pattern=r'notif_wallet_high_\d+'))
 
 
     dp.add_handler(CallbackQueryHandler(my_service, pattern='my_service'))
@@ -151,6 +157,7 @@ def main():
 
     job = updater.job_queue
     job.run_repeating(check_all_configs, interval=300, first=0)
+    job.run_repeating(pay_per_use_calculator, interval=500, first=0)
 
     updater.start_polling(0)
     updater.idle()
