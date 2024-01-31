@@ -2,17 +2,24 @@ import json
 
 import requests
 from private import PORT, auth, telegram_bot_token, ADMIN_CHAT_ID, DOMAIN, protocol
+from sqlite_manager import ManageDb
 
 telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
 
 
-class XuiApiClean:
+class XuiApiClean(ManageDb):
     def __init__(self):
+        super().__init__('v2ray')
         self.connect = requests.Session()
         get_cookies = ""
 
         if get_cookies == "":
-            self.login = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/login', data=auth)
+
+            get_domains = self.select(column='server_domain', table='Product')
+            get_domain_uniq = {dom[0] for dom in get_domains}
+
+            for domain in get_domain_uniq:
+                self.login = self.connect.post(f'{protocol}{domain}:{PORT}/login', data=auth)
             get_cookies = self.login.cookies.get('session')
             self.headers = {'Cookie': f'session={get_cookies}'}
             if self.login.status_code == 200:
@@ -52,69 +59,87 @@ class XuiApiClean:
             return False
 
     def get_all_inbounds(self):
-        get_inbounds = self.connect.get(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/list')
-        if self.check_request(get_inbounds):
-            return get_inbounds.json()
+        get_domains = self.select(column='server_domain', table='Product')
+        get_domain_uniq = {dom[0] for dom in get_domains}
+        all_inbound = []
 
-    def get_inbound(self, inbound_id):
-        get_inbound = self.connect.get(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/get/{inbound_id}')
+        for domain in get_domain_uniq:
+            get_inbounds = self.connect.get(f'{protocol}{domain}:{PORT}/panel/api/inbounds/list')
+            if self.check_request(get_inbounds):
+                all_inbound.append(get_inbounds.json())
+
+        return all_inbound
+
+    def get_inbound(self, inbound_id, domain=None):
+        main_domain = domain or DOMAIN
+        get_inbound = self.connect.get(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/get/{inbound_id}')
         if self.check_request(get_inbound):
             return get_inbound.json()
 
-    def get_client(self, client_email):
-        get_client_ = self.connect.get(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/getClientTraffics/{client_email}')
+    def get_client(self, client_email, domain=None):
+        main_domain = domain or DOMAIN
+        get_client_ = self.connect.get(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/getClientTraffics/{client_email}')
         if self.check_request(get_client_):
             return get_client_.json()
 
-    def add_inbound(self, data):
-        add_inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/add', json=data)
+    def add_inbound(self, data, domain=None):
+        main_domain = domain or DOMAIN
+        add_inb = self.connect.post(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/add', json=data)
         if self.check_json(add_inb):
             return add_inb.json()
 
-    def add_client(self, data):
-        ad_client = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/addClient', json=data)
+    def add_client(self, data, domain=None):
+        main_domain = domain or DOMAIN
+        ad_client = self.connect.post(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/addClient', json=data)
         if self.check_json(ad_client):
             return ad_client.json()
 
-    def update_inbound(self, inbound_id, data):
-        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/update/{inbound_id}', json=data)
+    def update_inbound(self, inbound_id, data, domain=None):
+        main_domain = domain or DOMAIN
+        inb = self.connect.post(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/update/{inbound_id}', json=data)
         if self.check_json(inb):
             return inb.json()
 
-    def reset_client_traffic(self, inbound_id, email):
-        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/{inbound_id}/resetClientTraffic/{email}')
+    def reset_client_traffic(self, inbound_id, email, domain=None):
+        main_domain = domain or DOMAIN
+        inb = self.connect.post(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/{inbound_id}/resetClientTraffic/{email}')
         if self.check_json(inb):
             return inb.json()
 
-    def update_client(self, uuid, data):
-        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/updateClient/{uuid}', json=data)
+    def update_client(self, uuid, data, domain=None):
+        main_domain = domain or DOMAIN
+        inb = self.connect.post(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/updateClient/{uuid}', json=data)
         if self.check_json(inb):
             return inb.json()
 
-    def del_inbound(self, inbound_id):
-        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/del/{inbound_id}')
+    def del_inbound(self, inbound_id, domain=None):
+        main_domain = domain or DOMAIN
+        inb = self.connect.post(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/del/{inbound_id}')
         if self.check_json(inb):
             return inb.json()
 
-    def del_client(self, inboundid, uuid):
-        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/{inboundid}/delClient/{uuid}')
+    def del_client(self, inboundid, uuid, domain=None):
+        main_domain = domain or DOMAIN
+        inb = self.connect.post(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/{inboundid}/delClient/{uuid}')
         if self.check_json(inb):
             return inb.json()
 
-    def del_depleted_clients(self, inbound_id=""):
-        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/delDepletedClients/{inbound_id}')
+    def del_depleted_clients(self, inbound_id="", domain=None):
+        main_domain = domain or DOMAIN
+        inb = self.connect.post(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/delDepletedClients/{inbound_id}')
         if self.check_json(inb):
             return inb.json()
 
-    def create_backup(self):
-        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/createbackup')
+    def create_backup(self, domain=None):
+        main_domain = domain or DOMAIN
+        inb = self.connect.post(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/createbackup')
         if self.check_json(inb):
             return inb.json()
 
-    def get_client_url(self, client_email, inbound_id, domain=None, host="ponisha.ir", default_config_schematic=None):
+    def get_client_url(self, client_email, inbound_id, domain=None, host="ponisha.ir", default_config_schematic=None, server_domain=None):
         if not default_config_schematic:
             default_config_schematic = "vless://{}@{}:{}?security=none&host={}&headerType=http&type={}#{} {}"
-        get_in = self.get_inbound(inbound_id)
+        get_in = self.get_inbound(inbound_id, server_domain)
         domain = domain or 'human.ggkala.shop'
         if get_in['success']:
             port = get_in['obj']['port']
@@ -129,13 +154,15 @@ class XuiApiClean:
         else:
             return False
 
-    def get_ips(self, email):
-        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/clientIps/{email}')
+    def get_ips(self, email, domain=None):
+        main_domain = domain or DOMAIN
+        inb = self.connect.post(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/clientIps/{email}')
         if self.check_json(inb):
             return inb.json()
 
-    def delete_depleted_clients(self, inbound_id):
-        inb = self.connect.post(f'{protocol}{DOMAIN}:{PORT}/panel/api/inbounds/delDepletedClients/{inbound_id}')
+    def delete_depleted_clients(self, inbound_id, domain=None):
+        main_domain = domain or DOMAIN
+        inb = self.connect.post(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/delDepletedClients/{inbound_id}')
         if self.check_json(inb):
             return inb.json()
 

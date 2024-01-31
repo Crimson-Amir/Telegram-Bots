@@ -1,6 +1,8 @@
 import random
 from datetime import datetime, timedelta
 import pytz
+
+import utilities
 from sqlite_manager import ManageDb
 from api_clean import XuiApiClean
 from private import ADMIN_CHAT_ID
@@ -21,7 +23,9 @@ def admin_add_update_inbound(update, context):
     'remark': 'First_Inbound',
     'listen_ip': '',
     'port': 21442,
-    'protocol': 'vless'}
+    'protocol': 'vless'
+    'server_domain': 'admin.ggkala.shop'
+    }
     """
     try:
         user_message = eval(update.message.reply_to_message.text)
@@ -47,9 +51,9 @@ def admin_add_update_inbound(update, context):
             "sniffing": "{\"enabled\":true,\"destOverride\":[\"http\",\"tls\",\"quic\",\"fakedns\"]}"
         }
         if user_message["update"]:
-            api_operation.update_inbound(user_message["update"], add_inbound_data)
+            api_operation.update_inbound(user_message["update"], add_inbound_data, user_message['server_domain'])
         else:
-            api_operation.add_inbound(add_inbound_data)
+            api_operation.add_inbound(add_inbound_data, user_message['server_domain'])
         update.message.reply_text("Done!")
     except Exception as e:
         update.message.reply_text(e)
@@ -66,7 +70,8 @@ def add_service(update, context):
     'period': 30,
     'traffic': 10,
     'price': 10000,
-    'domain': 'admin.ggkala.shop'
+    'domain': 'admin.ggkala.shop',
+    'server_domain': 'netherlands.ggkala.shop'
     }
     """
     if update.message.reply_to_message:
@@ -75,7 +80,8 @@ def add_service(update, context):
             get_data = {'inbound_id': user_message["inbound_id"],'active': user_message["active"],
                         'name': user_message["name"],'country': user_message["country"],
                         'period': user_message["period"],'traffic': user_message["traffic"],
-                        'price': user_message["price"],'date': datetime.now(pytz.timezone('Asia/Tehran')), 'domain': user_message['domain']}
+                        'price': user_message["price"],'date': datetime.now(pytz.timezone('Asia/Tehran')),
+                        'domain': user_message['domain'], 'server_domain': user_message['server_domain']}
             if user_message['update']:
                 sqlite_manager.update({'Product': get_data}, where=f'id = {user_message["update"]}')
             else:
@@ -100,7 +106,8 @@ def get_all_service():
         'price',
         'date',
         'is_personalization',
-        'domain'
+        'domain',
+        'service_domain'
     ]
     for ser in all_serv:
         indexed_data += [f"{clean_data[index]}: {data}" for index, data in enumerate(ser)]
@@ -169,8 +176,11 @@ def add_client_bot(purchased_id, personalization=None):
                         "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
                         "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(id_, email_, traffic_to_gb_, time_to_ms)
         }
-        create = api_operation.add_client(data)
-        get_cong = api_operation.get_client_url(email_, int(get_service_db[0][1]), domain=get_service_db[0][10])
+
+        create = api_operation.add_client(data, get_service_db[0][11])
+        get_cong = api_operation.get_client_url(email_, int(get_service_db[0][1]),
+                                                domain=get_service_db[0][10], server_domain=get_service_db[0][11])
+
         sqlite_manager.update({'Purchased': {'inbound_id': int(get_service_db[0][1]),'client_email': email_,
                                              'client_id': id_, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
                                              'details': get_cong, 'active': 1, 'status': 1}},
@@ -180,8 +190,9 @@ def add_client_bot(purchased_id, personalization=None):
             return True, create
         else:
             return False, create
+
     except Exception as e:
-        print(e)
+        utilities.report_problem_to_admin_witout_context('ADD CLIENT BOT [ADMIN TASK]', chat_id=None, error=e)
         return False
 
 
@@ -246,7 +257,10 @@ def say_to_customer_of_server(update, context):
 def clear_depleted_service(update, context):
     try:
         get_inbound_id = int(update.message.text.replace('/clear_depleted_service ', ''))
-        customer_service = sqlite_manager.select(column='chat_id,name,client_email', table='Purchased', where=f'status = 0 and inbound_id = {get_inbound_id}')
+
+        customer_service = sqlite_manager.select(column='chat_id,name,client_email,inbound_id', table='Purchased', where=f'status = 0 and inbound_id = {get_inbound_id}')
+        get_server_domain = sqlite_manager.select(column='server_domain', table='Product',
+                                             where=f'id = "{customer_service[0][3]}"')
 
         reason = update.message.reply_to_message.text if update.message.reply_to_message else 'عدم تمدید و یا ارتقا سرویس'
         text = 'سرویس شما با نام {} که قبلا منقضی شده بود، حذف شد!\nعلت: '
@@ -307,7 +321,7 @@ def add_credit_to_customer(update, context):
                                                     where=f'chat_id = {get_user_chat_id}')
 
         wallet_manage.add_to_wallet(get_user_chat_id, get_credit,
-                                    user_detail={'name': customer_of_service[0], 'username': customer_of_service[1]})
+                                    user_detail={'name': customer_of_service[0][0], 'username': customer_of_service[0][1]})
 
         message_to_user(update, context, message=text, chat_id=get_user_chat_id)
 

@@ -56,6 +56,7 @@ def format_traffic(traffic, without_text=None):
     else:
         return f"{traffic} گیگابایت"
 
+
 def record_operation_in_file(chat_id, status_of_pay, price, name_of_operation, context, operation=1):
     try:
         if operation:
@@ -108,3 +109,21 @@ def report_problem_to_admin_witout_context(text, chat_id, error, detail=None):
     telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
     requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text': text})
     print(f'* REPORT TO ADMIN SUCCESS: ERR: {error}')
+
+
+def report_problem_by_user(context, problem, user):
+    text = (f'🟠 Report Problem By User'
+            f'\nReport Reason: {problem}'
+            f'\nUser Chat ID: {user["id"]}'
+            f'\nName: {user["name"]}'
+            f'\nUser Name: {user["username"]}')
+
+    context.bot.send_message(ADMIN_CHAT_ID, text, parse_mode='html')
+
+
+def report_status_to_admin(context, text, chat_id):
+    text = (f'🔵 Report Status:'
+            f'\nUser Chat ID: {chat_id}'
+            f'\n{text}')
+
+    context.bot.send_message(ADMIN_CHAT_ID, text, parse_mode='html')

@@ -5,12 +5,13 @@ from database import create_database
 
 from tasks import (buy_service, all_query_handler, payment_page, get_service_con, apply_card_pay,
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
-                   personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service, help_sec,
+                   personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service, guidance,
                    show_help, support, setting, change_notif, start_timer, financial_transactions,
                    wallet_page, financial_transactions_wallet, payment_page_upgrade, buy_credit_volume,
                    pay_way_for_credit, credit_charge, apply_card_pay_credit, pay_from_wallet, remove_service,
                    check_all_configs, remove_service_from_db, rate_service, get_pay_file,
-                   admin_reserve_service, people_ask, pay_per_use, pay_per_use_calculator)
+                   admin_reserve_service, people_ask, pay_per_use, pay_per_use_calculator, change_infiniti_service_status,
+                   report_problem_by_user, tickect_by_user)
 
 from utilities import not_ready_yet, just_for_show
 
@@ -56,6 +57,7 @@ def main():
     for key, value in commands.items():
         dp.add_handler(CommandHandler(key, value))
 
+    dp.add_handler(tickect_by_user)
     dp.add_handler(get_service_con)
     dp.add_handler(get_service_con_per)
     dp.add_handler(credit_charge)
@@ -70,9 +72,12 @@ def main():
 
     dp.add_handler(CallbackQueryHandler(remove_service, pattern=r'remove_service_(.*)'))
     dp.add_handler(CallbackQueryHandler(remove_service, pattern=r'accept_rm_ser_(.*)'))
+    dp.add_handler(CallbackQueryHandler(report_problem_by_user, pattern=r'say_to_admin_(.*)'))
+    dp.add_handler(CallbackQueryHandler(change_infiniti_service_status, pattern=r'change_infiniti_service_status_(.*)'))
 
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='service_notification'))
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='wallet_notification'))
+    dp.add_handler(CallbackQueryHandler(report_problem_by_user, pattern='report_problem_by_user'))
 
     dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu'))
     dp.add_handler(CallbackQueryHandler(pay_per_use, pattern='pay_per_use_'))
@@ -81,7 +86,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(just_for_show, pattern='just_for_show'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='ranking_page'))
     dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu_in_new_message'))
-    dp.add_handler(CallbackQueryHandler(help_sec, pattern='guidance'))
+    dp.add_handler(CallbackQueryHandler(guidance, pattern='guidance'))
     dp.add_handler(CallbackQueryHandler(support, pattern='support'))
     dp.add_handler(CallbackQueryHandler(setting, pattern='setting'))
     dp.add_handler(CallbackQueryHandler(financial_transactions_wallet, pattern='financial_transactions_wallet'))
@@ -157,7 +162,7 @@ def main():
 
     job = updater.job_queue
     job.run_repeating(check_all_configs, interval=300, first=0)
-    job.run_repeating(pay_per_use_calculator, interval=500, first=0)
+    job.run_repeating(pay_per_use_calculator, interval=3600, first=0)
 
     updater.start_polling(0)
     updater.idle()
