@@ -53,9 +53,10 @@ def buy_service(update, context):
 def all_query_handler(update, context):
     query = update.callback_query
     try:
-        text = "<b>• سرویس مناسب خودتون رو انتخاب کنید:\n\n• با انتخاب گزینه دلخواه میتونید یک سرویس شخصی سازی شده بسازید.</b>"
-        text += "\n\n<b>• سرویس ساعتی به شما اجازه میده به اندازه مصرف در هر ساعت پرداخت کنید.</b>"
         plans = sqlite_manager.select(table='Product', where=f'active = 1 and country = "{query.data}"')
+        country_flag = plans[0][3][:2]
+        text = f"<b>• {country_flag} سرویس مناسب خودتون رو انتخاب کنید:\n\n• با انتخاب گزینه دلخواه میتونید یک سرویس شخصی سازی شده بسازید.</b>"
+        text += "\n\n<b>• سرویس ساعتی به شما اجازه میده به اندازه مصرف در هر ساعت پرداخت کنید.</b>"
         country_unic = {name[4] for name in plans}
         for country in country_unic:
             if query.data == country:
@@ -98,7 +99,7 @@ def payment_page(update, context):
                 f"\nسرور: {package[0][3]}"
                 f"\nدوره زمانی: {package[0][5]} روز"
                 f"\nترافیک (حجم): {package[0][6]} گیگابایت"
-                f"\nحداکثر کاربر مجاز: ∞"
+                f"\nحداکثر کاربر مجاز: ♾️"
                 f"\n<b>قیمت: {package[0][7]:,} تومان</b>"
                 f"\n\n<b>⤶ برای پرداخت میتونید یکی از روش های زیر رو استفاده کنید:</b>")
         query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -179,7 +180,7 @@ get_service_con = ConversationHandler(
         GET_EVIDENCE: [MessageHandler(Filters.all, send_evidence_to_admin)]
     },
     fallbacks=[CallbackQueryHandler(cancel, pattern='cancel')],
-    conversation_timeout=600,
+    conversation_timeout=800,
     per_chat=True,
     allow_reentry=True,
 )
@@ -305,7 +306,7 @@ def server_detail_customer(update, context):
 
 
         if int(ret_conf['obj']['total']) != 0 and int(ret_conf['obj']['expiryTime']) != 0:
-            total_traffic = round(int(ret_conf['obj']['total']) / (1024 ** 3), 2)
+            total_traffic = int(round(ret_conf['obj']['total'] / (1024 ** 3), 2))
 
             expiry_timestamp = ret_conf['obj']['expiryTime'] / 1000
             expiry_date = datetime.fromtimestamp(expiry_timestamp)
@@ -326,25 +327,27 @@ def server_detail_customer(update, context):
             keyboard = [[InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"personalization_service_lu_{get_data[0][0]}")]]
 
         else:
-            total_traffic = '∞'
-            expiry_month = '∞'
+            total_traffic = '♾️'
+            expiry_month = '♾️'
             exist_day = '(بدون محدودیت زمانی)'
             service_activate_status = 'غیرفعال سازی ⤈' if ret_conf['obj']['enable'] else 'فعال سازی ↟'
             keyboard = [[InlineKeyboardButton(service_activate_status, callback_data=f"change_infiniti_service_status_{get_data[0][0]}_{ret_conf['obj']['enable']}")]]
 
         keyboard.append([InlineKeyboardButton("حذف سرویس ⇣", callback_data=f"remove_service_{email}"),
-                      InlineKeyboardButton("تازه سازی ⟳", callback_data=f"view_service_{email}")])
+                      InlineKeyboardButton("تازه سازی ↻", callback_data=f"view_service_{email}")])
+
+        keyboard.append([InlineKeyboardButton("گزینه های پیشرفته ⥣", callback_data=f"not_ready_yet")])  # advanced_option_{email}
         keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="my_service")])
 
         text_ = (
             f"<b>اطلاعات سرویس انتخاب شده:</b>"
             f"\n\n🔷 نام سرویس: {email}"
             f"\n💡 وضعیت: {change_active}"
-            f"\n🌎 موقعیت سرور: {get_server_country}"
+            f"\n🗺 موقعیت سرور: {get_server_country}"
             f"\n📅 تاریخ انقضا: {expiry_month} {exist_day}"
             f"\n🔼 آپلود↑: {format_traffic(upload_gb)}"
             f"\n🔽 دانلود↓: {format_traffic(download_gb)}"
-            f"\n📊 مصرف کل: {usage_traffic}/{total_traffic}{'GB' if type(total_traffic) is int else ''}"
+            f"\n📊 مصرف کل: {usage_traffic}/{total_traffic}{'GB' if isinstance(total_traffic, int) else ''}"
             f"\n\n⏰ تاریخ خرید/تمدید: {purchase_date.strftime('%H:%M:%S | %Y/%m/%d')}"
             f"\n\n🌐 آدرس سرویس:\n <code>{get_data[0][8]}</code>"
         )
@@ -627,7 +630,7 @@ def payment_page_upgrade(update, context):
         text = (f"<b>❋ بسته انتخابی شامل مشخصات زیر میباشد:</b>\n"
                 f"\nدوره زمانی: {package[0][6]} روز"
                 f"\nترافیک (حجم): {package[0][5]} گیگابایت"
-                f"\nحداکثر کاربر مجاز: ∞"
+                f"\nحداکثر کاربر مجاز: ♾️"
                 f"\n<b>قیمت: {price:,} تومان</b>"
                 f"\n\n<b>⤶ برای پرداخت میتونید یکی از روش های زیر رو استفاده کنید:</b>")
         query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -702,7 +705,7 @@ get_service_con_per = ConversationHandler(
         GET_EVIDENCE_PER: [MessageHandler(Filters.all, send_evidence_to_admin_for_upgrade)]
     },
     fallbacks=[],
-    conversation_timeout=600,
+    conversation_timeout=800,
     per_chat=True,
     allow_reentry=True
 )
@@ -805,7 +808,7 @@ def get_free_service(update, context):
 
 def guidance(update, context):
     query = update.callback_query
-    text = "<b>به بخش راهنمای ربات خوش آمدید!</b>"
+    text = "<b>📚 به بخش راهنمای ربات خوش آمدید!</b>"
     keyboard = [
         [InlineKeyboardButton("اپلیکیشن‌های مناسب برای اتصال", callback_data=f"apps_help")],
          [InlineKeyboardButton("• سوالات متداول", callback_data=f"people_ask_help"),
@@ -1304,7 +1307,7 @@ credit_charge = ConversationHandler(
         GET_EVIDENCE_CREDIT: [MessageHandler(Filters.all, pay_by_card_for_credit_admin)]
     },
     fallbacks=[],
-    conversation_timeout=600,
+    conversation_timeout=800,
     per_chat=True,
     allow_reentry=True
 )
@@ -1783,7 +1786,7 @@ def say_to_user_send_ticket(update, context):
     problem = query.data.replace('ticket_send_', '')
     try:
         context.user_data['problem'] = problem
-        text = 'لطفا پیام خودتون رو بفرستید.\n اگر میخواهید عکس بفرستید، توضیحات رو در کپشن بنویسید:'
+        text = 'پیام خودتو رو بفرستید:\nهمچنین میتونید عکس مورد نظر خودتون رو با توضیحات در کپشن بفرستید:'
         context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='markdown')
         return GET_TICKET
     except Exception as e:
@@ -1797,20 +1800,23 @@ def send_ticket_to_admin(update, context):
     user = update.message.from_user
     try:
         problem = context.user_data['problem']
-        text = f"- New Ticket [{problem.replace('_', ' ')}]:\n\n"
+
+        text = (f"- New Ticket [{problem.replace('_', ' ')}]:\nName: {user['name']}\nUserName: {user['username']}"
+                f"\nUserID: {user['id']}")
+
         keyboard = [[InlineKeyboardButton("صفحه اصلی", callback_data="main_menu_in_new_message")]]
 
         if update.message.photo:
             file_id = update.message.photo[-1].file_id
             text += f"caption: {update.message.caption}" or 'Witout caption!'
             context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text)
-            update.message.reply_text(f'دریافت شد. متشکریم!', reply_markup=InlineKeyboardMarkup(keyboard))
+            update.message.reply_text(f'پیام شما ثبت شد. متشکریم!', reply_markup=InlineKeyboardMarkup(keyboard))
         elif update.message.text:
             text += f"Text: {update.message.text}"
             context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text)
-            update.message.reply_text(f'دریافت شد. متشکریم!', reply_markup=InlineKeyboardMarkup(keyboard))
+            update.message.reply_text(f'پیام شما ثبت شد. متشکریم!', reply_markup=InlineKeyboardMarkup(keyboard))
         else:
-            update.message.reply_text('مشکلی وجود داره!', reply_markup=InlineKeyboardMarkup(keyboard))
+            update.message.reply_text('مشکلی وجود داشت!', reply_markup=InlineKeyboardMarkup(keyboard))
 
         context.user_data.clear()
         return ConversationHandler.END
@@ -1822,13 +1828,72 @@ def send_ticket_to_admin(update, context):
         update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
         return ConversationHandler.END
 
+
 tickect_by_user = ConversationHandler(
     entry_points=[CallbackQueryHandler(say_to_user_send_ticket, pattern='ticket_send_')],
     states={
         GET_TICKET: [MessageHandler(Filters.all, send_ticket_to_admin)]
     },
     fallbacks=[],
-    conversation_timeout=600,
+    conversation_timeout=800,
     per_chat=True,
     allow_reentry=True
 )
+
+
+def rank_page(update, context):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    try:
+        rank = sqlite_manager.select(table='Rank', where=f'chat_id = {chat_id}')
+        keyboard = [
+            [InlineKeyboardButton("رنک های ربات", callback_data=f'payment_by_wallet_upgrade_service_'),
+             InlineKeyboardButton("زیرمجموعه گیری", callback_data=f'payment_by_card_lu')],
+            [InlineKeyboardButton("برگشت ↰", callback_data="select_server")]
+        ]
+
+        text = (f"<b>❋ رتبه شما: {utilities.get_rank_and_emoji(rank[0][6])}</b>\n"
+                f"\n❋ امتیاز: {rank[0][5]:,}"
+                f"<b>\n\n• ویژگی های رتبه شما:</b>"
+                f"\n" + "\n- ".join(utilities.get_access_fa(rank[0][5]))
+                )
+        query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
+    except Exception as e:
+        print(e)
+        ready_report_problem_to_admin(context, text='RANKING PAGE', chat_id=chat_id, error=e)
+        something_went_wrong(update, context)
+
+
+def service_advanced_option(update, context):
+    query = update.callback_query
+    email = query.data.replace('advanced_option_', '')
+    try:
+        get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
+        get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
+                                                   where=f'id = {get_data[0][6]}')
+
+        get_server_domain = get_server_country[0][1]
+        get_server_country = get_server_country[0][0].replace('سرور ', '').replace('pay_per_use_', '')
+        get_country_flag = get_server_country[:2]
+        auto_renewal, auto_renewal_button, chenge_to = ('فعال ✓', 'غیرفعال کردن تمدید خودکار', False) if get_data[0][15] \
+            else ('غیرفعال ✗', 'فعال کردن تمدید خودکار', True)
+
+        text_ = (
+            f"<b>اطلاعات سرویس انتخاب شده:</b>"
+            f"\n\n🔷 نام سرویس: {email}"
+            f"\n🗺 موقعیت سرور: {get_server_country}"
+            f"\n🔁 تمدید خودکار: {auto_renewal}"
+            f"\n\n🌐 آدرس سرویس:\n <code>{get_data[0][8]}</code>"
+        )
+
+        keyboard = [[InlineKeyboardButton(f"{auto_renewal_button}", callback_data=f"change_auto_renewal_status_{email}_{chenge_to}")],
+                    [InlineKeyboardButton(f"تغییر کشور ({get_country_flag})", callback_data=f"change_country_server_{email}")],
+                    [InlineKeyboardButton("برگشت ↰", callback_data="my_service")]]
+
+        query.edit_message_text(text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+
+    except Exception as e:
+        print(e)
+
+def change_server(update, context):
+    pass

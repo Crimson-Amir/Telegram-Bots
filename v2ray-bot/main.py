@@ -11,7 +11,7 @@ from tasks import (buy_service, all_query_handler, payment_page, get_service_con
                    pay_way_for_credit, credit_charge, apply_card_pay_credit, pay_from_wallet, remove_service,
                    check_all_configs, remove_service_from_db, rate_service, get_pay_file,
                    admin_reserve_service, people_ask, pay_per_use, pay_per_use_calculator, change_infiniti_service_status,
-                   report_problem_by_user, tickect_by_user)
+                   report_problem_by_user, tickect_by_user, service_advanced_option)
 
 from utilities import not_ready_yet, just_for_show
 
@@ -27,7 +27,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
-requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'🟠 THE BOT STARTED'})
+# requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'🟠 THE BOT STARTED'})
 create_database()
 
 
@@ -74,6 +74,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(remove_service, pattern=r'accept_rm_ser_(.*)'))
     dp.add_handler(CallbackQueryHandler(report_problem_by_user, pattern=r'say_to_admin_(.*)'))
     dp.add_handler(CallbackQueryHandler(change_infiniti_service_status, pattern=r'change_infiniti_service_status_(.*)'))
+    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'advanced_option_(.*)'))
 
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='service_notification'))
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='wallet_notification'))
@@ -164,7 +165,7 @@ def main():
     job.run_repeating(check_all_configs, interval=300, first=0)
     job.run_repeating(pay_per_use_calculator, interval=3600, first=0)
 
-    updater.start_polling(0)
+    updater.start_polling()
     updater.idle()
 
 

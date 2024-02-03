@@ -107,7 +107,8 @@ def get_all_service():
         'date',
         'is_personalization',
         'domain',
-        'service_domain'
+        'service_domain',
+        'status'
     ]
     for ser in all_serv:
         indexed_data += [f"{clean_data[index]}: {data}" for index, data in enumerate(ser)]

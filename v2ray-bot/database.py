@@ -33,7 +33,10 @@ def create_database():
 
     c.execute('CREATE TABLE IF NOT EXISTS Purchased(id integer primary key, active integer, name text, user_name text,'
               'chat_id integer, factor_id text, product_id integer, inbound_id integer, details text, client_email text,'
-              ' client_id text, status integer, date text, notif_day integer, notif_gb integer)')
+              ' client_id text, status integer, date text, notif_day integer, notif_gb integer,'
+              ' auto_renewal integer DEFAULT 0)')
+
+    # c.execute('ALTER TABLE Purchased ADD COLUMN auto_renewal integer DEFAULT 0')
 
     conn.commit()
     conn.close()

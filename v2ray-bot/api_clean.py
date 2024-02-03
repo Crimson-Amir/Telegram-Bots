@@ -166,5 +166,11 @@ class XuiApiClean(ManageDb):
         if self.check_json(inb):
             return inb.json()
 
+    def get_onlines(self, domain=None):
+        main_domain = domain or DOMAIN
+        inb = self.connect.post(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/onlines')
+        if self.check_json(inb):
+            return inb.json()
+
 # test = XuiApiClean()
 # print(test.get_ips('kyhm2hhk'))

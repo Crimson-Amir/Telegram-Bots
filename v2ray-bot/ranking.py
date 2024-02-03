@@ -1,24 +1,41 @@
+from sqlite_manager import ManageDb
+
+
 rank_access = {
-    'ROOKIE': {'level': range(1, 3), 'access': ['BUY_CONFIG', 'CHECK_ANALYSE'], 'price': {'per_gb': 1_000, 'per_day': 1_000}},
-    'BRONZE': {'level': range(3, 8), 'access': ['ROOKIE', 'CHANGE_SETTING'], 'price': {'per_gb': 1_000, 'per_day': 1_000}},
-    'SILVER': {'level': range(8, 20), 'access': ['BRONZE', 'DELETE_CONFIG', 'USE_WALLET', 'RESET_FREE_EVERY_MONTH']},
-    'GOLD': {'level': range(20, 40), 'access': ['SILVER', 'PAY_AFTER_USE', 'PAYMENT_GETWAY']},
-    'DIAMOND': {'level': range(40, 100), 'access': ['GOLD', 'GET_CONFIG_WITHOUT_CONFIRM']},
-    'ADMIN': {'level': 100, 'access': ['DIAMOND', 'ALL_ACCSESS']},
-    'OWNER': {'level': 1000},
+    'ROOKIE': {'level': range(1, 10), 'access': ['BUY_READY_SERVICE', 'BUY_COSTOMIZE_SERVICE', 'CHECK_ANALYSE',
+                                                 'CHANGE_SETTINGS', 'USE_WALLET']},
+    'BRONZE': {'level': range(10, 200), 'access': ['ROOKIE', 'REMOVE_SERVICE', 'CHANGE_SERVICE_SERVER', 'SERVICE_AUTO_RENEWAL']},
+    'SILVER': {'level': range(200, 500), 'access': ['BRONZE', 'RESET_FREE_EVERY_MONTH', 'PAY_AFTER_USE_1', '5off']},
+    'GOLD': {'level': range(500, 1_000), 'access': ['SILVER', 'PAY_AFTER_USE_5', 'PAYMENT_GETWAY', 'BUY_MAJOR_SERVICE', '9off']},
+    'DIAMOND': {'level': range(1_000, 5_000), 'access': ['GOLD', 'PAY_AFTER_USE_10', '15off']},
+    'SUPER_USER': {'level': range(5_000, 20_000), 'access': ['DIAMOND', 'GET_CONFIG_WITHOUT_CONFIRM', '20off']},
+    'ADMIN': {'level': range(20_000, 100_000), 'access': ['SUPER_USER', 'BOT_MANAGER']},
+    'OWNER': {'level': range(100_000, 1_000_000)},
 }
 
-rank_emoji = {
-    'ROOKIE': '🆕',
-    'BRONZE': '🔸',
-    'SILVER': '💠',
+rank_emojis = {
+    'ROOKIE': '🌱',
+    'BRONZE': '🥉',
+    'SILVER': '🥈',
     'GOLD': '🌟',
     'DIAMOND': '💎',
-    'ADMIN': '🪙',
-    'OWNER': '👑',
+    'SUPER_USER': '🚀',
+    'ADMIN': '👑',
+    'OWNER': '🌐',
 }
 
-rank_persian = {
+
+rank_access_fa = {
+    'ROOKIE': ['خرید سرویس آماده', 'خرید سرویس شخصی سازی شده', 'بررسی آمار سرویس', 'تغییر تنظیمات ربات', 'استفاده از کیف پول'],
+    'BRONZE': ['ROOKIE', 'حذف سرویس با بازپرداخت', 'تغییر سرور (کشور) سرویس', 'تمدید خودکار سرویس'],
+    'SILVER': ['BRONZE', 'دریافت سرویس تست در هر ماه', 'پرداخت هزینه یک سرویس بعد از استفاده', '5 درصد تخفیف'],
+    'GOLD': ['SILVER', 'پرداخت هزینه پنج سرویس بعد از استفاده', 'استفاده از درگاه پرداخت', 'خرید سرویس به صورت عمده', '9 درصد تخفیف'],
+    'DIAMOND': ['GOLD', 'پرداخت هزینه ده سرویس بعد از استفاده', '15 درصد تخفیف'],
+    'SUPER_USER': ['DIAMOND', 'دریافت سرویس بدون بررسی ادمین', '20 درصد تخفیف'],
+    'ADMIN': ['SUPER_USER', 'مدیریت ربات'],
+}
+
+rank_title_fa = {
     'ROOKIE': 'تازه وارد',
     'BRONZE': 'برنز',
     'SILVER': 'نقره',
@@ -28,3 +45,59 @@ rank_persian = {
     'OWNER': 'سازنده',
 }
 
+
+class RankManage(ManageDb):
+    def __init__(self, rank_table, level_column, rank_column, db_name, user_id_identifier):
+        super().__init__(db_name)
+        self.database_name = db_name
+        self.RANK_TABALE = rank_table
+        self.LEVEL_COLUMN = level_column
+        self.RANK_COLUMN = rank_column
+        self.identifier = user_id_identifier
+
+    @staticmethod
+    def get_rank_name_by_level(level):
+        return [rank_key for rank_key, value in rank_access.items() if level in value['level']][0]
+
+    @staticmethod
+    def get_range_of_level_by_rank(rank_name):
+        return [value['level'] for rank_key, value in rank_access.items() if rank_name is rank_key][0]
+
+    def get_user_rank_and_level(self, user_id):
+        try:
+            return self.select(column=f'{self.RANK_COLUMN}, {self.LEVEL_COLUMN}', table=self.RANK_TABALE, where=f'{self.identifier} = {user_id}')[0]
+        except Exception as e:
+            print(f'* Error In get_user_rank_and_level: {e}')
+
+    def update_rank_with_level(self, level, user_id):
+        rank_name = self.get_rank_name_by_level(level)
+        self.update({self.RANK_TABALE: {self.RANK_COLUMN: rank_name, self.LEVEL_COLUMN: level}}, where=f'{self.identifier} = {user_id}')
+
+
+    def set_rank_to(self, rank, user_id):
+        if isinstance(rank, str):
+            rank = self.get_range_of_level_by_rank(rank)[0]
+
+        self.update_rank_with_level(rank, user_id)
+
+    def rank_up(self, rank, user_id):
+        if isinstance(rank, str):
+            rank = self.get_range_of_level_by_rank(rank)[0]
+
+        user_rank = self.get_user_rank_and_level(user_id)
+        rank += user_rank[1]
+
+        self.update_rank_with_level(rank, user_id)
+
+    def rank_down(self, rank, user_id):
+        if isinstance(rank, str):
+            rank = self.get_range_of_level_by_rank(rank)[0]
+
+        user_rank = self.get_user_rank_and_level(user_id)
+        rank = user_rank[1] - rank
+
+        self.update_rank_with_level(rank, user_id)
+
+
+# a = RankManage('Rank', 'level', 'rank_name',db_name='v2ray', user_id_identifier='chat_id')
+# print(a.rank_down(100000, 6450325872))

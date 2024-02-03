@@ -4,6 +4,7 @@ import pytz
 from private import telegram_bot_token, ADMIN_CHAT_ID
 from private import ADMIN_CHAT_ID
 import requests
+from ranking import rank_emojis, rank_title_fa, rank_access_fa
 
 
 def human_readable(number):
@@ -127,3 +128,15 @@ def report_status_to_admin(context, text, chat_id):
             f'\n{text}')
 
     context.bot.send_message(ADMIN_CHAT_ID, text, parse_mode='html')
+
+
+def get_rank_and_emoji(rank):
+    rank_fa = rank_title_fa[rank]
+    rank_emoji = rank_emojis[rank]
+    return f"{rank_fa} {rank_emoji}"
+
+
+def get_access_fa(rank):
+    get_access = rank_access_fa[rank]
+    get_all_access = rank_access_fa[get_access[0]]
+    return get_all_access.append(get_access)
