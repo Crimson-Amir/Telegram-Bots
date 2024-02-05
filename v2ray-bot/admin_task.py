@@ -6,7 +6,7 @@ import utilities
 from sqlite_manager import ManageDb
 from api_clean import XuiApiClean
 from private import ADMIN_CHAT_ID
-from utilities import ready_report_problem_to_admin
+from utilities import ready_report_problem_to_admin, message_to_user
 from wallet import WalletManage
 
 sqlite_manager = ManageDb('v2ray')
@@ -216,19 +216,6 @@ def say_to_every_one(update, context):
         except Exception as e:
             context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=f'BLOCKED BY USER {user[1]} | {user[0]}', parse_mode='html')
             print(e)
-
-
-def message_to_user(update, context, message=None, chat_id=None):
-    if not message:
-        chat_id = update.message.text.replace('/message_to_user ', '')
-        message = update.message.reply_to_message.text
-    text  = ("<b>🟠 یک پیام جدید دریافت کردید:</b>"
-             f"\n\n{message}")
-    try:
-        context.bot.send_message(chat_id, text, parse_mode='html')
-    except Exception as e:
-        update.message.reply_text('somthing went wrong!')
-        ready_report_problem_to_admin(context, 'MESSAGE TO USER', update.message.from_user['id'], e)
 
 
 def say_to_customer_of_server(update, context):

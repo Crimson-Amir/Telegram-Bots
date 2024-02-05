@@ -4,7 +4,7 @@ import pytz
 from private import telegram_bot_token, ADMIN_CHAT_ID
 from private import ADMIN_CHAT_ID
 import requests
-from ranking import rank_emojis, rank_title_fa, rank_access_fa
+from ranking import rank_emojis, rank_title_fa, rank_access_fa, rank_access
 
 
 def human_readable(number):
@@ -131,12 +131,39 @@ def report_status_to_admin(context, text, chat_id):
 
 
 def get_rank_and_emoji(rank):
-    rank_fa = rank_title_fa[rank]
-    rank_emoji = rank_emojis[rank]
+    rank_fa = rank_title_fa.get(rank)
+    rank_emoji = rank_emojis.get(rank)
     return f"{rank_fa} {rank_emoji}"
 
 
 def get_access_fa(rank):
-    get_access = rank_access_fa[rank]
-    get_all_access = rank_access_fa[get_access[0]]
-    return get_all_access.append(get_access)
+    all_access = []
+
+    for key, value in rank_access_fa.items():
+        all_access += value[1:]
+        if key == rank:
+            break
+
+    return all_access
+
+
+def find_next_rank(rank, level_now):
+    check = 0
+    for key, value in rank_access.items():
+        if check == 1:
+            return get_rank_and_emoji(key), value['level'][0] - level_now
+        elif key == rank:
+            check = 1
+
+
+def message_to_user(update, context, message=None, chat_id=None):
+    if not message:
+        chat_id = update.message.text.replace('/message_to_user ', '')
+        message = update.message.reply_to_message.text
+    text  = ("<b>🟠 یک پیام جدید دریافت کردید:</b>"
+             f"\n\n{message}")
+    try:
+        context.bot.send_message(chat_id, text, parse_mode='html')
+    except Exception as e:
+        update.message.reply_text('somthing went wrong!')
+        ready_report_problem_to_admin(context, 'MESSAGE TO USER', update.message.from_user['id'], e)

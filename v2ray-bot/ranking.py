@@ -5,12 +5,26 @@ rank_access = {
     'ROOKIE': {'level': range(1, 10), 'access': ['BUY_READY_SERVICE', 'BUY_COSTOMIZE_SERVICE', 'CHECK_ANALYSE',
                                                  'CHANGE_SETTINGS', 'USE_WALLET']},
     'BRONZE': {'level': range(10, 200), 'access': ['ROOKIE', 'REMOVE_SERVICE', 'CHANGE_SERVICE_SERVER', 'SERVICE_AUTO_RENEWAL']},
-    'SILVER': {'level': range(200, 500), 'access': ['BRONZE', 'RESET_FREE_EVERY_MONTH', 'PAY_AFTER_USE_1', '5off']},
-    'GOLD': {'level': range(500, 1_000), 'access': ['SILVER', 'PAY_AFTER_USE_5', 'PAYMENT_GETWAY', 'BUY_MAJOR_SERVICE', '9off']},
-    'DIAMOND': {'level': range(1_000, 5_000), 'access': ['GOLD', 'PAY_AFTER_USE_10', '15off']},
+    'SILVER': {'level': range(200, 500), 'access': ['BRONZE', 'RESET_FREE_EVERY_MONTH', '5off']},
+    'GOLD': {'level': range(500, 1_000), 'access': ['SILVER', 'PAYMENT_GETWAY', 'BUY_MAJOR_SERVICE', '9off']},
+    'DIAMOND': {'level': range(1_000, 5_000), 'access': ['GOLD', '15off']},
     'SUPER_USER': {'level': range(5_000, 20_000), 'access': ['DIAMOND', 'GET_CONFIG_WITHOUT_CONFIRM', '20off']},
     'ADMIN': {'level': range(20_000, 100_000), 'access': ['SUPER_USER', 'BOT_MANAGER']},
     'OWNER': {'level': range(100_000, 1_000_000)},
+}
+
+pay_after_use_per_rank = {
+    'SILVER': 1,
+    'GOLD': 5,
+    'DIAMOND': 10,
+    'SUPER_USER': 20,
+}
+
+off_per_rank = {
+    'SILVER': 5,
+    'GOLD': 9,
+    'DIAMOND': 10,
+    'SUPER_USER': 11,
 }
 
 rank_emojis = {
@@ -26,12 +40,12 @@ rank_emojis = {
 
 
 rank_access_fa = {
-    'ROOKIE': ['خرید سرویس آماده', 'خرید سرویس شخصی سازی شده', 'بررسی آمار سرویس', 'تغییر تنظیمات ربات', 'استفاده از کیف پول'],
-    'BRONZE': ['ROOKIE', 'حذف سرویس با بازپرداخت', 'تغییر سرور (کشور) سرویس', 'تمدید خودکار سرویس'],
-    'SILVER': ['BRONZE', 'دریافت سرویس تست در هر ماه', 'پرداخت هزینه یک سرویس بعد از استفاده', '5 درصد تخفیف'],
-    'GOLD': ['SILVER', 'پرداخت هزینه پنج سرویس بعد از استفاده', 'استفاده از درگاه پرداخت', 'خرید سرویس به صورت عمده', '9 درصد تخفیف'],
-    'DIAMOND': ['GOLD', 'پرداخت هزینه ده سرویس بعد از استفاده', '15 درصد تخفیف'],
-    'SUPER_USER': ['DIAMOND', 'دریافت سرویس بدون بررسی ادمین', '20 درصد تخفیف'],
+    'ROOKIE': ['None', 'خرید سرویس آماده', 'خرید سرویس شخصی سازی شده', 'بررسی آمار سرویس', 'تغییر تنظیمات ربات', 'استفاده از کیف پول'],
+    'BRONZE': ['ROOKIE', 'حذف سرویس با بازپرداخت', 'تغییر کشور سرویس', 'تمدید خودکار سرویس'],
+    'SILVER': ['BRONZE', 'دریافت سرویس تست در هر ماه'],
+    'GOLD': ['SILVER', 'استفاده از درگاه پرداخت', 'خرید سرویس به صورت عمده'],
+    'DIAMOND': ['GOLD'],
+    'SUPER_USER': ['DIAMOND', 'دریافت سرویس بدون بررسی ادمین'],
     'ADMIN': ['SUPER_USER', 'مدیریت ربات'],
 }
 
@@ -42,6 +56,7 @@ rank_title_fa = {
     'GOLD': 'طلا',
     'DIAMOND': 'الماس',
     'ADMIN': 'ادمین',
+    'SUPER_USER': 'کاربر ویژه',
     'OWNER': 'سازنده',
 }
 

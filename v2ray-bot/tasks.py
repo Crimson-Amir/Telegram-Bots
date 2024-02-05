@@ -1,10 +1,12 @@
 import random
+import uuid
 from datetime import datetime, timedelta
 import telegram.error
 import private
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
 
+import ranking
 import utilities
 from admin_task import add_client_bot, api_operation, second_to_ms, message_to_user, wallet_manage, sqlite_manager
 import qrcode
@@ -1847,20 +1849,55 @@ def rank_page(update, context):
     try:
         rank = sqlite_manager.select(table='Rank', where=f'chat_id = {chat_id}')
         keyboard = [
-            [InlineKeyboardButton("رنک های ربات", callback_data=f'payment_by_wallet_upgrade_service_'),
-             InlineKeyboardButton("زیرمجموعه گیری", callback_data=f'payment_by_card_lu')],
-            [InlineKeyboardButton("برگشت ↰", callback_data="select_server")]
+             [InlineKeyboardButton("زیرمجموعه گیری", callback_data=f'subcategory')],
+            [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]
         ]
 
-        text = (f"<b>❋ رتبه شما: {utilities.get_rank_and_emoji(rank[0][6])}</b>\n"
-                f"\n❋ امتیاز: {rank[0][5]:,}"
-                f"<b>\n\n• ویژگی های رتبه شما:</b>"
-                f"\n" + "\n- ".join(utilities.get_access_fa(rank[0][5]))
+        next_rank = utilities.find_next_rank(rank[0][5], rank[0][4])
+
+        text = (f"<b>• با افزایش رتبه، به ویژگی های بیشتری از ربات و همچنین تخفیف بالاتری دسترسی پیدا میکنید!</b>"
+                f"\n\n<b>❋ رتبه شما: {utilities.get_rank_and_emoji(rank[0][5])}</b>"
+                f"\n❋ امتیاز: {rank[0][4]:,}"
+                f"<b>\n\n• دسترسی های رتبه شما:</b>\n\n"
+                f"- {'\n- '.join(utilities.get_access_fa(rank[0][5]))}"
+                f"\n\n• <b>رتبه بعدی: {next_rank[0]}</b>"
+                f"\n<b>• امتیاز مورد نیاز: {next_rank[1]:,}</b>"
                 )
         query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
+
+    except IndexError as i:
+        if 'list index out of range' in str(i):
+            sqlite_manager.insert('Rank', [{'name': query.from_user['name'],'user_name': query.from_user['username'],
+                                            'chat_id': query.from_user['id'], 'level': 0, 'rank_name': next(iter(ranking.rank_access))}])
+            query.answer('دوباره کلیک کنید')
+
     except Exception as e:
         print(e)
         ready_report_problem_to_admin(context, text='RANKING PAGE', chat_id=chat_id, error=e)
+        something_went_wrong(update, context)
+
+
+def subcategory(update, context):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    user_id = sqlite_manager.select(table='User', column='id', where=f'chat_id = {query.message.chat_id}')
+    try:
+        uuid_ = str(uuid.uuid5(uuid.UUID('6ba7b810-9dad-11d1-80b4-00c04fd430c8'), query.from_user['name']))[:5]
+        link = f'https://t.me/Fensor_bot/?start={uuid_}_{user_id[0][0]}'
+        text = f'{link}\n+50 رتبه هدیه برای اولین بار استفاده کردن از این ربات!'
+        keyboard = [
+             [InlineKeyboardButton("ارسال برای دوستان", url=f'https://t.me/share/url?text={text}')],
+            [InlineKeyboardButton("برگشت ↰", callback_data="rank_page")]
+        ]
+
+        text = ("<b>• دوستانتون رو به ربات دعوت کنید تا با هر خریدشون، 10 درصد مبلغ به کیف‌پول شما اضافه بشه"
+                f"\n\n• همچنین +50 رتبه برای شما و کسی که با لینک شما وارد ربات بشه."
+                f"\n\n• لینک دعوت شما: \n{link}</b>")
+        query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard), disable_web_page_preview=True)
+
+    except Exception as e:
+        print(e)
+        ready_report_problem_to_admin(context, text='subcategory', chat_id=chat_id, error=e)
         something_went_wrong(update, context)
 
 

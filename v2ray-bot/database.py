@@ -8,12 +8,9 @@ def create_database():
     c.execute('CREATE TABLE IF NOT EXISTS User(id integer primary key, name text, user_name text, chat_id integer, '
               'date text, traffic integer, period i1nteger, free_service integer, notification_gb integer,'
               'notification_day integer, wallet integer, notification_wallet INTEGER DEFAULT 5000,'
-              'notif_wallet INTEGER DEFAULT 0, notif_low_wallet INTEGER DEFAULT 0)')
+              'notif_wallet INTEGER DEFAULT 0, notif_low_wallet INTEGER DEFAULT 0, invited_by integer)')
 
-
-    # c.execute('ALTER TABLE User ADD COLUMN notification_wallet INTEGER DEFAULT 5000')
-    # c.execute('ALTER TABLE User ADD COLUMN notif_wallet INTEGER DEFAULT 0')
-    # c.execute('ALTER TABLE User ADD COLUMN notif_low_wallet INTEGER DEFAULT 0')
+    # c.execute('ALTER TABLE User ADD COLUMN invited_by INTEGER')
 
 
     c.execute('CREATE TABLE IF NOT EXISTS Credit_History(id integer primary key, name text, user_name text, chat_id text,'
