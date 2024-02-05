@@ -18,7 +18,7 @@ import os
 
 from utilities import (human_readable,something_went_wrong,
                        ready_report_problem_to_admin,format_traffic,record_operation_in_file,
-                       send_service_to_customer_report)
+                       send_service_to_customer_report, report_status_to_admin)
 import re
 from private import ADMIN_CHAT_ID
 
@@ -205,13 +205,13 @@ def send_clean_for_customer(query, context, id_):
                 buffer = BytesIO()
                 qr_image.save(buffer, format='PNG')
                 binary_data = buffer.getvalue()
-                keyboard = [[InlineKeyboardButton("صفحه اصلی ربات", callback_data=f"main_menu_in_new_message"),
+                keyboard = [[InlineKeyboardButton("دریافت فایل سرویس", callback_data=f"create_txt_file"),
                              InlineKeyboardButton("🎛 سرویس های من", callback_data=f"my_service")],
-                            [InlineKeyboardButton("دریافت به صورت فایل", callback_data=f"create_txt_file")]]
+                            [InlineKeyboardButton("صفحه اصلی ربات ↵", callback_data=f"main_menu_in_new_message")]]
                 context.user_data['v2ray_client'] = returned
 
                 context.bot.send_photo(photo=binary_data,
-                                       caption=f' سرویس شما با موفقیت فعال شد✅\n\n*• میتونید جزئیات سرویس رو از بخش "سرویس های من" مشاهده کنید.\n\n✪ لطفا سرویس رو به صورت مستقیم از طریق پیام رسان های ایرانی یا پیامک ارسال نکنید، با کلیک روی گزینه "دانلود به صورت فایل" سرویس رو به صورت فایل ارسال کنید.* \n\n\nلینک:\n{returned_copy}',
+                                       caption=f' سرویس شما با موفقیت فعال شد✅\n\n*• میتونید جزئیات سرویس رو از بخش "سرویس های من" مشاهده کنید.\n\n✪ لطفا سرویس رو به صورت مستقیم از طریق پیام رسان های ایرانی یا پیامک ارسال نکنید، با کلیک روی گزینه "دریافت فایل" سرویس رو به صورت فایل ارسال کنید، و یا کیوآرکد را ارسال کنید.* \n\n\nلینک:\n{returned_copy}',
                                        chat_id=get_client[0][4], reply_markup=InlineKeyboardMarkup(keyboard),
                                        parse_mode='markdown')
 
@@ -336,9 +336,9 @@ def server_detail_customer(update, context):
             keyboard = [[InlineKeyboardButton(service_activate_status, callback_data=f"change_infiniti_service_status_{get_data[0][0]}_{ret_conf['obj']['enable']}")]]
 
         keyboard.append([InlineKeyboardButton("حذف سرویس ⇣", callback_data=f"remove_service_{email}"),
-                      InlineKeyboardButton("تازه سازی ↻", callback_data=f"view_service_{email}")])
+                         InlineKeyboardButton("تازه سازی ↻", callback_data=f"view_service_{email}")])
 
-        keyboard.append([InlineKeyboardButton("گزینه های پیشرفته ⥣", callback_data=f"not_ready_yet")])  # advanced_option_{email}
+        keyboard.append([InlineKeyboardButton("گزینه های پیشرفته ⥣", callback_data=f"advanced_option_{email}")])  # advanced_option_{email}
         keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="my_service")])
 
         text_ = (
@@ -521,8 +521,8 @@ def personalization_service(update, context):
                       f'\n\nحجم سرویس: {traffic}GB'
                       f'\nدوره زمانی: {period} روز'
                       f'\n*قیمت: {price:,}*')
-            keyboard = [[InlineKeyboardButton("خیر", callback_data=f"personalization_service_{id_}"),
-                         InlineKeyboardButton("بله", callback_data=f"service_{new_id}"),]]
+            keyboard = [[InlineKeyboardButton("بله", callback_data=f"service_{new_id}"),
+                         InlineKeyboardButton("خیر", callback_data=f"personalization_service_{id_}")]]
 
             query.edit_message_text(text=texted, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
             context.user_data.clear()
@@ -813,12 +813,12 @@ def guidance(update, context):
     text = "<b>📚 به بخش راهنمای ربات خوش آمدید!</b>"
     keyboard = [
         [InlineKeyboardButton("اپلیکیشن‌های مناسب برای اتصال", callback_data=f"apps_help")],
-         [InlineKeyboardButton("• سوالات متداول", callback_data=f"people_ask_help"),
-          InlineKeyboardButton("آشنایی با سرویس‌ها", callback_data=f"robots_service_help")],
+        [InlineKeyboardButton("• سوالات متداول", callback_data=f"people_ask_help"),
+         InlineKeyboardButton("آشنایی با سرویس‌ها", callback_data=f"robots_service_help")],
         [InlineKeyboardButton("شخصی‌سازی و ویژگی‌های ربات", callback_data=f"personalize_help")],
 
         [InlineKeyboardButton("• گزارش مشکل", callback_data=f"report_problem_by_user"),
-        InlineKeyboardButton("اضافه کردن تیکت", callback_data=f"ticket_send_ticket")],
+         InlineKeyboardButton("اضافه کردن تیکت", callback_data=f"ticket_send_ticket")],
         [InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]
     ]
     query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
@@ -1849,20 +1849,21 @@ def rank_page(update, context):
     try:
         rank = sqlite_manager.select(table='Rank', where=f'chat_id = {chat_id}')
         keyboard = [
-             [InlineKeyboardButton("زیرمجموعه گیری", callback_data=f'subcategory')],
+            [InlineKeyboardButton("زیرمجموعه گیری", callback_data=f'subcategory')],
             [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]
         ]
 
         next_rank = utilities.find_next_rank(rank[0][5], rank[0][4])
+        all_access = '\n- '.join(utilities.get_access_fa(rank[0][5]))
 
         text = (f"<b>• با افزایش رتبه، به ویژگی های بیشتری از ربات و همچنین تخفیف بالاتری دسترسی پیدا میکنید!</b>"
                 f"\n\n<b>❋ رتبه شما: {utilities.get_rank_and_emoji(rank[0][5])}</b>"
                 f"\n❋ امتیاز: {rank[0][4]:,}"
                 f"<b>\n\n• دسترسی های رتبه شما:</b>\n\n"
-                f"- {'\n- '.join(utilities.get_access_fa(rank[0][5]))}"
+                f"- {all_access}"
                 f"\n\n• <b>رتبه بعدی: {next_rank[0]}</b>"
-                f"\n<b>• امتیاز مورد نیاز: {next_rank[1]:,}</b>"
-                )
+                f"\n<b>• امتیاز مورد نیاز: {next_rank[1]:,}</b>")
+
         query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
 
     except IndexError as i:
@@ -1886,7 +1887,7 @@ def subcategory(update, context):
         link = f'https://t.me/Fensor_bot/?start={uuid_}_{user_id[0][0]}'
         text = f'{link}\n+50 رتبه هدیه برای اولین بار استفاده کردن از این ربات!'
         keyboard = [
-             [InlineKeyboardButton("ارسال برای دوستان", url=f'https://t.me/share/url?text={text}')],
+            [InlineKeyboardButton("ارسال برای دوستان", url=f'https://t.me/share/url?text={text}')],
             [InlineKeyboardButton("برگشت ↰", callback_data="rank_page")]
         ]
 
@@ -1905,32 +1906,139 @@ def service_advanced_option(update, context):
     query = update.callback_query
     email = query.data.replace('advanced_option_', '')
     try:
+
+        auto_renwal_status = change_shematic = change_server_notif = ''
+        keyboard_main = None
+
+        if 'change_auto_renewal_status_' in query.data:
+            data = query.data.replace('change_auto_renewal_status_', '').split('__')
+            changed_to, auto_renwal_status = (1, '\n\n↲ بعد از پایان سرویس، درصورت اعتبار داشتن کیف پول، بسته به صورت خودکار تمدید میشود.') if eval(data[1]) else (0, '')
+            email = data[0]
+            sqlite_manager.update({'Purchased': {'auto_renewal': changed_to}}, where=f'client_email = "{email}"')
+            query.answer('با موفقیت تغییر یافت ✅')
+
+        elif 'change_config_shematic_' in query.data:
+            email = query.data.replace('change_config_shematic_', '')
+            get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
+
+            get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
+                                                       where=f'id = {get_data[0][6]}')
+
+            generate_key = f"{query.message.chat_id}_{random.randint(0, 10_000_000)}"
+            get_service_uuid = get_data[0][10]
+            get_domain = get_server_country[0][1]
+            ret_conf = api_operation.get_client(email, get_domain)
+
+            data = {
+                "id": get_data[0][7],
+                "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
+                            "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
+                            "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(generate_key, get_data[0][9],
+                                                                                       ret_conf['obj']['total'], ret_conf['obj']['expiryTime'])}
+
+            api_operation.update_client(get_service_uuid, data, get_domain)
+            get_address = get_data[0][8].replace(str(get_service_uuid), str(generate_key))
+            sqlite_manager.update({'Purchased': {'details': get_address, 'client_id': generate_key}}, where=f'client_email = "{email}"')
+            change_shematic = '\n\n↲ پیکربندی تغییر یافت، سرویس را کپی جایگزین قبلی کنید.'
+            query.answer('پیکربندی سرویس تغییر یافت ✅')
+            report_status_to_admin(context, 'User changed Config Shematic', chat_id=query.message.chat_id)
+
+        elif 'change_server_' in query.data:
+            email = query.data.replace('change_server_', '')
+
+            get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
+            get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
+                                                       where=f'id = {get_data[0][6]}')
+
+            plans = sqlite_manager.select(table='Product', where='active = 1')
+            unic_plans = {name[3]: name[4] for name in plans}
+
+            keyboard_main = [[InlineKeyboardButton(f"{key} {'✅' if get_server_country[0][0] == key else ''}",
+                                                   callback_data='alredy_have_show' if get_server_country[0][0] == key else f'changed_server_to_{email}__{value}')] for key, value in unic_plans.items()]
+
+            keyboard_main.append([InlineKeyboardButton("برگشت ↰", callback_data=f"advanced_option_{email}")])
+
+            change_server_notif = '\n• سروری که میخواهید را انتخاب کنید'
+
+        elif 'changed_server_to_' in query.data:
+            get_data = query.data.replace('changed_server_to_', '').split('__')
+            email = get_data[0]
+            country = get_data[1]
+
+            get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
+            get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
+                                                       where=f'id = {get_data[0][6]}')
+
+            get_new_inbound = sqlite_manager.select(column='id,server_domain,name,domain', table='Product',
+                                                    where=f'country = "{country}"', limit='1')
+
+            get_domain = get_server_country[0][1]
+            get_new_domain = get_new_inbound[0][1]
+            ret_conf = api_operation.get_client(email, get_domain)
+
+            data = {
+                "id": int(get_data[0][7]),
+                "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
+                            "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
+                            "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(get_data[0][10], get_data[0][9], ret_conf['obj']['total'],
+                                                                                       ret_conf['obj']['expiryTime'])
+            }
+
+            api_operation.add_client(data, get_new_domain)
+
+            get_cong = api_operation.get_client_url(get_data[0][9], int(get_data[0][7]),
+                                                    domain=get_new_inbound[0][3], server_domain=get_new_domain)
+
+            sqlite_manager.update({'Purchased': {'details': get_cong, 'product_id': get_new_inbound[0][0]}},
+                                  where=f'client_email = "{email}"')
+
+
+            api_operation.del_client(get_data[0][7], get_data[0][10], get_domain)
+
+
+            plans = sqlite_manager.select(table='Product', where='active = 1')
+            unic_plans = {name[3]: name[4] for name in plans}
+
+            keyboard_main = [[InlineKeyboardButton(f"{key} {'✅' if get_new_inbound[0][2] == key else ''}",
+                                                   callback_data='alredy_have_show' if get_new_inbound[0][2] == key else f'changed_server_to_{email}__{value}')] for key, value
+                             in unic_plans.items()]
+
+            keyboard_main.append([InlineKeyboardButton("برگشت ↰", callback_data=f"advanced_option_{email}")])
+
+            change_shematic = '\n\n↲ پیکربندی تغییر یافت، سرویس را کپی جایگزین قبلی کنید.'
+            query.answer('عملیات با موفقیت انجام شد ✅')
+            report_status_to_admin(context, 'User changed Config Server', chat_id=query.message.chat_id)
+
+
         get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
         get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
-                                                   where=f'id = {get_data[0][6]}')
+                                                       where=f'id = {get_data[0][6]}')
 
-        get_server_domain = get_server_country[0][1]
         get_server_country = get_server_country[0][0].replace('سرور ', '').replace('pay_per_use_', '')
-        get_country_flag = get_server_country[:2]
-        auto_renewal, auto_renewal_button, chenge_to = ('فعال ✓', 'غیرفعال کردن تمدید خودکار', False) if get_data[0][15] \
-            else ('غیرفعال ✗', 'فعال کردن تمدید خودکار', True)
+        auto_renewal, auto_renewal_button, chenge_to = ('فعال ✅', 'غیرفعال کردن تمدید خودکار ✗', False) if get_data[0][15] \
+            else ('غیرفعال ❌', 'فعال کردن تمدید خودکار ✓', True)
 
         text_ = (
-            f"<b>اطلاعات سرویس انتخاب شده:</b>"
+            f"⚠️ با تغییر دادن بعضی گزینه ها، کانفیگ تغییر میکند و اگر درحال حاضر به همین سرویس متصل هستید، ارتباط شما قطع میشود. "
+            f"مطئمن شوید که میتوانید آدرس جدید را جایگزین کنید."
+            f"\n\n• <b>اطلاعات سرویس انتخاب شده:</b>"
             f"\n\n🔷 نام سرویس: {email}"
             f"\n🗺 موقعیت سرور: {get_server_country}"
             f"\n🔁 تمدید خودکار: {auto_renewal}"
+            f"{auto_renwal_status}"
             f"\n\n🌐 آدرس سرویس:\n <code>{get_data[0][8]}</code>"
+            f"{change_shematic}"
+            f"{change_server_notif}"
         )
 
-        keyboard = [[InlineKeyboardButton(f"{auto_renewal_button}", callback_data=f"change_auto_renewal_status_{email}_{chenge_to}")],
-                    [InlineKeyboardButton(f"تغییر کشور ({get_country_flag})", callback_data=f"change_country_server_{email}")],
-                    [InlineKeyboardButton("برگشت ↰", callback_data="my_service")]]
+        keyboard = [[InlineKeyboardButton(f"{auto_renewal_button}", callback_data=f"change_auto_renewal_status_{email}__{chenge_to}")],
+                    [InlineKeyboardButton(f" تعویض کانفیگ ⤰", callback_data=f"change_config_shematic_{email}"),
+                     InlineKeyboardButton(f"تغییر سرور ⇈", callback_data=f"change_server_{email}")],
+                    [InlineKeyboardButton("• تغییر مالکیت", callback_data=f"not_ready_yet")],
+                    [InlineKeyboardButton("برگشت ↰", callback_data=f"view_service_{email}")]]
 
-        query.edit_message_text(text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+        query.edit_message_text(text_, reply_markup=InlineKeyboardMarkup(keyboard if not keyboard_main else keyboard_main), parse_mode='html')
 
     except Exception as e:
-        print(e)
-
-def change_server(update, context):
-    pass
+        ready_report_problem_to_admin(context, text='service_advanced_option', chat_id=query.message.chat_id, error=e)
+        something_went_wrong(update, context)

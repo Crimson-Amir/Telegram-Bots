@@ -20,6 +20,11 @@ def not_ready_yet(update, context):
     query.answer(text="ببخشید، درحال توسعه است.", show_alert=False)
 
 
+def alredy_have_show(update, context):
+    query = update.callback_query
+    query.answer(text="روی همین سرور هستید", show_alert=False)
+
+
 def something_went_wrong(update, context):
     query = update.callback_query
     query.answer(text="مشکلی وجود دارد!", show_alert=False)

@@ -13,7 +13,7 @@ from tasks import (buy_service, all_query_handler, payment_page, get_service_con
                    admin_reserve_service, people_ask, pay_per_use, pay_per_use_calculator, change_infiniti_service_status,
                    report_problem_by_user, tickect_by_user, service_advanced_option, rank_page, subcategory)
 
-from utilities import not_ready_yet, just_for_show, message_to_user
+from utilities import not_ready_yet, just_for_show, message_to_user, alredy_have_show
 
 from admin_task import (admin_add_update_inbound, add_service, all_service, del_service, run_in_system,
                         say_to_every_one, clear_depleted_service, say_to_customer_of_server,
@@ -73,14 +73,21 @@ def main():
     dp.add_handler(CallbackQueryHandler(remove_service, pattern=r'remove_service_(.*)'))
     dp.add_handler(CallbackQueryHandler(remove_service, pattern=r'accept_rm_ser_(.*)'))
     dp.add_handler(CallbackQueryHandler(report_problem_by_user, pattern=r'say_to_admin_(.*)'))
+
     dp.add_handler(CallbackQueryHandler(change_infiniti_service_status, pattern=r'change_infiniti_service_status_(.*)'))
+
     dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'advanced_option_(.*)'))
+    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'change_auto_renewal_status_(.*)'))
+    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'change_config_shematic_(.*)'))
+    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'changed_server_to_(.*)'))
+    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'change_server_(.*)'))
 
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='service_notification'))
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='wallet_notification'))
     dp.add_handler(CallbackQueryHandler(report_problem_by_user, pattern='report_problem_by_user'))
 
     dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu'))
+    dp.add_handler(CallbackQueryHandler(alredy_have_show, pattern='alredy_have_show'))
     dp.add_handler(CallbackQueryHandler(subcategory, pattern='subcategory'))
     dp.add_handler(CallbackQueryHandler(rank_page, pattern='rank_page'))
     dp.add_handler(CallbackQueryHandler(pay_per_use, pattern='pay_per_use_'))

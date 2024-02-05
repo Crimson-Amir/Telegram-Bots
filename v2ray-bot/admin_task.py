@@ -113,7 +113,8 @@ def get_all_service():
     for ser in all_serv:
         indexed_data += [f"{clean_data[index]}: {data}" for index, data in enumerate(ser)]
         indexed_data.append(" -------------------------------------- ")
-    return "\n".join(indexed_data)
+    # print(indexed_data)
+    print("\n".join(indexed_data))
 
 
 def all_service(update, context):
