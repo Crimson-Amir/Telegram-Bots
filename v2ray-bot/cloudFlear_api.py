@@ -29,7 +29,7 @@ class CloudFlearApi(ManageDb):
             print(text, e)
             requests.post(
                 telegram_bot_url,
-                data={'chat_id': ADMIN_CHAT_ID, "text": message})
+                data={'chat_id': ADMIN_CHAT_ID, "text": text})
             return False
 
     def change_dns_record_ip(self, record_ip, record_name, proxied, record_type, comment, ttl='Auto', zone_id=None):
@@ -48,5 +48,3 @@ class CloudFlearApi(ManageDb):
                             headers=self.headers, json=data).json()
 
 
-a = CloudFlearApi('e609eff4c987a0557cfe43d4956e99ea24170', 'ytchanneltinos@gmail.com', 'e764ba1c8fc10092843c59ab4bd4fdec')
-a.change_dns_record_ip("178.128.196.7", "soka", False, "A", 'OK')
