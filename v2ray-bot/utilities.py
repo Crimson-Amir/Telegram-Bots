@@ -5,7 +5,11 @@ from private import telegram_bot_token, ADMIN_CHAT_ID
 from private import ADMIN_CHAT_ID
 import requests
 from ranking import rank_emojis, rank_title_fa, rank_access_fa, rank_access
+from sqlite_manager import ManageDb
+from api_clean import XuiApiClean
 
+api_operation = XuiApiClean()
+sqlite_manager = ManageDb('v2ray')
 
 def human_readable(number):
     try:
@@ -172,3 +176,50 @@ def message_to_user(update, context, message=None, chat_id=None):
     except Exception as e:
         update.message.reply_text('somthing went wrong!')
         ready_report_problem_to_admin(context, 'MESSAGE TO USER', update.message.from_user['id'], e)
+
+
+def change_service_server(context, update, email, country):
+    try:
+        get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
+        get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
+                                                   where=f'id = {get_data[0][6]}')
+
+        get_new_inbound = sqlite_manager.select(column='id,server_domain,name,domain', table='Product',
+                                                where=f'country = "{country}"', limit=1)
+
+        get_domain = get_server_country[0][1]
+        get_new_domain = get_new_inbound[0][1]
+        ret_conf = api_operation.get_client(email, get_domain)
+
+        if int(ret_conf['obj']['total']):
+            upload_gb = ret_conf['obj']['up']
+            download_gb = ret_conf['obj']['down']
+            usage_traffic = upload_gb + download_gb
+            total_traffic = ret_conf['obj']['total']
+            left_traffic = total_traffic - usage_traffic
+        else:
+            left_traffic = 0
+
+        data = {
+            "id": int(get_data[0][7]),
+            "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
+                        "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
+                        "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(get_data[0][10], get_data[0][9],
+                                                                                   left_traffic,
+                                                                                   ret_conf['obj']['expiryTime'])
+        }
+
+        api_operation.add_client(data, get_new_domain)
+
+        get_cong = api_operation.get_client_url(get_data[0][9], int(get_data[0][7]),
+                                                domain=get_new_inbound[0][3], server_domain=get_new_domain)
+
+        sqlite_manager.update({'Purchased': {'details': get_cong, 'product_id': get_new_inbound[0][0]}},
+                              where=f'client_email = "{email}"')
+
+        api_operation.del_client(get_data[0][7], get_data[0][10], get_domain)
+        return get_new_inbound
+
+    except Exception as e:
+        ready_report_problem_to_admin(context, text='change_service_server', chat_id=update.callback_query.message.chat_id, error=e)
+        something_went_wrong(update, context)

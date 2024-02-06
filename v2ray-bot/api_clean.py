@@ -6,26 +6,22 @@ from sqlite_manager import ManageDb
 
 telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
 
-
 class XuiApiClean(ManageDb):
     def __init__(self):
         super().__init__('v2ray')
         self.connect = requests.Session()
-        get_cookies = ""
 
-        if get_cookies == "":
+        get_domains = self.select(column='server_domain', table='Product')
+        get_domain_uniq = {dom[0] for dom in get_domains}
 
-            get_domains = self.select(column='server_domain', table='Product')
-            get_domain_uniq = {dom[0] for dom in get_domains}
-
-            for domain in get_domain_uniq:
-                self.login = self.connect.post(f'{protocol}{domain}:{PORT}/login', data=auth)
-            get_cookies = self.login.cookies.get('session')
-            self.headers = {'Cookie': f'session={get_cookies}'}
-            if self.login.status_code == 200:
-                print(self.login.json())
-            else:
-                print(f'Connection Problem. {self.login.status_code}')
+        for domain in get_domain_uniq:
+            self.login = self.connect.post(f'{protocol}{domain}:{PORT}/login', data=auth)
+        get_cookies = self.login.cookies.get('session')
+        self.headers = {'Cookie': f'session={get_cookies}'}
+        if self.login.status_code == 200:
+            print(self.login.json())
+        else:
+            print(f'Connection Problem. {self.login.status_code}')
 
     @staticmethod
     def send_telegram_message(message):

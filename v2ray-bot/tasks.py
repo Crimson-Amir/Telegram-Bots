@@ -140,21 +140,26 @@ def send_evidence_to_admin(update, context):
     try:
         package = context.user_data['package']
         purchased_id = context.user_data['purchased_id']
+
         text = "- Check the new payment to the card:\n\n"
         text += f"Name: {user['first_name']}\nUserName: @{user['username']}\nID: {user['id']}\n\n"
+
         keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_{purchased_id}")]
             , [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_{purchased_id}")]]
+
         if update.message.photo:
             file_id = update.message.photo[-1].file_id
             text += f"caption: {update.message.caption}" or 'Witout caption!'
-            text += f"\n\nServer: {package[0][4]}\nInbound id: {package[0][1]}\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
+            text += f"\n\nServer: {package[0][4]}\nInbound id: {package[0][1]}\nPeriod: {package[0][5]} Day\nTraffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
             context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text , reply_markup=InlineKeyboardMarkup(keyboard))
             update.message.reply_text(f'سفارش شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه')
+
         elif update.message.text:
             text += f"Text: {update.message.text}"
-            text += f"\n\nServer: {package[0][4]}\nInbound id: {package[0][1]}\nPeriod: {package[0][5]} Day\n Traffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
+            text += f"\n\nServer: {package[0][4]}\nInbound id: {package[0][1]}\nPeriod: {package[0][5]} Day\nTraffic: {package[0][6]}GB\nPrice: {package[0][7]:,} T"
             context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
             update.message.reply_text(f'درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه')
+
         else:
             update.message.reply_text('مشکلی وجود داره! فقط متن یا عکس قابل قبوله.')
 
@@ -305,7 +310,8 @@ def server_detail_customer(update, context):
 
         change_active = 'فعال ✅' if ret_conf['obj']['enable'] else 'غیرفعال ❌'
         purchase_date = datetime.strptime(get_data[0][12], "%Y-%m-%d %H:%M:%S.%f%z").replace(tzinfo=None)
-
+        auto_renwal_emoji = 'فعال ✓' if get_data[0][15] else 'غیرفعال ✗'
+        auto_renwal = f'\n\n🔄 تمدیدخودکار: {auto_renwal_emoji}'
 
         if int(ret_conf['obj']['total']) != 0 and int(ret_conf['obj']['expiryTime']) != 0:
             total_traffic = int(round(ret_conf['obj']['total'] / (1024 ** 3), 2))
@@ -350,6 +356,7 @@ def server_detail_customer(update, context):
             f"\n🔼 آپلود↑: {format_traffic(upload_gb)}"
             f"\n🔽 دانلود↓: {format_traffic(download_gb)}"
             f"\n📊 مصرف کل: {usage_traffic}/{total_traffic}{'GB' if isinstance(total_traffic, int) else ''}"
+            f"{auto_renwal}"
             f"\n\n⏰ تاریخ خرید/تمدید: {purchase_date.strftime('%H:%M:%S | %Y/%m/%d')}"
             f"\n\n🌐 آدرس سرویس:\n <code>{get_data[0][8]}</code>"
         )
@@ -750,6 +757,7 @@ def apply_card_pay_lu(update, context):
                 my_data = now + timedelta(days=user_db[0][6])
                 my_data = int(my_data.timestamp() * 1000)
                 print(api_operation.reset_client_traffic(get_client[0][7], get_client[0][9], get_server_domain[0][0]))
+
             data = {
                 "id": int(get_client[0][7]),
                 "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
@@ -768,7 +776,7 @@ def apply_card_pay_lu(update, context):
                                      name_of_operation=f'تمدید یا ارتقا سرویس {get_client[0][2]}', operation=0,
                                      status_of_pay=1, context=context)
 
-            send_service_to_customer_report(context, status=1, service_name=get_client[0][2], chat_id=get_client[0][4],)
+            report_status_to_admin(context, text=f'User Upgrade Service\nService Name: {get_client[0][2]}',chat_id=get_client[0][4])
 
         elif 'ok_card_pay_lu_refuse_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_lu_refuse_', ''))
@@ -1440,6 +1448,9 @@ def pay_from_wallet(update, context):
                 keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="my_service")]]
                 query.edit_message_text(text='سرویس شما با موفقیت ارتقا یافت.✅', reply_markup=InlineKeyboardMarkup(keyboard))
 
+                report_status_to_admin(context, text=f'User Upgrade Service\nService Name: {get_client[0][2]}',chat_id=get_client[0][4])
+
+
             except Exception as e:
                 ready_report_problem_to_admin(context, 'PAY FROM WAWLLET FOR UPGRADE',
                                               update.message.from_user['id'], e)
@@ -1483,6 +1494,7 @@ def pay_from_wallet(update, context):
 
                 keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="select_server")]]
                 query.edit_message_text(text='پرداخت با موفقیت انجام شد.✅', parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
             else:
                 query.answer('مشکلی وجود داره!')
 
@@ -1941,7 +1953,8 @@ def service_advanced_option(update, context):
             sqlite_manager.update({'Purchased': {'details': get_address, 'client_id': generate_key}}, where=f'client_email = "{email}"')
             change_shematic = '\n\n↲ پیکربندی تغییر یافت، سرویس را کپی جایگزین قبلی کنید.'
             query.answer('پیکربندی سرویس تغییر یافت ✅')
-            report_status_to_admin(context, 'User changed Config Shematic', chat_id=query.message.chat_id)
+
+            report_status_to_admin(context, f'User changed Config Server\nConfig Email: {email}', chat_id=query.message.chat_id)
 
         elif 'change_server_' in query.data:
             email = query.data.replace('change_server_', '')
@@ -1953,8 +1966,10 @@ def service_advanced_option(update, context):
             plans = sqlite_manager.select(table='Product', where='active = 1')
             unic_plans = {name[3]: name[4] for name in plans}
 
-            keyboard_main = [[InlineKeyboardButton(f"{key} {'✅' if get_server_country[0][0] == key else ''}",
-                                                   callback_data='alredy_have_show' if get_server_country[0][0] == key else f'changed_server_to_{email}__{value}')] for key, value in unic_plans.items()]
+            print(get_server_country[0][0].replace('pay_per_use_', ''))
+
+            keyboard_main = [[InlineKeyboardButton(f"{key} {'✅' if get_server_country[0][0] == key or get_server_country[0][0].replace('pay_per_use_', '') == value else ''}",
+                                                   callback_data='alredy_have_show' if get_server_country[0][0] == key or get_server_country[0][0].replace('pay_per_use_', '') == value else f'changed_server_to_{email}__{value}')] for key, value in unic_plans.items()]
 
             keyboard_main.append([InlineKeyboardButton("برگشت ↰", callback_data=f"advanced_option_{email}")])
 
@@ -1965,36 +1980,7 @@ def service_advanced_option(update, context):
             email = get_data[0]
             country = get_data[1]
 
-            get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
-            get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
-                                                       where=f'id = {get_data[0][6]}')
-
-            get_new_inbound = sqlite_manager.select(column='id,server_domain,name,domain', table='Product',
-                                                    where=f'country = "{country}"', limit='1')
-
-            get_domain = get_server_country[0][1]
-            get_new_domain = get_new_inbound[0][1]
-            ret_conf = api_operation.get_client(email, get_domain)
-
-            data = {
-                "id": int(get_data[0][7]),
-                "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
-                            "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
-                            "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(get_data[0][10], get_data[0][9], ret_conf['obj']['total'],
-                                                                                       ret_conf['obj']['expiryTime'])
-            }
-
-            api_operation.add_client(data, get_new_domain)
-
-            get_cong = api_operation.get_client_url(get_data[0][9], int(get_data[0][7]),
-                                                    domain=get_new_inbound[0][3], server_domain=get_new_domain)
-
-            sqlite_manager.update({'Purchased': {'details': get_cong, 'product_id': get_new_inbound[0][0]}},
-                                  where=f'client_email = "{email}"')
-
-
-            api_operation.del_client(get_data[0][7], get_data[0][10], get_domain)
-
+            get_new_inbound = utilities.change_service_server(context, update, email, country)
 
             plans = sqlite_manager.select(table='Product', where='active = 1')
             unic_plans = {name[3]: name[4] for name in plans}
@@ -2007,7 +1993,9 @@ def service_advanced_option(update, context):
 
             change_shematic = '\n\n↲ پیکربندی تغییر یافت، سرویس را کپی جایگزین قبلی کنید.'
             query.answer('عملیات با موفقیت انجام شد ✅')
-            report_status_to_admin(context, 'User changed Config Server', chat_id=query.message.chat_id)
+
+            report_status_to_admin(context, f'User changed Config Server\nConfig Email: {email}\nNew Server: {country}',
+                                   chat_id=query.message.chat_id)
 
 
         get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')

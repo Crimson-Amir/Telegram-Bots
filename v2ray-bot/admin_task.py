@@ -1,16 +1,11 @@
 import random
 from datetime import datetime, timedelta
 import pytz
-
 import utilities
-from sqlite_manager import ManageDb
-from api_clean import XuiApiClean
 from private import ADMIN_CHAT_ID
-from utilities import ready_report_problem_to_admin, message_to_user
+from utilities import ready_report_problem_to_admin, message_to_user, sqlite_manager, api_operation
 from wallet import WalletManage
 
-sqlite_manager = ManageDb('v2ray')
-api_operation = XuiApiClean()
 wallet_manage = WalletManage('User', 'wallet', 'v2ray', 'chat_id')
 
 
