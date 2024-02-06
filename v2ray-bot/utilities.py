@@ -1,4 +1,6 @@
 import datetime
+import json
+
 import arrow
 import pytz
 from private import telegram_bot_token, ADMIN_CHAT_ID
@@ -10,6 +12,7 @@ from api_clean import XuiApiClean
 
 api_operation = XuiApiClean()
 sqlite_manager = ManageDb('v2ray')
+telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
 
 def human_readable(number):
     try:
@@ -27,6 +30,11 @@ def not_ready_yet(update, context):
 def alredy_have_show(update, context):
     query = update.callback_query
     query.answer(text="روی همین سرور هستید", show_alert=False)
+
+
+def not_for_depleted_service(update, context):
+    query = update.callback_query
+    query.answer(text="این ویژگی برای سرویس های فعال است", show_alert=False)
 
 
 def something_went_wrong(update, context):
@@ -96,8 +104,8 @@ def record_operation_in_file(chat_id, status_of_pay, price, name_of_operation, c
 def send_service_to_customer_report(context, status, chat_id, error=None, service_name=None, more_detail=None):
     text = 'SEND SERVICE TO USER'
     text = f'🟢 {text} SUCCESSFULL' if status else f'🔴 {text} FAILED'
-    text += f'\n\nUSER ID: {chat_id}'
-    text += f'\nSERVICE NAME: {service_name}'
+    text += f'\n\nUser ID: {chat_id}'
+    text += f'\nService Name: {service_name}'
 
     if not more_detail:
         context.bot.send_message(ADMIN_CHAT_ID, text)
@@ -191,6 +199,9 @@ def change_service_server(context, update, email, country):
         get_new_domain = get_new_inbound[0][1]
         ret_conf = api_operation.get_client(email, get_domain)
 
+        if not ret_conf['obj']['enable']:
+            raise EOFError('service_is_depleted')
+
         if int(ret_conf['obj']['total']):
             upload_gb = ret_conf['obj']['up']
             download_gb = ret_conf['obj']['down']
@@ -222,4 +233,4 @@ def change_service_server(context, update, email, country):
 
     except Exception as e:
         ready_report_problem_to_admin(context, text='change_service_server', chat_id=update.callback_query.message.chat_id, error=e)
-        something_went_wrong(update, context)
+        raise e

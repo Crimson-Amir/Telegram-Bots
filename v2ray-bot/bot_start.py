@@ -26,27 +26,33 @@ def bot_start(update, context):
     user_is_available = c.fetchall()
 
     if len(user_is_available) == 0:
+
         invited_by = None
-        rank_name = next(iter(rank_access))
+        rank_name_ = next(iter(rank_access))
         level = 0
+
+        c.execute(
+            "INSERT INTO Rank (name,user_name,chat_id,level,rank_name) VALUES (?,?,?,?,?)",
+            (user["first_name"], user["username"], int(user["id"]), level, rank_name_))
+
+        conn.commit()
+
         if context.args:
             get_user_id = context.args[0].split('_')[1]
             get_user = sqlite_manager.select(table='User', where=f'id = {get_user_id}')
+
             manage_rank.rank_up(RANK_PER_INVITE, get_user[0][3])
+            manage_rank.rank_up(RANK_PER_INVITE, user['id'])
+
             message_to_user(update, context, message=f'کاربر {user["first_name"]} با لینک دعوت شما ربات رو استارت کرد.\nتبریک، +50 رتبه دریافت کردید!', chat_id=get_user[0][3])
             invited_by = get_user[0][3]
-            rank_name = next(rank_name)
-            level = 50
+
 
         start_text_notif += f"\ninvited_by: {invited_by}" if invited_by else ''
 
         context.bot.send_message(ADMIN_CHAT_ID, text=start_text_notif, parse_mode="HTML")
         c.execute("INSERT INTO User (name,user_name,chat_id,date,traffic,period,free_service,notification_gb,notification_day,wallet,invited_by) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                   (user["first_name"], user["username"], int(user["id"]), str(date), 10, 7, 0, 85,2,0,invited_by))
-
-        c.execute(
-            "INSERT INTO Rank (name,user_name,chat_id,level,rank_name) VALUES (?,?,?,?,?)",
-            (user["first_name"], user["username"], int(user["id"]), level, rank_name))
 
         conn.commit()
 

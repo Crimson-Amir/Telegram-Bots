@@ -1,27 +1,28 @@
 import json
-
 import requests
-from private import PORT, auth, telegram_bot_token, ADMIN_CHAT_ID, DOMAIN, protocol
+from private import PORT, auth, telegram_bot_url, ADMIN_CHAT_ID, DOMAIN, protocol
 from sqlite_manager import ManageDb
 
-telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
 
 class XuiApiClean(ManageDb):
     def __init__(self):
         super().__init__('v2ray')
         self.connect = requests.Session()
+        get_cookies = ""
 
-        get_domains = self.select(column='server_domain', table='Product')
-        get_domain_uniq = {dom[0] for dom in get_domains}
+        if get_cookies == "":
 
-        for domain in get_domain_uniq:
-            self.login = self.connect.post(f'{protocol}{domain}:{PORT}/login', data=auth)
-        get_cookies = self.login.cookies.get('session')
-        self.headers = {'Cookie': f'session={get_cookies}'}
-        if self.login.status_code == 200:
-            print(self.login.json())
-        else:
-            print(f'Connection Problem. {self.login.status_code}')
+            get_domains = self.select(column='server_domain', table='Product')
+            get_domain_uniq = {dom[0] for dom in get_domains}
+
+            for domain in get_domain_uniq:
+                self.login = self.connect.post(f'{protocol}{domain}:{PORT}/login', data=auth)
+            get_cookies = self.login.cookies.get('session')
+            self.headers = {'Cookie': f'session={get_cookies}'}
+            if self.login.status_code == 200:
+                print(self.login.json())
+            else:
+                print(f'Connection Problem. {self.login.status_code}')
 
     @staticmethod
     def send_telegram_message(message):
@@ -29,30 +30,26 @@ class XuiApiClean(ManageDb):
             telegram_bot_url,
             data={'chat_id': ADMIN_CHAT_ID, "text": message})
 
-    def check_request(self, request):
-        if request.status_code == 200:
-            print('connect Successful!')
-            return True
-        else:
-            try:
-                json_if_available = request.json()
-            except Exception as e:
-                json_if_available = e
-            text = f'connection problem!\ncode: {request.status_code}\nurl: {request.url}\njson: {json_if_available}'
-            print(text)
-            self.send_telegram_message(text)
-            return False
+    def make_request(self, method, url, json_data=None):
 
-    def check_json(self, request):
-        try:
-            test_ = request.json()
-            print('connect Successful!')
-            return True
-        except Exception as e:
-            text = f'connection problem\ncode: {request.status_code}\nurl: {request.url}'
-            print(text, e)
-            self.send_telegram_message(text)
-            return False
+        with self.connect.request(method, url, json=json_data, timeout=5) as response:
+            if response.ok:
+                connection_response = response.json()
+                print('connect Cloudflare Xui Api!')
+
+                if not connection_response['success']:
+                    text = f'🔴 Xui Api Response Success Is False\ncode: {connection_response}\nurl: {response.url}'
+                    self.send_telegram_message(text)
+                    raise ConnectionError
+
+                return connection_response
+
+            else:
+                text = f'🔴 Connection problem in Xui Api\ncode: {response.status_code}\nurl: {response.url}'
+                print(text)
+                self.send_telegram_message(text)
+                raise ConnectionError
+
 
     def get_all_inbounds(self):
         get_domains = self.select(column='server_domain', table='Product')
@@ -60,29 +57,25 @@ class XuiApiClean(ManageDb):
         all_inbound = []
 
         for domain in get_domain_uniq:
-            get_inbounds = self.connect.get(f'{protocol}{domain}:{PORT}/panel/api/inbounds/list')
-            if self.check_request(get_inbounds):
-                all_inbound.append(get_inbounds.json())
+            get_inbounds = self.make_request('get', f'{protocol}{domain}:{PORT}/panel/api/inbounds/list')
+            all_inbound.append(get_inbounds)
 
         return all_inbound
 
     def get_inbound(self, inbound_id, domain=None):
         main_domain = domain or DOMAIN
-        get_inbound = self.connect.get(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/get/{inbound_id}')
-        if self.check_request(get_inbound):
-            return get_inbound.json()
+        get_inbound = self.make_request('get', f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/get/{inbound_id}')
+        return get_inbound
 
     def get_client(self, client_email, domain=None):
         main_domain = domain or DOMAIN
-        get_client_ = self.connect.get(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/getClientTraffics/{client_email}')
-        if self.check_request(get_client_):
-            return get_client_.json()
+        get_client_ = self.make_request('get', f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/getClientTraffics/{client_email}')
+        return get_client_
 
     def add_inbound(self, data, domain=None):
         main_domain = domain or DOMAIN
-        add_inb = self.connect.post(f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/add', json=data)
-        if self.check_json(add_inb):
-            return add_inb.json()
+        add_inb = self.make_request('post', f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/add', data)
+        return add_inb
 
     def add_client(self, data, domain=None):
         main_domain = domain or DOMAIN

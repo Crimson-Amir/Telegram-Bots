@@ -43,7 +43,7 @@ def buy_service(update, context):
         keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="main_menu")])
 
         query.edit_message_text(
-            text="<b>سرور مورد نظر خودتون رو انتخاب کنید:</b>",
+            text="<b>• سرور مورد نظر خودتون رو انتخاب کنید:\n\n• بعد از خرید سرویس، میتونید سرور رو تغییر بدید</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='html'
         )
@@ -80,6 +80,7 @@ def payment_page(update, context):
     id_ = int(query.data.replace('service_', ''))
     try:
         package = sqlite_manager.select(table='Product', where=f'id = {id_}')
+
         if package[0][7]:
             keyboard = [
                 [InlineKeyboardButton("پرداخت از کیف پول", callback_data=f'payment_by_wallet_{id_}'),
@@ -225,16 +226,16 @@ def send_clean_for_customer(query, context, id_):
                                          status_of_pay=1, context=context)
 
 
-                send_service_to_customer_report(context, status=1, chat_id=get_client[0][4], service_name=get_client[0][2])
+                send_service_to_customer_report(context, status=1, chat_id=get_client[0][4], service_name=get_client[0][9])
                 return True
             else:
-                send_service_to_customer_report(context, status=0, chat_id=get_client[0][4], service_name=get_client[0][2],
+                send_service_to_customer_report(context, status=0, chat_id=get_client[0][4], service_name=get_client[0][9],
                                                 more_detail=create)
                 print('wrong: ', returned)
                 return False
         except Exception as e:
             print(e)
-            send_service_to_customer_report(context, status=0, chat_id=get_client[0][4], service_name=get_client[0][2],
+            send_service_to_customer_report(context, status=0, chat_id=get_client[0][4], service_name=get_client[0][9],
                                             more_detail='ERROR IN SEND CLEAN FOR CUSTOMER', error=e)
             return False
     else:
@@ -302,20 +303,28 @@ def server_detail_customer(update, context):
         get_server_domain = get_server_country[0][1]
         get_server_country = get_server_country[0][0].replace('سرور ','').replace('pay_per_use_', '')
 
+        expiry_month = '♾️'
+        total_traffic = '♾️'
+        exist_day = '(بدون محدودیت زمانی)'
+
         ret_conf = api_operation.get_client(email, get_server_domain)
 
         upload_gb = round(int(ret_conf['obj']['up']) / (1024 ** 3), 2)
         download_gb = round(int(ret_conf['obj']['down']) / (1024 ** 3), 2)
         usage_traffic = round(upload_gb + download_gb, 2)
 
-        change_active = 'فعال ✅' if ret_conf['obj']['enable'] else 'غیرفعال ❌'
+        change_active, advanced_option_pattern = ('فعال ✅', f'advanced_option_{email}') if ret_conf['obj']['enable'] else ('غیرفعال ❌', 'not_for_depleted_service')
+
         purchase_date = datetime.strptime(get_data[0][12], "%Y-%m-%d %H:%M:%S.%f%z").replace(tzinfo=None)
         auto_renwal_emoji = 'فعال ✓' if get_data[0][15] else 'غیرفعال ✗'
         auto_renwal = f'\n\n🔄 تمدیدخودکار: {auto_renwal_emoji}'
 
-        if int(ret_conf['obj']['total']) != 0 and int(ret_conf['obj']['expiryTime']) != 0:
+        keyboard = [[InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"personalization_service_lu_{get_data[0][0]}")]]
+
+        if int(ret_conf['obj']['total']) != 0:
             total_traffic = int(round(ret_conf['obj']['total'] / (1024 ** 3), 2))
 
+        if int(ret_conf['obj']['expiryTime']) != 0:
             expiry_timestamp = ret_conf['obj']['expiryTime'] / 1000
             expiry_date = datetime.fromtimestamp(expiry_timestamp)
             expiry_month = expiry_date.strftime("%Y/%m/%d")
@@ -334,17 +343,15 @@ def server_detail_customer(update, context):
             context.user_data['traffic_for_upgrade'] = total_traffic
             keyboard = [[InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"personalization_service_lu_{get_data[0][0]}")]]
 
-        else:
-            total_traffic = '♾️'
-            expiry_month = '♾️'
-            exist_day = '(بدون محدودیت زمانی)'
+        elif int(ret_conf['obj']['total']) == 0:
             service_activate_status = 'غیرفعال سازی ⤈' if ret_conf['obj']['enable'] else 'فعال سازی ↟'
             keyboard = [[InlineKeyboardButton(service_activate_status, callback_data=f"change_infiniti_service_status_{get_data[0][0]}_{ret_conf['obj']['enable']}")]]
+
 
         keyboard.append([InlineKeyboardButton("حذف سرویس ⇣", callback_data=f"remove_service_{email}"),
                          InlineKeyboardButton("تازه سازی ↻", callback_data=f"view_service_{email}")])
 
-        keyboard.append([InlineKeyboardButton("گزینه های پیشرفته ⥣", callback_data=f"advanced_option_{email}")])  # advanced_option_{email}
+        keyboard.append([InlineKeyboardButton("گزینه های پیشرفته ⥣", callback_data=advanced_option_pattern)])  # advanced_option_{email}
         keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="my_service")])
 
         text_ = (
@@ -773,10 +780,10 @@ def apply_card_pay_lu(update, context):
             query.delete_message()
 
             record_operation_in_file(chat_id=get_client[0][4], price=price,
-                                     name_of_operation=f'تمدید یا ارتقا سرویس {get_client[0][2]}', operation=0,
+                                     name_of_operation=f'تمدید یا ارتقا سرویس {get_client[0][9]}', operation=0,
                                      status_of_pay=1, context=context)
 
-            report_status_to_admin(context, text=f'User Upgrade Service\nService Name: {get_client[0][2]}',chat_id=get_client[0][4])
+            report_status_to_admin(context, text=f'User Upgrade Service\nService Name: {get_client[0][9]}',chat_id=get_client[0][4])
 
         elif 'ok_card_pay_lu_refuse_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_lu_refuse_', ''))
@@ -811,6 +818,8 @@ def get_free_service(update, context):
              'notif_day': 0, 'notif_gb': 0}])
         send_clean_for_customer(update.callback_query, context, ex)
         context.bot.send_message(ADMIN_CHAT_ID, f'🟢 User {user["name"]} With ID: {user["id"]} TAKE A FREE SERVICE')
+        keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]]
+        query.edit_message_text('سرویس تست با موفقیت برای شما ارسال شد ✅', reply_markup=InlineKeyboardMarkup(keyboard))
     except Exception as e:
         ready_report_problem_to_admin(context, text='TAKE A FREE SERVICE', chat_id=query.message.chat_id, error=e)
         query.answer('ببخشید، مشکلی وجود داشت!')
@@ -945,10 +954,9 @@ def check_all_configs(context, context_2=None):
                                 [InlineKeyboardButton("خرید سرویس جدید", callback_data=f"select_server"),
                                  InlineKeyboardButton("تمدید همین سرویس", callback_data=f"personalization_service_lu_{user[0]}")],
                                 [InlineKeyboardButton("❤️ تجربه استفاده از فری‌بایت رو به اشتراک بگذارید:", callback_data=f"just_for_show")],
-                                [InlineKeyboardButton("عالی بود", callback_data=f"rate_perfect&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}")],
-                                [InlineKeyboardButton("معمولی و منصفانه بود", callback_data=f"rate_ok&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}")],
-                                [InlineKeyboardButton("نا امید شدم", callback_data=f"rate_bad&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}")],
-                                [InlineKeyboardButton("مشکل اتصال داشتم", callback_data=f"rate_connectionProblem&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}"),
+                                [InlineKeyboardButton("معمولی بود", callback_data=f"rate_ok&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}"),
+                                 InlineKeyboardButton("عالی بود", callback_data=f"rate_perfect&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}")],
+                                [InlineKeyboardButton("ناامید شدم", callback_data=f"rate_bad&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}"),
                                  InlineKeyboardButton("نظری ندارم", callback_data=f"rate_haveNotIdea&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}")]
                             ]
                             context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1440,7 +1448,7 @@ def pay_from_wallet(update, context):
                                       ,where=f'client_email = "{get_client[0][9]}"')
 
                 record_operation_in_file(chat_id=get_client[0][4], price=price,
-                                         name_of_operation=f'تمدید یا ارتقا سرویس {get_client[0][2]}', operation=0,
+                                         name_of_operation=f'تمدید یا ارتقا سرویس {get_client[0][9]}', operation=0,
                                          status_of_pay=1, context=context)
 
                 wallet_manage.less_from_wallet(query.from_user['id'], price, user_detail=query.from_user)
@@ -1448,7 +1456,7 @@ def pay_from_wallet(update, context):
                 keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="my_service")]]
                 query.edit_message_text(text='سرویس شما با موفقیت ارتقا یافت.✅', reply_markup=InlineKeyboardMarkup(keyboard))
 
-                report_status_to_admin(context, text=f'User Upgrade Service\nService Name: {get_client[0][2]}',chat_id=get_client[0][4])
+                report_status_to_admin(context, text=f'User Upgrade Service\nService Name: {get_client[0][9]}',chat_id=get_client[0][4])
 
 
             except Exception as e:
@@ -1973,7 +1981,7 @@ def service_advanced_option(update, context):
 
             keyboard_main.append([InlineKeyboardButton("برگشت ↰", callback_data=f"advanced_option_{email}")])
 
-            change_server_notif = '\n• سروری که میخواهید را انتخاب کنید'
+            change_server_notif = '\n\n• سروری که میخواهید را انتخاب کنید'
 
         elif 'changed_server_to_' in query.data:
             get_data = query.data.replace('changed_server_to_', '').split('__')
@@ -1986,12 +1994,11 @@ def service_advanced_option(update, context):
             unic_plans = {name[3]: name[4] for name in plans}
 
             keyboard_main = [[InlineKeyboardButton(f"{key} {'✅' if get_new_inbound[0][2] == key else ''}",
-                                                   callback_data='alredy_have_show' if get_new_inbound[0][2] == key else f'changed_server_to_{email}__{value}')] for key, value
-                             in unic_plans.items()]
+                                                   callback_data='alredy_have_show' if get_new_inbound[0][2] == key else f'changed_server_to_{email}__{value}')] for key, value in unic_plans.items()]
 
             keyboard_main.append([InlineKeyboardButton("برگشت ↰", callback_data=f"advanced_option_{email}")])
 
-            change_shematic = '\n\n↲ پیکربندی تغییر یافت، سرویس را کپی جایگزین قبلی کنید.'
+            change_shematic = '\n\n↲ پیکربندی تغییر یافت، سرویس را کپی و جایگزین قبلی کنید.'
             query.answer('عملیات با موفقیت انجام شد ✅')
 
             report_status_to_admin(context, f'User changed Config Server\nConfig Email: {email}\nNew Server: {country}',
@@ -2003,11 +2010,11 @@ def service_advanced_option(update, context):
                                                        where=f'id = {get_data[0][6]}')
 
         get_server_country = get_server_country[0][0].replace('سرور ', '').replace('pay_per_use_', '')
-        auto_renewal, auto_renewal_button, chenge_to = ('فعال ✅', 'غیرفعال کردن تمدید خودکار ✗', False) if get_data[0][15] \
-            else ('غیرفعال ❌', 'فعال کردن تمدید خودکار ✓', True)
+        auto_renewal, auto_renewal_button, chenge_to = ('فعال ✗', 'غیرفعال کردن تمدید خودکار ✗', False) if get_data[0][15] \
+            else ('غیرفعال ✓', 'فعال کردن تمدید خودکار ✓', True)
 
         text_ = (
-            f"⚠️ با تغییر دادن بعضی گزینه ها، کانفیگ تغییر میکند و اگر درحال حاضر به همین سرویس متصل هستید، ارتباط شما قطع میشود. "
+            f"⚠️ با تغییر دادن گزینه ها، پیکربندی سرویس تغییر میکند و اگر به این سرویس متصل هستید ارتباط قطع میشود، "
             f"مطئمن شوید که میتوانید آدرس جدید را جایگزین کنید."
             f"\n\n• <b>اطلاعات سرویس انتخاب شده:</b>"
             f"\n\n🔷 نام سرویس: {email}"
@@ -2026,6 +2033,13 @@ def service_advanced_option(update, context):
                     [InlineKeyboardButton("برگشت ↰", callback_data=f"view_service_{email}")]]
 
         query.edit_message_text(text_, reply_markup=InlineKeyboardMarkup(keyboard if not keyboard_main else keyboard_main), parse_mode='html')
+
+
+    except EOFError as eof:
+        if 'service_is_depleted' in str(eof):
+            query.answer('این ویژگی فقط برای سرویس های فعال است')
+        else:
+            query.answer('مشکلی وجود داشت!')
 
     except Exception as e:
         ready_report_problem_to_admin(context, text='service_advanced_option', chat_id=query.message.chat_id, error=e)

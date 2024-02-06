@@ -13,7 +13,7 @@ from tasks import (buy_service, all_query_handler, payment_page, get_service_con
                    admin_reserve_service, people_ask, pay_per_use, pay_per_use_calculator, change_infiniti_service_status,
                    report_problem_by_user, tickect_by_user, service_advanced_option, rank_page, subcategory)
 
-from utilities import not_ready_yet, just_for_show, message_to_user, alredy_have_show
+from utilities import not_ready_yet, just_for_show, message_to_user, alredy_have_show, not_for_depleted_service
 
 from admin_task import (admin_add_update_inbound, add_service, all_service, del_service, run_in_system,
                         say_to_every_one, clear_depleted_service, say_to_customer_of_server,
@@ -83,6 +83,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'change_server_(.*)'))
 
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='service_notification'))
+    dp.add_handler(CallbackQueryHandler(not_for_depleted_service, pattern='not_for_depleted_service'))
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='wallet_notification'))
     dp.add_handler(CallbackQueryHandler(report_problem_by_user, pattern='report_problem_by_user'))
 
