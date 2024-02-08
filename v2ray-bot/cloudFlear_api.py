@@ -20,6 +20,7 @@ class CloudFlearApi(ManageDb):
     def make_request(self, method, url, json_data=None):
         response = self.connect.request(method, url, headers=self.headers, json=json_data, timeout=5)
         response_json = response.json()
+        print(response_json)
 
         if not response_json['success']:
             text = f'🔴 connection problem in cloudflear\ncode: {response.status_code}\nurl: {response.url}'
@@ -55,6 +56,13 @@ class CloudFlearApi(ManageDb):
         get_dns_id = self.get_dns_record_list(zone_id)
         dns_record_id = [dns_id for dns_id in get_dns_id['result'] if dns_id['name'] == domain_name][0]
 
+        record_ip = record_ip or dns_record_id['content']
+        record_name = record_name or dns_record_id['name']
+        proxied = proxied or dns_record_id['proxied']
+        record_type = record_type or dns_record_id['type']
+        comment = comment or dns_record_id['comment']
+        ttl = ttl or dns_record_id['ttl']
+
         data = {
             "content": record_ip,
             "name": record_name,
@@ -64,7 +72,11 @@ class CloudFlearApi(ManageDb):
             "ttl": ttl
         }
 
-        return self.make_request('post', f'https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records', json_data=data)
+        return self.make_request('put', f'https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{dns_record_id['id']}', json_data=data)
 
 
 
+a = CloudFlearApi('e609eff4c987a0557cfe43d4956e99ea24170', 'ytchanneltinos@gmail.com', 'e764ba1c8fc10092843c59ab4bd4fdec')
+# a.add_dns_record("178.128.196.7", "soka", False, "A", 'OK')
+print(a.change_dns_record_stting(domain_name='soka.ggkala.shop', record_name='kir'))
+# print(a.get_dns_record_list())

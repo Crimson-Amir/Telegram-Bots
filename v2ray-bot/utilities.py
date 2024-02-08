@@ -232,5 +232,19 @@ def change_service_server(context, update, email, country):
         return get_new_inbound
 
     except Exception as e:
-        ready_report_problem_to_admin(context, text='change_service_server', chat_id=update.callback_query.message.chat_id, error=e)
+        if update:
+            chat_id = update.callback_query.message.chat_id
+        else:
+            chat_id = 1
+        report_problem_to_admin_witout_context(text='change_service_server', chat_id=chat_id, error=e)
         raise e
+
+
+def moving_all_service_to_server_with_database_change(server_country):
+    get_all = api_operation.get_all_inbounds_except(server_country)
+
+    for server in get_all:
+        for config in server['obj']:
+            for client in config['clientStats']:
+                if client['enable']:
+                    change_service_server(None, None, client['email'], server_country)
