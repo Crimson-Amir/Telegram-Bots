@@ -129,7 +129,7 @@ def report_problem_to_admin_witout_context(text, chat_id, error, detail=None):
     print(f'* REPORT TO ADMIN SUCCESS: ERR: {error}')
 
 
-def report_problem_by_user(context, problem, user):
+def report_problem_by_user_utilitis(context, problem, user):
     text = (f'🟠 Report Problem By User'
             f'\nReport Reason: {problem}'
             f'\nUser Chat ID: {user["id"]}'

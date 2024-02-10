@@ -172,7 +172,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(all_query_handler))
 
     job = updater.job_queue
-    job.run_repeating(check_all_configs, interval=300, first=0)
+    job.run_repeating(check_all_configs, interval=100, first=0)
     job.run_repeating(pay_per_use_calculator, interval=3600, first=0)
 
     updater.start_polling()
