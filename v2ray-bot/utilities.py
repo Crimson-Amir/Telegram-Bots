@@ -182,8 +182,11 @@ def message_to_user(update, context, message=None, chat_id=None):
     try:
         context.bot.send_message(chat_id, text, parse_mode='html')
     except Exception as e:
-        update.message.reply_text('somthing went wrong!')
-        ready_report_problem_to_admin(context, 'MESSAGE TO USER', update.message.from_user['id'], e)
+        if update:
+            update.message.reply_text('somthing went wrong!')
+            ready_report_problem_to_admin(context, 'MESSAGE TO USER', update.message.from_user['id'], e)
+        else:
+            ready_report_problem_to_admin(context, 'MESSAGE TO USER', chat_id, e)
 
 
 def change_service_server(context, update, email, country):

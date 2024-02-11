@@ -8,6 +8,7 @@ import private
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
 import ranking
+import utilities
 from admin_task import add_client_bot, api_operation, second_to_ms, message_to_user, wallet_manage, sqlite_manager
 import qrcode
 from io import BytesIO
@@ -198,12 +199,24 @@ get_service_con = ConversationHandler(
 )
 
 
+def subcategory_auto(context, invite_chat_id, price):
+    if invite_chat_id and price:
+        wallet_manage.add_to_wallet(invite_chat_id, (price * 10 / 100),
+                                    user_detail={'name': invite_chat_id, 'username': invite_chat_id})
+        text = (f"{price:,} هزارتومن به کیف پول شما اضافه شد."
+                "\n\nاز طریق ارسال لینک دعوت توسط شما، کاربر جدیدی به ربات ما اضافه شده و خرید انجام داده است. به عنوان تشکر، 10 درصد از مبلغ خرید او به کیف پول شما اضافه شد."
+                "\nمتشکریم!")
+        utilities.message_to_user(None, context, message=text, chat_id=invite_chat_id)
+
+
 def send_clean_for_customer(query, context, id_):
     create = add_client_bot(id_)
     if create[0]:
         get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
         try:
             get_product = sqlite_manager.select(table='Product', where=f'id = {get_client[0][6]}')
+            get_user_detail = sqlite_manager.select(column='invited_by', table='User', where=f'chat_id={get_client[0][4]}')
+
             get_domain = get_product[0][10]
             get_server_domain = get_product[0][11]
             returned = api_operation.get_client_url(client_email=get_client[0][9], inbound_id=get_client[0][7],
@@ -231,12 +244,18 @@ def send_clean_for_customer(query, context, id_):
 
 
                 send_service_to_customer_report(context, status=1, chat_id=get_client[0][4], service_name=get_client[0][9])
+
+                price = get_product[0][7]
+                invite_chat_id = get_user_detail[0][0]
+                subcategory_auto(context, invite_chat_id, price)
+
                 return True
             else:
                 send_service_to_customer_report(context, status=0, chat_id=get_client[0][4], service_name=get_client[0][9],
                                                 more_detail=create)
                 print('wrong: ', returned)
                 return False
+
         except Exception as e:
             print(e)
             send_service_to_customer_report(context, status=0, chat_id=get_client[0][4], service_name=get_client[0][9],
@@ -2106,3 +2125,4 @@ def service_advanced_option(update, context):
     except Exception as e:
         ready_report_problem_to_admin(context, text='service_advanced_option', chat_id=query.message.chat_id, error=e)
         something_went_wrong(update, context)
+
