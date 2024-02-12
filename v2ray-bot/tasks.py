@@ -203,7 +203,7 @@ def subcategory_auto(context, invite_chat_id, price):
     if invite_chat_id and price:
         wallet_manage.add_to_wallet(invite_chat_id, (price * 10 / 100),
                                     user_detail={'name': invite_chat_id, 'username': invite_chat_id})
-        text = (f"{price:,} هزارتومن به کیف پول شما اضافه شد."
+        text = (f"{price * 10 / 100:,} هزارتومن به کیف پول شما اضافه شد."
                 "\n\nاز طریق ارسال لینک دعوت توسط شما، کاربر جدیدی به ربات ما اضافه شده و خرید انجام داده است. به عنوان تشکر، 10 درصد از مبلغ خرید او به کیف پول شما اضافه شد."
                 "\nمتشکریم!")
         utilities.message_to_user(None, context, message=text, chat_id=invite_chat_id)
