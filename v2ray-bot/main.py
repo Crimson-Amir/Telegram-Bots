@@ -11,7 +11,8 @@ from tasks import (buy_service, all_query_handler, payment_page, get_service_con
                    pay_way_for_credit, credit_charge, apply_card_pay_credit, pay_from_wallet, remove_service,
                    check_all_configs, remove_service_from_db, rate_service, get_pay_file,
                    admin_reserve_service, people_ask, pay_per_use, pay_per_use_calculator, change_infiniti_service_status,
-                   report_problem_by_user, tickect_by_user, service_advanced_option, rank_page, subcategory)
+                   report_problem_by_user, tickect_by_user, service_advanced_option, rank_page, subcategory,
+                   change_service_ownership_conver)
 
 from utilities import not_ready_yet, just_for_show, message_to_user, alredy_have_show, not_for_depleted_service
 
@@ -61,6 +62,7 @@ def main():
     dp.add_handler(get_service_con)
     dp.add_handler(get_service_con_per)
     dp.add_handler(credit_charge)
+    dp.add_handler(change_service_ownership_conver)
 
     dp.add_handler(CallbackQueryHandler(rate_service, pattern=r'rate_(.*)'))
     dp.add_handler(CallbackQueryHandler(people_ask, pattern=r'ask_(.*)'))

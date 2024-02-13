@@ -20,10 +20,7 @@ from utilities import (human_readable,something_went_wrong,
                        change_service_server, get_rank_and_emoji, report_problem_by_user_utilitis)
 import re
 
-GET_EVIDENCE = 0
-GET_EVIDENCE_PER = 0
-GET_EVIDENCE_CREDIT = 0
-GET_TICKET = 0
+GET_EVIDENCE = GET_EVIDENCE_PER = GET_EVIDENCE_CREDIT = GET_TICKET = GET_CONVER = 0
 
 PAY_PER_USE_INBOUND_ID = 4
 PAY_PER_USE_DOMAIN = 'human.ggkala.shop'
@@ -95,7 +92,13 @@ def payment_page(update, context):
         else:
             free_service_is_taken = sqlite_manager.select(column='free_service', table='User', where=f'chat_id = {query.message.chat_id}')[0][0]
             if free_service_is_taken:
-                query.answer('ببخشید، شما یک بار این بسته رو دریافت کردید!')
+                keyboard_free = [
+                    [InlineKeyboardButton("🔰 رتبه‌بندی", callback_data='rank_page')],
+                    [InlineKeyboardButton("برگشت ↰", callback_data=f"main_menu")]
+                ]
+                query.edit_message_text(
+                    text='<b>شما یک بار این سرویس رو دریافت کردید!\n\n • با ارتقا رتبه خودتون، قابلیت دریافت سرویس تست به صورت هفتگی رو به دست بیارید!</b>',
+                    parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard_free))
                 return
             else:
                 keyboard = [
@@ -182,8 +185,8 @@ def send_evidence_to_admin(update, context):
 
 def cancel(update, context):
     query = update.callback_query
-    query.answer(text="با موفقیت کنسل شد!", show_alert=False)
-    query.delete_message()
+    keyboard = [[InlineKeyboardButton("صفحه اصلی ↰", callback_data=f"main_menu")]]
+    query.edit_message_text(text="با موفقیت کنسل شد!", reply_markup=InlineKeyboardMarkup(keyboard))
     return ConversationHandler.END
 
 
@@ -201,9 +204,9 @@ get_service_con = ConversationHandler(
 
 def subcategory_auto(context, invite_chat_id, price):
     if invite_chat_id and price:
-        wallet_manage.add_to_wallet(invite_chat_id, (price * 10 / 100),
+        wallet_manage.add_to_wallet(invite_chat_id, (int(price * 10 / 100)),
                                     user_detail={'name': invite_chat_id, 'username': invite_chat_id})
-        text = (f"{price * 10 / 100:,} هزارتومن به کیف پول شما اضافه شد."
+        text = (f"{int(price * 10 / 100):,} هزارتومن به کیف پول شما اضافه شد."
                 "\n\nاز طریق ارسال لینک دعوت توسط شما، کاربر جدیدی به ربات ما اضافه شده و خرید انجام داده است. به عنوان تشکر، 10 درصد از مبلغ خرید او به کیف پول شما اضافه شد."
                 "\nمتشکریم!")
         utilities.message_to_user(None, context, message=text, chat_id=invite_chat_id)
@@ -314,7 +317,11 @@ def my_service(update, context):
             context.bot.send_message(chat_id=chat_id, text='<b>برای مشاهده جزئیات، سرویس مورد نظر خودتان را انتخاب کنید:</b>',
                                      reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     else:
-        query.answer('سرویسی برای شما یافت نشد!')
+        keyboard = [[InlineKeyboardButton("آشنایی با سرویس‌ها", callback_data="robots_service_help"),
+                     InlineKeyboardButton("🛒 خرید سرویس", callback_data="select_server")],
+                    [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]]
+        query.edit_message_text('<b>• درحال حاضر شما صاحب سرویس نیستید\n\nدرمورد سرویس ها مطالعه کنید و یک سرویس بخرید! :</b>',
+                                reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
 
 def server_detail_customer(update, context):
@@ -383,7 +390,7 @@ def server_detail_customer(update, context):
             f"\n💡 وضعیت: {change_active}"
             f"\n🗺 موقعیت سرور: {get_server_country}"
             f"\n📅 تاریخ انقضا: {expiry_month} {exist_day}"
-            f"\n🔼 آپلود↑: {format_traffic(upload_gb)}"
+            f"\n\n🔼 آپلود↑: {format_traffic(upload_gb)}"
             f"\n🔽 دانلود↓: {format_traffic(download_gb)}"
             f"\n📊 مصرف کل: {usage_traffic}/{total_traffic}{'GB' if isinstance(total_traffic, int) else ''}"
             f"{auto_renwal}"
@@ -850,7 +857,8 @@ def get_free_service(update, context):
 
 def guidance(update, context):
     query = update.callback_query
-    text = "<b>📚 به بخش راهنمای ربات خوش آمدید!</b>"
+    text = ("<b>📚 به بخش راهنمای ربات خوش آمدید!"
+            f"\n\n• آیدی شما: </b><code>{query.message.chat_id}</code>")
     keyboard = [
         [InlineKeyboardButton("اپلیکیشن‌های مناسب برای اتصال", callback_data=f"apps_help")],
         [InlineKeyboardButton("• سوالات متداول", callback_data=f"people_ask_help"),
@@ -1025,7 +1033,7 @@ def check_all_configs(context, context_2=None):
 
                                     sqlite_manager.update({'Purchased': {'date': datetime.now(
                                         pytz.timezone('Asia/Tehran')), 'notif_day': 0, 'notif_gb': 0}}
-                                                          , where=f'client_email = "{user[2]}"')
+                                        , where=f'client_email = "{user[2]}"')
 
                                     context.bot.send_message(text=text, chat_id=list_of_notification[0][0], reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
@@ -1889,7 +1897,7 @@ def say_to_user_send_ticket(update, context):
     problem = query.data.replace('ticket_send_', '')
     try:
         context.user_data['problem'] = problem
-        text = 'پیام خودتو رو بفرستید:\nهمچنین میتونید عکس مورد نظر خودتون رو با توضیحات در کپشن بفرستید:'
+        text = 'پیام خودتو رو بفرستید:\nاگر مایل به فرستادن عکس هستید، توضیحات رو در کپشن ذکر کنید.'
         context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='markdown')
         return GET_TICKET
     except Exception as e:
@@ -2088,14 +2096,14 @@ def service_advanced_option(update, context):
 
         get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
         get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
-                                                       where=f'id = {get_data[0][6]}')
+                                                   where=f'id = {get_data[0][6]}')
 
         get_server_country = get_server_country[0][0].replace('سرور ', '').replace('pay_per_use_', '')
         auto_renewal, auto_renewal_button, chenge_to = ('فعال ✓', 'غیرفعال کردن تمدید خودکار ✗', False) if get_data[0][15] \
             else ('غیرفعال ✗', 'فعال کردن تمدید خودکار ✓', True)
 
         text_ = (
-            f"⚠️ با تغییر دادن گزینه ها، پیکربندی سرویس تغییر میکند و اگر به این سرویس متصل هستید ارتباط قطع میشود، "
+            f"⚠️ با تغییر دادن گزینه ها، پیکربندی سرویس تغییر میکند، اگر به این سرویس متصل هستید ارتباط قطع میشود، "
             f"مطئمن شوید که میتوانید آدرس جدید را جایگزین کنید."
             f"\n\n• <b>اطلاعات سرویس انتخاب شده:</b>"
             f"\n\n🔷 نام سرویس: {email}"
@@ -2109,8 +2117,8 @@ def service_advanced_option(update, context):
 
         keyboard = [[InlineKeyboardButton(f"{auto_renewal_button}", callback_data=f"change_auto_renewal_status_{email}__{chenge_to}")],
                     [InlineKeyboardButton(f" تعویض کانفیگ ⤰", callback_data=f"change_config_shematic_{email}"),
-                     InlineKeyboardButton(f"تغییر سرور ⇈", callback_data=f"change_server_{email}")],
-                    [InlineKeyboardButton("• تغییر مالکیت", callback_data=f"not_ready_yet")],
+                     InlineKeyboardButton(f"تغییر لوکیشن ⇈", callback_data=f"change_server_{email}")],
+                    [InlineKeyboardButton("• انتقال مالکیت", callback_data=f"change_service_ownership_{email}")],
                     [InlineKeyboardButton("برگشت ↰", callback_data=f"view_service_{email}")]]
 
         query.edit_message_text(text_, reply_markup=InlineKeyboardMarkup(keyboard if not keyboard_main else keyboard_main), parse_mode='html')
@@ -2126,3 +2134,69 @@ def service_advanced_option(update, context):
         ready_report_problem_to_admin(context, text='service_advanced_option', chat_id=query.message.chat_id, error=e)
         something_went_wrong(update, context)
 
+
+def change_service_ownership(update, context):
+    query = update.callback_query
+    email = query.data.replace('change_service_ownership_', '')
+    try:
+
+        context.user_data['service_email'] = email
+        text = ('<b>بسیار خب، آیدی عددی کاربر مورد نظر را ارسال کنید.'
+                '\n\nآیدی عددی را میتوان در صفحه اصلی راهنما ربات پیدا کرد.</b>')
+        keyboard = [[InlineKeyboardButton("منصرف شدم ⤹", callback_data=f"csos_cancel")],
+                    [InlineKeyboardButton("صفحه اصلی ↰", callback_data=f"main_menu")]]
+        query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
+        return GET_CONVER
+    except Exception as e:
+        print(e)
+        ready_report_problem_to_admin(context, text='change_service_ownership', chat_id=query.message.chat_id, error=e)
+        something_went_wrong(update, context)
+        return ConversationHandler.END
+
+
+def change_service_ownership_func(update, context):
+    user = update.message.from_user
+    try:
+        email = context.user_data['service_email']
+
+        keyboard = [[InlineKeyboardButton("صفحه اصلی", callback_data="main_menu_in_new_message")]]
+
+        if update.message.text:
+            new_owner_chat_id = int(update.message.text)
+
+            new_user_detail = sqlite_manager.select(table='User', where=f'chat_id = {new_owner_chat_id}')
+
+            sqlite_manager.update({'Purchased': {'name': new_user_detail[0][1],'user_name': new_user_detail[0][2],
+                                                                   'chat_id': new_owner_chat_id}}, where=f'chat_id = {user["id"]} and client_email = "{email}"')
+
+            report_status_to_admin(context, f'Change Service [{email}] OwnerShip to {new_owner_chat_id}', chat_id=user['id'])
+            update.message.reply_text(f'<b>انتقال سرویس با موفقیت انجام شد ✅</b>', reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+
+            message_to_user(update, context, message=f'<b>کاربر {user["first_name"]} یک سرویس برای شما فرستاد!\nنام سرویس: {email}</b>', chat_id=new_owner_chat_id)
+
+        else:
+            update.message.reply_text('مشکلی وجود داشت. فقط آیدی عددی با فرمت مناسب قابل قبول است!', reply_markup=InlineKeyboardMarkup(keyboard))
+
+        context.user_data.clear()
+        return ConversationHandler.END
+
+    except Exception as e:
+        ready_report_problem_to_admin(context, 'change_service_ownership_func', user['id'], e)
+        text = ("مشکلی وجود داشت!"
+                "گزارش به ادمین ها ارسال شد، نتیجه به زودی بهتون اعلام میشه")
+        keyboard = [[InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]]
+        update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        return ConversationHandler.END
+
+
+
+change_service_ownership_conver = ConversationHandler(
+    entry_points=[CallbackQueryHandler(change_service_ownership, pattern='change_service_ownership_')],
+    states={
+        GET_CONVER: [MessageHandler(Filters.all, change_service_ownership_func)]
+    },
+    fallbacks=[CallbackQueryHandler(cancel, pattern='csos_cancel')],
+    conversation_timeout=800,
+    per_chat=True,
+    allow_reentry=True
+)

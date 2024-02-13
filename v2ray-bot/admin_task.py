@@ -102,19 +102,21 @@ def get_all_service():
         'date',
         'is_personalization',
         'domain',
-        'service_domain',
-        'status'
+        'server_domain',
+        'status',
+        'miss',
+        'miss',
     ]
     for ser in all_serv:
         indexed_data += [f"{clean_data[index]}: {data}" for index, data in enumerate(ser)]
         indexed_data.append(" -------------------------------------- ")
     # print(indexed_data)
-    print("\n".join(indexed_data))
+    return "\n".join(indexed_data)
 
 
 def all_service(update, context):
     try:
-        get = get_all_service()
+        get = get_all_service()[:4000]
         update.message.reply_text('All Service:\n\n' + str(get))
     except Exception as e:
         update.message.reply_text(e)
