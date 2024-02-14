@@ -222,12 +222,12 @@ def say_to_customer_of_server(update, context):
     get_server_country = update.message.text.replace('/say_to_customer_of_server ', '')
     text = update.message.reply_to_message.text
     get_country_inbound_id = sqlite_manager.select(column='id', table='Product',
-                                             where=f'country = "{get_server_country}"')
+                                                   where=f'country = "{get_server_country}"')
 
     id_tuple = [str(id_[0]) for id_ in get_country_inbound_id]
 
     customer_of_service = sqlite_manager.select(column='chat_id,name', table='Purchased',
-                                             where=f'status = 1 and product_id IN ({", ".join(id_tuple)})')
+                                                where=f'status = 1 and product_id IN ({", ".join(id_tuple)})')
 
 
     for user in customer_of_service:
@@ -246,7 +246,7 @@ def clear_depleted_service(update, context):
 
         customer_service = sqlite_manager.select(column='chat_id,name,client_email,inbound_id', table='Purchased', where=f'status = 0 and inbound_id = {get_inbound_id}')
         get_server_domain = sqlite_manager.select(column='server_domain', table='Product',
-                                             where=f'id = "{customer_service[0][3]}"')
+                                                  where=f'id = "{customer_service[0][3]}"')
 
         reason = update.message.reply_to_message.text if update.message.reply_to_message else 'عدم تمدید و یا ارتقا سرویس'
         text = 'سرویس شما با نام {} که قبلا منقضی شده بود، حذف شد!\nعلت: '
@@ -277,7 +277,7 @@ def add_credit_to_server_customer_wallet(update, context):
         id_tuple = [str(id_[0]) for id_ in get_country_inbound_id if id_[1] == 1 or id_[2]]
 
         customer_of_service = sqlite_manager.select(column='chat_id,name,user_name', table='Purchased',
-                                                 where=f'status = 1 and product_id IN ({", ".join(id_tuple)})')
+                                                    where=f'status = 1 and product_id IN ({", ".join(id_tuple)})')
 
         reason = update.message.reply_to_message.text if update.message.reply_to_message else 'برای قطعی اخیر سرور متاسفیم، مبلغ خسارت محاسبه و جبران خسارت انجام شد.'
         text = f'<b>مبلغ {get_credit:,} تومان به کیف پول شما اضافه شد.</b>' + f'\n\n{reason}'
@@ -317,3 +317,18 @@ def add_credit_to_customer(update, context):
         ready_report_problem_to_admin(context, 'add credit to customer', update.message.from_user['id'], e)
 
 
+def check_all_configs(chat_id, inbound_id, product_id=None):
+    if not product_id:
+        product_id = sqlite_manager.select(column='id', table='Product', limit=1)[0][0]
+    get_all = api_operation.get_all_inbounds()
+    for server in get_all:
+        for config in server['obj']:
+            for client in config['clientStats']:
+                if client['inboundId'] == inbound_id:
+                    sqlite_manager.insert(table='Purchased',
+                                          rows=[{'product_id': product_id,'chat_id': chat_id, 'inbound_id': 5, 'client_email': client['email'],
+                                                 'client_id': client['email'][:-3], 'date': datetime.now(pytz.timezone('Asia/Tehran')),
+                                                 'details': 'False', 'active': 0, 'status': 1}])
+
+
+# check_all_configs(6450325872, 5)

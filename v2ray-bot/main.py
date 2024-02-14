@@ -64,6 +64,8 @@ def main():
     dp.add_handler(credit_charge)
     dp.add_handler(change_service_ownership_conver)
 
+    dp.add_handler(CallbackQueryHandler(my_service, pattern=r'my_service(.*)'))
+
     dp.add_handler(CallbackQueryHandler(rate_service, pattern=r'rate_(.*)'))
     dp.add_handler(CallbackQueryHandler(people_ask, pattern=r'ask_(.*)'))
     dp.add_handler(CallbackQueryHandler(remove_service_from_db, pattern=r'remove_service_from_db_(.*)'))
@@ -164,8 +166,6 @@ def main():
     dp.add_handler(CallbackQueryHandler(change_notif, pattern=r'notif_wallet_low_\d+'))
     dp.add_handler(CallbackQueryHandler(change_notif, pattern=r'notif_wallet_high_\d+'))
 
-
-    dp.add_handler(CallbackQueryHandler(my_service, pattern='my_service'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='settings'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='get_test_service'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='guidance'))

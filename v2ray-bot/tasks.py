@@ -206,7 +206,7 @@ def subcategory_auto(context, invite_chat_id, price):
     if invite_chat_id and price:
         wallet_manage.add_to_wallet(invite_chat_id, (int(price * 10 / 100)),
                                     user_detail={'name': invite_chat_id, 'username': invite_chat_id})
-        text = (f"{int(price * 10 / 100):,} هزارتومن به کیف پول شما اضافه شد."
+        text = (f"{int(price * 10 / 100):,} تومان به کیف پول شما اضافه شد."
                 "\n\nاز طریق ارسال لینک دعوت توسط شما، کاربر جدیدی به ربات ما اضافه شده و خرید انجام داده است. به عنوان تشکر، 10 درصد از مبلغ خرید او به کیف پول شما اضافه شد."
                 "\nمتشکریم!")
         utilities.message_to_user(None, context, message=text, chat_id=invite_chat_id)
@@ -306,15 +306,44 @@ def apply_card_pay(update, context):
 def my_service(update, context):
     query = update.callback_query
     chat_id = query.message.chat_id
-    get_purchased = sqlite_manager.select(table='Purchased', where=f'chat_id = {chat_id} and active = 1')
+    number_in_page = 10
+    data = query.data.replace('my_service', '')
+
+    get_limit = int(data) if data else number_in_page
+    get_all_purchased = sqlite_manager.select(table='Purchased', where=f'chat_id = {chat_id}')
+    get_purchased = get_all_purchased[get_limit-number_in_page:get_limit]
+
     if get_purchased:
+        disable_service = enable_service = all_service = 0
+
         keyboard = [[InlineKeyboardButton(f"{'✅' if ser[11] == 1 else '❌'} {ser[9]}", callback_data=f"view_service_{ser[9]}")] for ser in get_purchased]
+
+        for service in get_all_purchased:
+            if service[11] == 1:
+                enable_service += 1
+            else:
+                disable_service += 1
+
+            all_service += 1
+
+        if len(get_all_purchased) > number_in_page:
+            keyboard_backup = []
+            keyboard_backup.append(InlineKeyboardButton("قبل ⤌", callback_data=f"my_service{get_limit - number_in_page}")) if get_limit != number_in_page else None
+            keyboard_backup.append(InlineKeyboardButton(f"صفحه {int(get_limit / number_in_page)}", callback_data="just_for_show"))
+            keyboard_backup.append(InlineKeyboardButton("⤍ بعد", callback_data=f"my_service{get_limit + number_in_page}")) if get_limit < len(get_all_purchased) else None
+            keyboard.append(keyboard_backup)
+
         keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="main_menu")])
+        text = ("<b>برای مشاهده جزئیات، سرویس مورد نظر را انتخاب کنید:"
+                f"\n\n• تعداد: {all_service}"
+                f"\n• فعال: {enable_service}"
+                f"\n• غیرفعال: {disable_service}"
+                "</b>")
         try:
-            query.edit_message_text('<b>برای مشاهده جزئیات، سرویس مورد نظر خودتان را انتخاب کنید:</b>', reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+            query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
         except telegram.error.BadRequest:
             query.answer('در یک پیام جدید فرستادم!')
-            context.bot.send_message(chat_id=chat_id, text='<b>برای مشاهده جزئیات، سرویس مورد نظر خودتان را انتخاب کنید:</b>',
+            context.bot.send_message(chat_id=chat_id, text=text,
                                      reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     else:
         keyboard = [[InlineKeyboardButton("آشنایی با سرویس‌ها", callback_data="robots_service_help"),
@@ -997,7 +1026,7 @@ def check_all_configs(context, context_2=None):
         context = context_2
 
     get_all = api_operation.get_all_inbounds()
-    get_from_db = sqlite_manager.select(column='id,chat_id,client_email,status,date,notif_day,notif_gb,auto_renewal,product_id,inbound_id', table='Purchased')
+    get_from_db = sqlite_manager.select(column='id,chat_id,client_email,status,date,notif_day,notif_gb,auto_renewal,product_id,inbound_id', table='Purchased', where='active=1')
     get_users_notif = sqlite_manager.select(column='chat_id,notification_gb,notification_day,name,traffic,period,wallet', table='User')
 
     for server in get_all:
@@ -1546,7 +1575,6 @@ def pay_from_wallet(update, context):
 
                 report_status_to_admin(context, text=f'User Upgrade Service\nService Name: {get_client[0][9]}',chat_id=get_client[0][4])
 
-
             except Exception as e:
                 ready_report_problem_to_admin(context, 'PAY FROM WAWLLET FOR UPGRADE',
                                               update.message.from_user['id'], e)
@@ -1580,7 +1608,6 @@ def pay_from_wallet(update, context):
                     f"\n\n• همیشه میتوانید با حذف کردن سرویس در قسمت *سرویس های من*، مبلغ باقی مونده رو به کیف پول خودتون برگردونید"
                     f"\n\n• با تایید کردن، سرور مستقیم برای شما فعال میشه")
             query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
-
         elif 'accept_wallet_pay_' in query.data:
             get_p_id = context.user_data['purchased_id']
             check = send_clean_for_customer(query, context, get_p_id)
@@ -2167,7 +2194,7 @@ def change_service_ownership_func(update, context):
             new_user_detail = sqlite_manager.select(table='User', where=f'chat_id = {new_owner_chat_id}')
 
             sqlite_manager.update({'Purchased': {'name': new_user_detail[0][1],'user_name': new_user_detail[0][2],
-                                                                   'chat_id': new_owner_chat_id}}, where=f'chat_id = {user["id"]} and client_email = "{email}"')
+                                                 'chat_id': new_owner_chat_id}}, where=f'chat_id = {user["id"]} and client_email = "{email}"')
 
             report_status_to_admin(context, f'Change Service [{email}] OwnerShip to {new_owner_chat_id}', chat_id=user['id'])
             update.message.reply_text(f'<b>انتقال سرویس با موفقیت انجام شد ✅</b>', reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')

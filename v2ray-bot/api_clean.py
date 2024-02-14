@@ -50,6 +50,7 @@ class XuiApiClean(ManageDb):
                     raise ConnectionError
         except Exception as e:
             utilities.report_problem_to_admin_witout_context('make_requests_api_section', None, e)
+            raise e
 
     def get_all_inbounds(self):
         get_domains = self.select(column='server_domain', table='Product')
