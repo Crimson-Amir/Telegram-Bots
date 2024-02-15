@@ -17,8 +17,11 @@ import os
 from utilities import (human_readable,something_went_wrong,
                        ready_report_problem_to_admin,format_traffic,record_operation_in_file,
                        send_service_to_customer_report, report_status_to_admin, find_next_rank, get_access_fa,
-                       change_service_server, get_rank_and_emoji, report_problem_by_user_utilitis)
+                       change_service_server, get_rank_and_emoji, report_problem_by_user_utilitis,
+                       report_problem_to_admin_witout_context, report_func_problem)
 import re
+import functools
+from sqlite_manager import ManageDb
 
 GET_EVIDENCE = GET_EVIDENCE_PER = GET_EVIDENCE_CREDIT = GET_TICKET = GET_CONVER = 0
 
@@ -27,17 +30,31 @@ PAY_PER_USE_DOMAIN = 'human.ggkala.shop'
 LOW_WALLET_CREDIT = 1_000
 
 
-# class Task(ManageDb):
-#     def __init__(self):
-#         super().__init__('v2ray')
-#
-#     def
+class Task(ManageDb):
+    def __init__(self):
+        super().__init__('v2ray')
+
+    @staticmethod
+    def handle_exceptions(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                print(f"An error occurred in {func.__name__}: {e}")
+                report_func_problem(func.__name__, e, 'Task Func')
+
+        return wrapper
+
+    def return_services_country(self):
+
 
 
 def buy_service(update, context):
     query = update.callback_query
     try:
         sqlite_manager.delete({'Purchased': ['active', 0]})
+
         plans = sqlite_manager.select(table='Product', where='active = 1')
         unic_plans = {name[3]: name[4] for name in plans}
 
@@ -196,7 +213,7 @@ get_service_con = ConversationHandler(
         GET_EVIDENCE: [MessageHandler(Filters.all, send_evidence_to_admin)]
     },
     fallbacks=[CallbackQueryHandler(cancel, pattern='cancel')],
-    conversation_timeout=800,
+    conversation_timeout=3600,
     per_chat=True,
     allow_reentry=True,
 )
@@ -780,7 +797,7 @@ get_service_con_per = ConversationHandler(
         GET_EVIDENCE_PER: [MessageHandler(Filters.all, send_evidence_to_admin_for_upgrade)]
     },
     fallbacks=[],
-    conversation_timeout=800,
+    conversation_timeout=3600,
     per_chat=True,
     allow_reentry=True
 )
@@ -1256,7 +1273,6 @@ def wallet_page(update, context):
     query = update.callback_query
     chat_id = query.message.chat_id
     try:
-        sqlite_manager.delete({'Credit_History': ["active", 0]})
         get_credit = sqlite_manager.select(column='wallet', table='User', where=f'chat_id = {chat_id}')[0][0]
         lasts_operation = sqlite_manager.select(table='Credit_History', where=f'chat_id = {chat_id} and active = 1',
                                                 order_by='id DESC', limit=5)
@@ -1442,7 +1458,7 @@ credit_charge = ConversationHandler(
         GET_EVIDENCE_CREDIT: [MessageHandler(Filters.all, pay_by_card_for_credit_admin)]
     },
     fallbacks=[],
-    conversation_timeout=800,
+    conversation_timeout=3600,
     per_chat=True,
     allow_reentry=True
 )
@@ -1460,14 +1476,14 @@ def apply_card_pay_credit(update, context):
             id_ = int(query.data.replace('ok_card_pay_credit_accept_', ''))
             get_credit = sqlite_manager.select(column='chat_id,value', table='Credit_History', where=f'id = {id_}')
 
-            sqlite_manager.update({'Credit_History': {'active': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}}
-                                  ,where=f'id = "{id_}"')
-
             wallet_manage.add_to_wallet_without_history(get_credit[0][0], get_credit[0][1])
 
             context.bot.send_message(text='سفارش شما برای واریز وجه به کیف پول با موفقیت تایید شد ✅', chat_id=get_credit[0][0])
             query.answer('Done ✅')
             query.delete_message()
+
+            sqlite_manager.update({'Credit_History': {'active': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}}
+                                  , where=f'id = "{id_}"')
 
             record_operation_in_file(chat_id=get_credit[0][0], price=get_credit[0][1],
                                      name_of_operation=f'واریز به کیف پول', operation=1,
@@ -1973,7 +1989,7 @@ tickect_by_user = ConversationHandler(
         GET_TICKET: [MessageHandler(Filters.all, send_ticket_to_admin)]
     },
     fallbacks=[],
-    conversation_timeout=800,
+    conversation_timeout=3600,
     per_chat=True,
     allow_reentry=True
 )
@@ -2223,7 +2239,7 @@ change_service_ownership_conver = ConversationHandler(
         GET_CONVER: [MessageHandler(Filters.all, change_service_ownership_func)]
     },
     fallbacks=[CallbackQueryHandler(cancel, pattern='csos_cancel')],
-    conversation_timeout=800,
+    conversation_timeout=3600,
     per_chat=True,
     allow_reentry=True
 )

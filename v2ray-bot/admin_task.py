@@ -330,5 +330,4 @@ def check_all_configs(chat_id, inbound_id, product_id=None):
                                                  'client_id': client['email'][:-3], 'date': datetime.now(pytz.timezone('Asia/Tehran')),
                                                  'details': 'False', 'active': 0, 'status': 1}])
 
-
 # check_all_configs(6450325872, 5)

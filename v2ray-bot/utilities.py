@@ -129,6 +129,15 @@ def report_problem_to_admin_witout_context(text, chat_id, error, detail=None):
     print(f'* REPORT TO ADMIN SUCCESS: ERR: {error}')
 
 
+def report_problem(func_name, error, side):
+    text = (f"🔴 BOT Report Problem [{side}]\n\n"
+            f"\nFunc Name: {func_name}"
+            f"\nError Type: {type(error).__name__}"
+            f"\nError Reason:\n{error}")
+
+    requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text': text})
+
+
 def report_problem_by_user_utilitis(context, problem, user):
     text = (f'🟠 Report Problem By User'
             f'\nReport Reason: {problem}'
