@@ -1,10 +1,7 @@
 import datetime
-import json
-
 import arrow
 import pytz
-from private import telegram_bot_token, ADMIN_CHAT_ID
-from private import ADMIN_CHAT_ID
+from private import *
 import requests
 from ranking import rank_emojis, rank_title_fa, rank_access_fa, rank_access
 from sqlite_manager import ManageDb
@@ -12,7 +9,6 @@ from api_clean import XuiApiClean
 
 api_operation = XuiApiClean()
 sqlite_manager = ManageDb('v2ray')
-telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
 
 def human_readable(number):
     try:
@@ -38,9 +34,12 @@ def not_for_depleted_service(update, context):
 
 
 def something_went_wrong(update, context):
-    query = update.callback_query
-    query.answer(text="مشکلی وجود دارد!", show_alert=False)
-
+    text= "مشکلی وجود داشت!"
+    if getattr(update, 'callback_query'):
+        query = update.callback_query
+        query.answer(text)
+    else:
+        update.message.reply_text(text)
 
 def just_for_show(update, context):
     query = update.callback_query
@@ -210,6 +209,12 @@ def change_service_server(context, update, email, country):
         get_domain = get_server_country[0][1]
         get_new_domain = get_new_inbound[0][1]
         ret_conf = api_operation.get_client(email, get_domain)
+        shematic = None
+
+        if get_data[0][7] == TLS_INBOUND:
+            shematic = ('vless://{}@{}:{}'
+                        '?path=%2F&host={}&headerType=http&security=tls&'
+                        'fp=&alpn=h2%2Chttp%2F1.1&sni=sni_&type={}#{} {}'.replace('sni_', get_new_domain))
 
         if not ret_conf['obj']['enable']:
             raise EOFError('service_is_depleted')
@@ -235,13 +240,77 @@ def change_service_server(context, update, email, country):
         api_operation.add_client(data, get_new_domain)
 
         get_cong = api_operation.get_client_url(get_data[0][9], int(get_data[0][7]),
-                                                domain=get_new_inbound[0][3], server_domain=get_new_domain)
+                                                domain=get_new_inbound[0][3], server_domain=get_new_domain,
+                                                host=get_new_domain,
+                                                default_config_schematic=shematic
+                                                )
 
         sqlite_manager.update({'Purchased': {'details': get_cong, 'product_id': get_new_inbound[0][0]}},
                               where=f'client_email = "{email}"')
 
         api_operation.del_client(get_data[0][7], get_data[0][10], get_domain)
         return get_new_inbound
+
+    except Exception as e:
+        if update:
+            chat_id = update.callback_query.message.chat_id
+        else:
+            chat_id = 1
+        report_problem_to_admin_witout_context(text='change_service_server', chat_id=chat_id, error=e)
+        raise e
+
+
+
+def convert_service_to_tls(update, email, convert_to):
+    try:
+        get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
+        get_server_country = sqlite_manager.select(column='name,server_domain,domain,inbound_id', table='Product',
+                                                   where=f'id = {get_data[0][6]}')
+
+        get_domain = get_server_country[0][1]
+        ret_conf = api_operation.get_client(email, get_domain)
+
+        if eval(convert_to):
+            shematic = ('vless://{}@{}:{}'
+                        '?path=%2F&host={}&headerType=http&security=tls&'
+                        'fp=&alpn=h2%2Chttp%2F1.1&sni=sni_&type={}#{} {}'.replace('sni_', get_domain))
+            detected_inbound = TLS_INBOUND
+        else:
+            shematic = None
+            detected_inbound = get_server_country[0][3]
+
+        if not ret_conf['obj']['enable']:
+            raise EOFError('service_is_depleted')
+
+        if int(ret_conf['obj']['total']):
+            upload_gb = ret_conf['obj']['up']
+            download_gb = ret_conf['obj']['down']
+            usage_traffic = upload_gb + download_gb
+            total_traffic = ret_conf['obj']['total']
+            left_traffic = total_traffic - usage_traffic
+        else:
+            left_traffic = 0
+
+        data = {
+            "id": detected_inbound,
+            "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
+                        "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
+                        "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(get_data[0][10], get_data[0][9],
+                                                                                   left_traffic,
+                                                                                   ret_conf['obj']['expiryTime'])}
+
+        api_operation.del_client(get_data[0][7], get_data[0][10], get_domain)
+
+        api_operation.add_client(data, get_domain)
+
+        get_cong = api_operation.get_client_url(get_data[0][9], detected_inbound,
+                                                domain=get_server_country[0][2], server_domain=get_domain, host=get_domain,
+                                                default_config_schematic=shematic)
+
+        sqlite_manager.update({'Purchased': {'inbound_id': detected_inbound, 'details': get_cong}},
+                              where=f'client_email = "{email}"')
+
+        return get_server_country
 
     except Exception as e:
         if update:
@@ -260,3 +329,5 @@ def moving_all_service_to_server_with_database_change(server_country):
             for client in config['clientStats']:
                 if client['enable']:
                     change_service_server(None, None, client['email'], server_country)
+
+

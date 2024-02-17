@@ -3,9 +3,9 @@ from private import telegram_bot_token
 from bot_start import bot_start, main_menu, send_main_message
 from database import create_database
 
-from tasks import (buy_service, all_query_handler, payment_page, get_service_con, apply_card_pay,
+from tasks import (show_servers, get_service_of_server, payment_page, get_service_con, apply_card_pay,
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
-                   personalization_service_lu, apply_card_pay_lu, get_service_con_per, get_free_service, guidance,
+                   personalization_service_lu, apply_card_pay_lu, upgrade_service_by_card_conv, get_free_service, guidance,
                    show_help, support, setting, change_notif, start_timer, financial_transactions,
                    wallet_page, financial_transactions_wallet, payment_page_upgrade, buy_credit_volume,
                    pay_way_for_credit, credit_charge, apply_card_pay_credit, pay_from_wallet, remove_service,
@@ -59,12 +59,21 @@ def main():
         dp.add_handler(CommandHandler(key, value))
 
     dp.add_handler(tickect_by_user)
+    dp.add_handler(upgrade_service_by_card_conv)
     dp.add_handler(get_service_con)
-    dp.add_handler(get_service_con_per)
     dp.add_handler(credit_charge)
     dp.add_handler(change_service_ownership_conver)
 
+    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'active_tls_encoding_(.*)'))
+    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'advanced_option_(.*)'))
+    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'change_auto_renewal_status_(.*)'))
+    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'change_config_shematic_(.*)'))
+    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'changed_server_to_(.*)'))
+    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'change_server_(.*)'))
+
+    dp.add_handler(CallbackQueryHandler(show_servers, pattern='select_server'))
     dp.add_handler(CallbackQueryHandler(my_service, pattern=r'my_service(.*)'))
+
 
     dp.add_handler(CallbackQueryHandler(rate_service, pattern=r'rate_(.*)'))
     dp.add_handler(CallbackQueryHandler(people_ask, pattern=r'ask_(.*)'))
@@ -79,12 +88,6 @@ def main():
     dp.add_handler(CallbackQueryHandler(report_problem_by_user, pattern=r'say_to_admin_(.*)'))
 
     dp.add_handler(CallbackQueryHandler(change_infiniti_service_status, pattern=r'change_infiniti_service_status_(.*)'))
-
-    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'advanced_option_(.*)'))
-    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'change_auto_renewal_status_(.*)'))
-    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'change_config_shematic_(.*)'))
-    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'changed_server_to_(.*)'))
-    dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'change_server_(.*)'))
 
     dp.add_handler(CallbackQueryHandler(change_notif, pattern='service_notification'))
     dp.add_handler(CallbackQueryHandler(not_for_depleted_service, pattern='not_for_depleted_service'))
@@ -109,7 +112,6 @@ def main():
     dp.add_handler(CallbackQueryHandler(wallet_page, pattern='wallet_page'))
 
     dp.add_handler(CallbackQueryHandler(send_main_message, pattern='send_main_message'))
-    dp.add_handler(CallbackQueryHandler(buy_service, pattern='select_server'))
     dp.add_handler(CallbackQueryHandler(payment_page, pattern=r'service_\d+'))
     dp.add_handler(CallbackQueryHandler(payment_page_upgrade, pattern=r'service_upgrade_\d+'))
 
@@ -139,7 +141,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(show_help, pattern=r'(.*)_help'))
 
     dp.add_handler(CallbackQueryHandler(create_file_and_return, pattern=r'create_txt_file'))
-    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern=r'personalization_service_lu_\d+'))
+    dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern=r'upgrade_service_customize_\d+'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern=r'personalization_service_\d+'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern='accept_personalization'))
 
@@ -171,7 +173,9 @@ def main():
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='guidance'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='support'))
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='not_ready_yet'))
-    dp.add_handler(CallbackQueryHandler(all_query_handler))
+
+    dp.add_handler(CallbackQueryHandler(get_service_of_server))
+
 
     job = updater.job_queue
     job.run_repeating(check_all_configs, interval=100, first=0)

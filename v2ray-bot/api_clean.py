@@ -63,6 +63,10 @@ class XuiApiClean(ManageDb):
 
         return all_inbound
 
+    def get_country_inbounds(self, domain):
+        get_inbounds = self.make_request('get', f'{protocol}{domain}:{PORT}/panel/api/inbounds/list')
+        return get_inbounds
+
     def get_all_inbounds_except(self, except_country):
         get_domains = self.select(column='server_domain,country', table='Product')
         get_domain_uniq = {dom[0] for dom in get_domains if dom[1] != except_country}
