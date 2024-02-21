@@ -161,17 +161,6 @@ def get_rank_and_emoji(rank):
     return f"{rank_fa} {rank_emoji}"
 
 
-def get_access_fa(rank):
-    all_access = []
-
-    for key, value in rank_access_fa.items():
-        all_access += value[1:]
-        if key == rank:
-            break
-
-    return all_access
-
-
 def find_next_rank(rank, level_now):
     check = 0
     for key, value in rank_access.items():

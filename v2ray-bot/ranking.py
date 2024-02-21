@@ -1,4 +1,5 @@
 from sqlite_manager import ManageDb
+from private import PRICE_PER_DAY, PRICE_PER_GB
 
 
 rank_access = {
@@ -7,10 +8,10 @@ rank_access = {
     'BRONZE': {'level': range(10, 200), 'access': ['ROOKIE', 'REMOVE_SERVICE', 'CHANGE_SERVICE_SERVER', 'SERVICE_AUTO_RENEWAL']},
     'SILVER': {'level': range(200, 500), 'access': ['BRONZE', 'RESET_FREE_EVERY_MONTH', '5off']},
     'GOLD': {'level': range(500, 1_000), 'access': ['SILVER', 'PAYMENT_GETWAY', 'BUY_MAJOR_SERVICE', '9off']},
-    'DIAMOND': {'level': range(1_000, 5_000), 'access': ['GOLD', '15off']},
-    'SUPER_USER': {'level': range(5_000, 20_000), 'access': ['DIAMOND', 'GET_CONFIG_WITHOUT_CONFIRM', '20off']},
+    'DIAMOND': {'level': range(1_000, 5_000), 'access': ['GOLD', 'GET_SERVICE_WITHOUT_CONFIRM', '15off']},
+    'SUPER_USER': {'level': range(5_000, 20_000), 'access': ['DIAMOND', '20off']},
     'ADMIN': {'level': range(20_000, 100_000), 'access': ['SUPER_USER', 'BOT_MANAGER']},
-    'OWNER': {'level': range(100_000, 1_000_000)},
+    'OWNER': {'level': range(100_000, 1_000_000), 'access': ['ALL']},
 }
 
 pay_after_use_per_rank = {
@@ -21,10 +22,12 @@ pay_after_use_per_rank = {
 }
 
 off_per_rank = {
-    'SILVER': 5,
-    'GOLD': 9,
-    'DIAMOND': 10,
-    'SUPER_USER': 11,
+    'ROOKIE': 0,
+    'BRONZE': 2,
+    'SILVER': 7,
+    'GOLD': 10,
+    'DIAMOND': 15,
+    'SUPER_USER': 20,
 }
 
 rank_emojis = {
@@ -44,8 +47,8 @@ rank_access_fa = {
     'BRONZE': ['ROOKIE', 'حذف سرویس با بازپرداخت', 'تغییر کشور سرویس', 'تمدید خودکار سرویس'],
     'SILVER': ['BRONZE', 'دریافت سرویس تست در هر ماه'],
     'GOLD': ['SILVER', 'استفاده از درگاه پرداخت', 'خرید سرویس به صورت عمده'],
-    'DIAMOND': ['GOLD'],
-    'SUPER_USER': ['DIAMOND', 'دریافت سرویس بدون بررسی ادمین'],
+    'DIAMOND': ['GOLD', 'دریافت سرویس بدون بررسی ادمین'],
+    'SUPER_USER': ['DIAMOND'],
     'ADMIN': ['SUPER_USER', 'مدیریت ربات'],
 }
 
@@ -76,7 +79,25 @@ class RankManage(ManageDb):
 
     @staticmethod
     def get_range_of_level_by_rank(rank_name):
-        return [value['level'] for rank_key, value in rank_access.items() if rank_name is rank_key][0]
+        return [value['level'] for rank_key, value in rank_access.items() if rank_name == rank_key][0]
+
+    @staticmethod
+    def get_all_access(rank):
+        all_access = []
+        for key, value in rank_access.items():
+            all_access += value['access'][1:]
+            if key == rank:
+                break
+        return all_access
+
+    @staticmethod
+    def get_all_access_fa(rank):
+        all_access = []
+        for key, value in rank_access_fa.items():
+            all_access += value[1:]
+            if key == rank:
+                break
+        return all_access
 
     def get_user_rank_and_level(self, user_id):
         try:
@@ -113,6 +134,25 @@ class RankManage(ManageDb):
 
         self.update_rank_with_level(rank, user_id)
 
+    def discount_calculation(self, user_id, traffic=None, period=None, direct_price=None, without_off=False, more_detail=False):
+        """
+        :return: (discount_price, off, price_witout_discount)
+        """
+        print('USERID', user_id)
+        user_rank = self.select(table='Rank', where=f'chat_id = {user_id}')
+        price = direct_price or (traffic * PRICE_PER_GB) + (period * PRICE_PER_DAY)
+        if without_off: return price
+        off = (price * off_per_rank[user_rank[0][5]] / 100)
+        final_price = price - off
+        detail = (int(final_price), off_per_rank[user_rank[0][5]], price) if more_detail else int(final_price)
+        return detail
+
+
+    def enough_rank(self, task, user_id):
+        user_rank = self.select(table='Rank', where=f'chat_id = {user_id}')
+        all_access = self.get_all_access(user_rank[0][5])
+        # user_rank_detail =  [value for rank_key, value in rank_access.items() if user_rank[0][5] == rank_key and task in value['access']]
+        return True if task in all_access else False
 
 # a = RankManage('Rank', 'level', 'rank_name',db_name='v2ray', user_id_identifier='chat_id')
-# print(a.rank_down(100000, 6450325872))
+# print(a.enough_rank('GET_SERVICE_WITHOUT_CONFIRM', 6450325872))

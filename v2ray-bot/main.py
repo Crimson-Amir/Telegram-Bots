@@ -12,13 +12,13 @@ from tasks import (show_servers, get_service_of_server, payment_page, get_servic
                    check_all_configs, remove_service_from_db, rate_service, get_pay_file,
                    admin_reserve_service, people_ask, pay_per_use, pay_per_use_calculator, change_infiniti_service_status,
                    report_problem_by_user, tickect_by_user, service_advanced_option, rank_page, subcategory,
-                   change_service_ownership_conver)
+                   change_service_ownership_conver, hide_buttons)
 
 from utilities import not_ready_yet, just_for_show, message_to_user, alredy_have_show, not_for_depleted_service
 
 from admin_task import (admin_add_update_inbound, add_service, all_service, del_service, run_in_system,
                         say_to_every_one, clear_depleted_service, say_to_customer_of_server,
-                        add_credit_to_server_customer_wallet, add_credit_to_customer)
+                        add_credit_to_server_customer_wallet, add_credit_to_customer, admin_rank_up)
 
 from private import ADMIN_CHAT_ID
 import requests
@@ -53,6 +53,7 @@ def main():
         'say_to_customer_of_server': say_to_customer_of_server,
         'add_credit_to_customer_wallet': add_credit_to_server_customer_wallet,
         'add_credit_to_customer': add_credit_to_customer,
+        'rank_up': admin_rank_up
     }
 
     for key, value in commands.items():
@@ -98,6 +99,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(alredy_have_show, pattern='alredy_have_show'))
     dp.add_handler(CallbackQueryHandler(subcategory, pattern='subcategory'))
     dp.add_handler(CallbackQueryHandler(rank_page, pattern='rank_page'))
+    dp.add_handler(CallbackQueryHandler(hide_buttons, pattern='hide_buttons'))
     dp.add_handler(CallbackQueryHandler(pay_per_use, pattern='pay_per_use_'))
     dp.add_handler(CallbackQueryHandler(pay_per_use, pattern=r'active_ppu_\d+'))
     dp.add_handler(CallbackQueryHandler(get_pay_file, pattern='get_pay_file'))

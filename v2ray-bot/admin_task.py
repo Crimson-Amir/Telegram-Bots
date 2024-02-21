@@ -5,8 +5,10 @@ import utilities
 from private import ADMIN_CHAT_ID
 from utilities import ready_report_problem_to_admin, message_to_user, sqlite_manager, api_operation
 from wallet import WalletManage
+import ranking
 
 wallet_manage = WalletManage('User', 'wallet', 'v2ray', 'chat_id')
+ranking_manage = ranking.RankManage('Rank', 'level', 'rank_name',db_name='v2ray', user_id_identifier='chat_id')
 
 
 def admin_add_update_inbound(update, context):
@@ -331,3 +333,23 @@ def check_all_configs(chat_id, inbound_id, product_id=None):
                                                  'details': 'False', 'active': 0, 'status': 1}])
 
 # check_all_configs(6450325872, 5)
+
+def admin_rank_up(update, context):
+    try:
+        get_admin_order = update.message.text.replace('/rank_up ', '').split(', ')
+        get_user_chat_id = get_admin_order[0]
+        get_rank_name = get_admin_order[1]
+        rank_access = '\n'.join(ranking.rank_access_fa[get_rank_name][1:])
+
+        text = f'رنک شما توسط ادمین ارتقا یافت.\n\nویژگی های این رنک:\n {rank_access}'
+
+        customer_of_service = sqlite_manager.select(column='name,user_name', table='User',
+                                                    where=f'chat_id = {get_user_chat_id}')
+
+        ranking_manage.rank_up(get_rank_name, get_user_chat_id)
+        message_to_user(update, context, message=text, chat_id=get_user_chat_id)
+
+        update.message.reply_text('RANKUP SUCCESS')
+
+    except Exception as e:
+        ready_report_problem_to_admin(context, 'admin_rank_up', update.message.from_user['id'], e)
