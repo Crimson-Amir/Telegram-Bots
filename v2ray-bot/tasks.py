@@ -172,7 +172,8 @@ def get_service_of_server(update, context):
 @handle_telegram_exceptions
 def hide_buttons(update, context):
     query = update.callback_query
-    query.edit_message_text(text=query.message.text, reply_markup=InlineKeyboardMarkup([]))
+    text = query.message.text
+    query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup([]))
     query.answer('OK')
 
 def payment_page(update, context):
@@ -256,7 +257,7 @@ def get_card_pay_evidence(update, context):
                 f"<code>{price[0]:,}</code>"
                 f"<b> تومان </b>"
                 f"{check_off}"
-                f"\n\n<b>• لطفا مبلغ رو به شماره‌حساب زیر واریز کنید و اسکرین‌شات یا شماره‌پیگیری رو بعد از همین پیام ارسال کنید، اطمینان حاصل کنید ربات درخواست رو ثبت کنه..</b>"
+                f"\n\n<b>• لطفا مبلغ رو به شماره‌حساب زیر واریز کنید و اسکرین‌شات یا شماره‌پیگیری رو بعد از همین پیام ارسال کنید، اطمینان حاصل کنید ربات درخواست رو ثبت کنه.</b>"
                 f"\n\n<code>6219861938619417</code> - امیرحسین نجفی"
                 f"\n\n<b>• بعد از تایید شدن پرداخت، سرویس برای شما ارسال میشه، زمان تقریبی یک دقیقه تا 3 ساعت.</b>")
 
@@ -873,7 +874,7 @@ def pay_page_get_evidence_for_upgrade(update, context):
         text = (f"\n\nمدت اعتبار فاکتور: 10 دقیقه"
                 f"\nسرویس: {package[0][6]} روز - {package[0][5]} گیگابایت"
                 f"\n*قیمت*: `{price:,}`* تومان *"
-                f"\n\n*• لطفا مبلغ رو به شماره‌حساب زیر واریز کنید و اسکرین‌شات یا شماره‌پیگیری رو بعد از همین پیام ارسال کنید.*"
+                f"\n\n*• لطفا مبلغ رو به شماره‌حساب زیر واریز کنید و اسکرین‌شات یا شماره‌پیگیری رو بعد از همین پیام ارسال کنید، اطمینان حاصل کنید ربات درخواست رو ثبت کنه.*"
                 f"\n\n`6219861938619417` - امیرحسین نجفی"
                 f"\n\n*• بعد از تایید شدن پرداخت، سرویس برای شما ارسال میشه، زمان تقریبی 5 دقیقه الی 3 ساعت.*")
         context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -895,8 +896,8 @@ def send_evidence_to_admin_for_upgrade(update, context):
         purchased_id = context.user_data['purchased_id']
 
         if not ranking_manage.enough_rank('GET_SERVICE_WITHOUT_CONFIRM', user['id']):
-            keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_{purchased_id}")],
-                        [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_{purchased_id}")],
+            keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_lu_{purchased_id}"),
+                         InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_lu_{purchased_id}")],
                         [InlineKeyboardButton("Hide buttons", callback_data=f"hide_buttons")]]
             text_ = f'<b>درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه</b>'
             text = "- Check the new payment to the card [UPGRADE SERVICE]:\n\n"
@@ -1514,7 +1515,7 @@ def pay_by_card_for_credit(update, context):
 
         text = (f"\n\nمدت اعتبار فاکتور: 10 دقیقه"
                 f"\n*قیمت*: `{price:,}`* تومان *"
-                f"\n\n*• لطفا مبلغ رو به شماره‌حساب زیر واریز کنید و اسکرین‌شات یا شماره‌پیگیری رو بعد از همین پیام ارسال کنید.*"
+                f"\n\n*• لطفا مبلغ رو به شماره‌حساب زیر واریز کنید و اسکرین‌شات یا شماره‌پیگیری رو بعد از همین پیام ارسال کنید، اطمینان حاصل کنید ربات درخواست رو ثبت کنه.*"
                 f"\n\n`6219861938619417` - امیرحسین نجفی"
                 f"\n\n*• بعد از تایید شدن پرداخت، سرویس برای شما ارسال میشه، زمان تقریبی 5 دقیقه الی 3 ساعت.*")
         context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1534,8 +1535,8 @@ def pay_by_card_for_credit_admin(update, context):
 
 
         if not ranking_manage.enough_rank('GET_SERVICE_WITHOUT_CONFIRM', user['id']):
-            keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_{credit_id}")],
-                        [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_{credit_id}")],
+            keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_credit_{credit_id}")],
+                        [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_credit_{credit_id}")],
                         [InlineKeyboardButton("Hide buttons", callback_data=f"hide_buttons")]]
             text_ = f'<b>درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه</b>'
             text = "- Check the new payment to the card [CHARGE CREDIT WALLET]:\n\n"

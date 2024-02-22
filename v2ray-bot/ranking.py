@@ -142,6 +142,11 @@ class RankManage(ManageDb):
         user_rank = self.select(table='Rank', where=f'chat_id = {user_id}')
         price = direct_price or (traffic * PRICE_PER_GB) + (period * PRICE_PER_DAY)
         if without_off: return price
+
+        if not user_rank:
+            detail = (price, 0, price) if more_detail else price
+            return detail
+
         off = (price * off_per_rank[user_rank[0][5]] / 100)
         final_price = price - off
         detail = (int(final_price), off_per_rank[user_rank[0][5]], price) if more_detail else int(final_price)
@@ -150,6 +155,7 @@ class RankManage(ManageDb):
 
     def enough_rank(self, task, user_id):
         user_rank = self.select(table='Rank', where=f'chat_id = {user_id}')
+        if not user_rank: return False
         all_access = self.get_all_access(user_rank[0][5])
         # user_rank_detail =  [value for rank_key, value in rank_access.items() if user_rank[0][5] == rank_key and task in value['access']]
         return True if task in all_access else False
