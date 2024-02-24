@@ -38,7 +38,7 @@ class Task(ManageDb):
 
     @staticmethod
     def get_flag(text):
-        return text[eval(FLAG_IN_NAME)]
+        return text[:2]
 
     @handle_exceptions
     def return_server_countries(self):
@@ -149,10 +149,12 @@ def get_service_of_server(update, context):
     country = query.data
 
     plans = sqlite_manager.select(table='Product', where=f'active = 1 and country = "{country}"')
-    country_flag = plans[0][3][:2]
+    country_flag = task.get_flag(plans[0][3])
+
     text = (f"<b>• {country_flag} سرویس مناسب خودتون رو انتخاب کنید:"
             f"\n\n• با انتخاب گزینه دلخواه میتونید یک سرویس شخصی سازی شده بسازید.</b>"
             "\n\n<b>• سرویس ساعتی به شما اجازه میده به اندازه مصرف در هر ساعت پرداخت کنید.</b>")
+
     country_unic = {name[4] for name in plans}
 
     for country in country_unic:
@@ -206,7 +208,7 @@ def payment_page(update, context):
                     [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]
                 ]
 
-        check_off = f'\n<b>تخفیف: {price[1]} درصد</b>' if price[1] else ''
+        check_off = f'\n<b>تخفیف: {price[1]} درصد</b>' if price[1] and price[0] else ''
 
         text = (f"<b>❋ بسته انتخابی شامل مشخصات زیر میباشد:</b>\n"
                 f"\nسرور: {package[0][3]}"
@@ -445,8 +447,13 @@ def my_service(update, context):
     number_in_page = 10
     data = query.data.replace('my_service', '')
 
+    check = f'chat_id = {chat_id} and active = 1'
+
+    if chat_id in ranking_manage.list_of_partner:
+        check = f'chat_id = {chat_id}'
+
     get_limit = int(data) if data else number_in_page
-    get_all_purchased = sqlite_manager.select(table='Purchased', where=f'chat_id = {chat_id} and active = 1')
+    get_all_purchased = sqlite_manager.select(table='Purchased', where=check)
     get_purchased = get_all_purchased[get_limit-number_in_page:get_limit]
 
     if get_purchased:
@@ -1595,6 +1602,7 @@ def add_credit_to_wallet(context, id_):
     context.bot.send_message(ADMIN_CHAT_ID, '🟢 WALLET OPERATOIN SUCCESSFULL')
     return get_credit[0][0]
 
+
 def apply_card_pay_credit(update, context):
     query = update.callback_query
     try:
@@ -1885,6 +1893,7 @@ def pay_per_use(update, context):
                                 'price': 0, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
                                 'is_personalization': None, 'domain': PAY_PER_USE_DOMAIN,
                                 'server_domain': server_domain, 'status': 0}
+
                     get_infinite_product_id = sqlite_manager.insert('Product', rows=[get_data])
 
                 else:
@@ -1929,8 +1938,12 @@ def pay_per_use(update, context):
 def pay_per_use_calculator(context):
     get_all = api_operation.get_all_inbounds()
 
+    get_from_db = sqlite_manager.select(column='id', table='Product', where=f'name LIKE "pay_per_use_%"')
+    pay_per_use_products = [id_[0] for id_ in get_from_db]
+
     get_from_db = sqlite_manager.select(column='id,chat_id,client_email,status,date,notif_day,notif_gb,inbound_id,client_id',
-                                        table='Purchased', where=f"inbound_id = {PAY_PER_USE_INBOUND_ID}")
+                                        table='Purchased', where=f"product_id IN {tuple(pay_per_use_products)}")
+
 
     get_user_wallet = sqlite_manager.select(column='chat_id,wallet,name,notification_wallet,notif_wallet,notif_low_wallet', table='User')
 
@@ -1943,7 +1956,7 @@ def pay_per_use_calculator(context):
                         if user[2] == client['email']:
                             user_wallet = [wallet for wallet in get_user_wallet if wallet[0] == user[1]]
                             last_traffic_usage = [last_traffic_use for last_traffic_use in get_last_traffic_uasge if last_traffic_use[1] == user[0]]
-
+                            print(last_traffic_usage, user)
                             if client['enable']:
 
                                 upload_gb = client['up'] / (1024 ** 3)
@@ -2278,7 +2291,7 @@ def service_advanced_option(update, context):
             " ارتباط قطع خواهد شد. لطفاً اطمینان حاصل کنید که قادر به جایگزینی آدرس جدید هستید.</b>"
             f"\n\n🔷 نام سرویس: {email}"
             f"\n🗺 موقعیت سرور: {get_server_country}"
-            f"\n🔁 تمدید خودکار: {auto_renewal}"
+            f"\n🔗 تمدید خودکار: {auto_renewal}"
             f"\n🛡️ رمزگذاری اطلاعات: {tls_status}"
             f"{status_1}"
             f"\n\n🌐 آدرس سرویس:\n <code>{get_data[0][8]}</code>"

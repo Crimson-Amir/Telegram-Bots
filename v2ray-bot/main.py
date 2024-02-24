@@ -1,8 +1,7 @@
 from telegram.ext import (Updater, CommandHandler, CallbackQueryHandler)
 from private import telegram_bot_token
-from bot_start import bot_start, main_menu, send_main_message
 from database import create_database
-
+from bot_start import bot_start, main_menu, send_main_message
 from tasks import (show_servers, get_service_of_server, payment_page, get_service_con, apply_card_pay,
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
                    personalization_service_lu, apply_card_pay_lu, upgrade_service_by_card_conv, get_free_service, guidance,
@@ -20,16 +19,14 @@ from admin_task import (admin_add_update_inbound, add_service, all_service, del_
                         say_to_every_one, clear_depleted_service, say_to_customer_of_server,
                         add_credit_to_server_customer_wallet, add_credit_to_customer, admin_rank_up)
 
-from private import ADMIN_CHAT_ID
-import requests
 import logging
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
-# requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'🟠 THE BOT STARTED'})
 create_database()
+
+# telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
+# requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'🟠 THE BOT STARTED'})
 
 
 def main():
@@ -177,7 +174,6 @@ def main():
     dp.add_handler(CallbackQueryHandler(not_ready_yet, pattern='not_ready_yet'))
 
     dp.add_handler(CallbackQueryHandler(get_service_of_server))
-
 
     job = updater.job_queue
     job.run_repeating(check_all_configs, interval=100, first=0)

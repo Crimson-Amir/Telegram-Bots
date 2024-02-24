@@ -73,6 +73,9 @@ class RankManage(ManageDb):
         self.RANK_COLUMN = rank_column
         self.identifier = user_id_identifier
 
+        get_partner_chat_id = self.select(column='chat_id', table='Partner')
+        self.list_of_partner = [partner[0] for partner in get_partner_chat_id]
+
     @staticmethod
     def get_rank_name_by_level(level):
         return [rank_key for rank_key, value in rank_access.items() if level in value['level']][0]
@@ -98,6 +101,10 @@ class RankManage(ManageDb):
             if key == rank:
                 break
         return all_access
+
+    def get_partner(self):
+        get_partner_chat_id = self.select(column='chat_id', table='Partner')
+        self.list_of_partner = [partner[0] for partner in get_partner_chat_id]
 
     def get_user_rank_and_level(self, user_id):
         try:
@@ -135,14 +142,17 @@ class RankManage(ManageDb):
         self.update_rank_with_level(rank, user_id)
 
     def discount_calculation(self, user_id, traffic=None, period=None, direct_price=None, without_off=False, more_detail=False):
-        """
-        :return: (discount_price, off, price_witout_discount)
-        """
-        print('USERID', user_id)
-        user_rank = self.select(table='Rank', where=f'chat_id = {user_id}')
-        price = direct_price or (traffic * PRICE_PER_GB) + (period * PRICE_PER_DAY)
-        if without_off: return price
+        price_per_gb, price_per_day = PRICE_PER_GB, PRICE_PER_DAY
 
+        if user_id in self.list_of_partner:
+            get_detail_of_partner = self.select('traffic_price,period_price', 'Partner', where=f'chat_id = {user_id}')
+            price_per_gb = get_detail_of_partner[0][0]
+            price_per_day = get_detail_of_partner[0][1]
+
+        user_rank = self.select(table='Rank', where=f'chat_id = {user_id}')
+        price = direct_price if direct_price is not None else (traffic * price_per_gb) + (period * price_per_day)
+
+        if without_off: return price
         if not user_rank:
             detail = (price, 0, price) if more_detail else price
             return detail
