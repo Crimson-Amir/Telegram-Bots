@@ -86,7 +86,6 @@ class XuiApiClean(ManageDb):
     def get_client(self, client_email, domain=None):
         main_domain = domain or DOMAIN
         get_client_ = self.make_request('get', f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/getClientTraffics/{client_email}')
-        'kos'
         return get_client_
 
     def add_inbound(self, data, domain=None):
