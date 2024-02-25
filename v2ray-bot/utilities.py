@@ -11,12 +11,20 @@ api_operation = XuiApiClean()
 sqlite_manager = ManageDb('v2ray')
 
 def human_readable(number):
+    get_date = arrow.get(number)
     try:
-        return arrow.get(number).humanize(locale="fa-ir")
+        return get_date.humanize(locale="fa-ir")
+
+    except ValueError as e:
+        if 'week' in str(e):
+            return str(get_date.humanize()).replace('weeks ago', 'هفته پیش').replace('a week ago', 'هفته پیش')
+        else:
+            return get_date.humanize()
 
     except Exception as e:
         print(e)
-        return arrow.get(number).humanize()
+        return f'Error In Parse Data'
+
 
 def not_ready_yet(update, context):
     query = update.callback_query
