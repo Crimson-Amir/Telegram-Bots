@@ -39,4 +39,3 @@ def generate_chart(data):
     buffer.close()
 
     return binary_data
-

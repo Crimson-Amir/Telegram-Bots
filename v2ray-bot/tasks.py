@@ -12,7 +12,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
 import ranking
 import utilities
-from admin_task import add_client_bot, api_operation, second_to_ms, message_to_user, wallet_manage, sqlite_manager, ranking_manage
+from admin_task import add_client_bot, api_operation, second_to_ms, message_to_user, wallet_manage, sqlite_manager, ranking_manage, traffic_to_gb
 import qrcode
 from io import BytesIO
 import pytz
@@ -101,7 +101,8 @@ class Task(ManageDb):
                                          name_of_operation=f'تمدید یا ارتقا سرویس {get_client[0][9]}', operation=0,
                                          status_of_pay=1, context=context)
 
-                report_status_to_admin(context, text=f'User Upgrade Service\nService Name: {get_client[0][9]}',
+                report_status_to_admin(context, text=f'User Upgrade Service\nService Name: {get_client[0][9]}'
+                                                     f'\nTraffic: {traffic}\nPeriod: {my_data}',
                                        chat_id=get_client[0][4])
 
                 break
@@ -380,7 +381,7 @@ def send_clean_for_customer(query, context, id_):
                 price = ranking_manage.discount_calculation(direct_price=get_product[0][7], user_id=get_client[0][4])
 
                 record_operation_in_file(chat_id=get_client[0][4], price=price,
-                                         name_of_operation=f'خرید سرویس {get_client[0][2]}', operation=0,
+                                         name_of_operation=f'خرید سرویس {get_client[0][9]}', operation=0,
                                          status_of_pay=1, context=context)
 
 
@@ -429,7 +430,7 @@ def apply_card_pay(update, context):
             query.answer('Done ✅')
             query.delete_message()
             record_operation_in_file(chat_id=get_client[0][4], price=0,
-                                     name_of_operation=f'خرید سرویس {get_client[0][2]}', operation=0,
+                                     name_of_operation=f'خرید سرویس {get_client[0][9]}', operation=0,
                                      status_of_pay=0, context=context)
 
         elif 'cancel_pay' in query.data:
@@ -983,7 +984,7 @@ def apply_card_pay_lu(update, context):
             query.delete_message()
 
             record_operation_in_file(chat_id=get_client[0][4], price=0,
-                                     name_of_operation=f'تمدید یا ارتقا سرویس {get_client[0][2]}', operation=0,
+                                     name_of_operation=f'تمدید یا ارتقا سرویس {get_client[0][9]}', operation=0,
                                      status_of_pay=0, context=context)
 
         elif 'cancel_pay' in query.data:
@@ -1153,7 +1154,7 @@ def check_all_configs(context, context_2=None):
         context = context_2
 
     get_all = api_operation.get_all_inbounds()
-    get_from_db = sqlite_manager.select(column='id,chat_id,client_email,status,date,notif_day,notif_gb,auto_renewal,product_id,inbound_id', table='Purchased', where='active=1')
+    get_from_db = sqlite_manager.select(column='id,chat_id,client_email,status,date,notif_day,notif_gb,auto_renewal,product_id,inbound_id,client_id', table='Purchased', where='active=1')
     get_users_notif = sqlite_manager.select(column='chat_id,notification_gb,notification_day,name,traffic,period,wallet', table='User')
 
     for server in get_all:
@@ -1167,6 +1168,7 @@ def check_all_configs(context, context_2=None):
                             if not user[7]:
                                 disable_service_in_data_base(context, list_of_notification, user)
                             else:
+                                traffic = client['total'] * 2
                                 expiry_timestamp = client['expiryTime']
                                 expiry_datetime = datetime.fromtimestamp(expiry_timestamp / 1000)
                                 new_expiry_datetime = (expiry_datetime - datetime.strptime(user[4].split('+')[0], "%Y-%m-%d %H:%M:%S.%f")).days
@@ -1183,7 +1185,17 @@ def check_all_configs(context, context_2=None):
                                             f"\nسرویس شما به صورت خودکار تمدید شد، میتونید جزئیات سرویس رو بررسی کنید.")
                                     keyboard = [[InlineKeyboardButton("مشاهده جزئیات سرویس", callback_data=f"view_service_{user[2]}")]]
 
-                                    print(api_operation.reset_client_traffic(user[9], user[2], get_server_domain[0][0]))
+                                    # print(api_operation.reset_client_traffic(user[9], user[2], get_server_domain[0][0]))
+
+                                    data = {
+                                        "id": int(user[9]),
+                                        "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
+                                                    "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
+                                                    "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(
+                                            user[10], user[2],
+                                            traffic, my_data)}
+
+                                    print(api_operation.update_client(user[10], data, get_server_domain[0][0]))
 
                                     wallet_manage.less_from_wallet(list_of_notification[0][0], price, user_detail={'name': list_of_notification[0][0],'username': list_of_notification[0][0]})
 
@@ -1353,7 +1365,7 @@ def get_pay_file(update, context):
     query = update.callback_query
     with open(f'financial_transactions/{query.message.chat_id}.txt', 'r', encoding='utf-8') as file:
         context.bot.send_document(chat_id=query.message.chat_id, document= file,
-                                  filename=f'All transactions of {query.from_user["name"]}')
+                                  filename=f'All transactions of {query.from_user["name"]}.txt')
     query.answer('فایل برای شما ارسال شد!')
 
 
@@ -1361,12 +1373,31 @@ def financial_transactions(update, context):
     query = update.callback_query
     try:
         keyboard = [
-            [InlineKeyboardButton("دریافت فایل کامل", callback_data="get_pay_file")],
-            [InlineKeyboardButton("برگشت ↰", callback_data="setting")]
+            [InlineKeyboardButton("دریافت فایل کامل", callback_data="get_pay_file")]
         ]
         with open(f'financial_transactions/{query.message.chat_id}.txt', 'r', encoding='utf-8') as e:
             get_factors = e.read()
-        query.edit_message_text(text=f"لیست تراکنش های مالی شما: \n{get_factors[:4000]}", reply_markup=InlineKeyboardMarkup(keyboard))
+
+        list_of_t = get_factors.split('\n\n')
+        list_of_t.reverse()
+        number_in_page = 15
+
+        data = query.data.replace('financial_transactions', '')
+        get_limit = int(data) if data else number_in_page
+        get_purchased = list_of_t[get_limit - number_in_page:get_limit]
+
+        if len(list_of_t) > number_in_page:
+            keyboard_backup = []
+            keyboard_backup.append(InlineKeyboardButton("قبل ⤌", callback_data=f"financial_transactions{get_limit - number_in_page}")) if get_limit != number_in_page else None
+            keyboard_backup.append(InlineKeyboardButton(f"صفحه {int(get_limit / number_in_page)}", callback_data="just_for_show"))
+            keyboard_backup.append(InlineKeyboardButton("⤍ بعد", callback_data=f"financial_transactions{get_limit + number_in_page}")) if get_limit < len(list_of_t) else None
+            keyboard.append(keyboard_backup)
+
+        keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="setting")])
+
+        query.edit_message_text(text=f"لیست تراکنش های مالی شما: \n" + "\n\n".join(get_purchased), reply_markup=InlineKeyboardMarkup(keyboard))
+
+
     except FileNotFoundError:
         query.answer('شما تا به حال تراکنشی نداشتید!')
     except Exception as e:
