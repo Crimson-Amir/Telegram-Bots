@@ -120,6 +120,7 @@ class XuiApiClean(ManageDb):
     def del_client(self, inboundid, uuid, domain=None):
         main_domain = domain or DOMAIN
         inb = self.make_request('post', f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/{inboundid}/delClient/{uuid}')
+        self.send_telegram_message(f'Client Deleted!\nClient Inbound_id: {inboundid}\nclient_uuid: {uuid}\ndomain: {domain}')
         return inb
 
     def del_depleted_clients(self, inbound_id="", domain=None):

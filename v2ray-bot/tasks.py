@@ -12,7 +12,8 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
 import ranking
 import utilities
-from admin_task import add_client_bot, api_operation, second_to_ms, message_to_user, wallet_manage, sqlite_manager, ranking_manage, traffic_to_gb
+from admin_task import (add_client_bot, api_operation, second_to_ms, message_to_user, wallet_manage, sqlite_manager, ranking_manage,
+                        traffic_to_gb)
 import qrcode
 from io import BytesIO
 import pytz
@@ -23,6 +24,7 @@ import json
 
 class Task(ManageDb):
     def __init__(self): super().__init__('v2ray')
+
 
     @staticmethod
     def handle_exceptions(func):
@@ -77,10 +79,12 @@ class Task(ManageDb):
                     expiry_timestamp = client['expiryTime']
                     expiry_datetime = datetime.fromtimestamp(expiry_timestamp / 1000)
                     new_expiry_datetime = expiry_datetime + timedelta(days=user_db[0][6])
+                    human_data = new_expiry_datetime
                     my_data = int(new_expiry_datetime.timestamp() * 1000)
                 else:
                     traffic = user_db[0][5] * (1024 ** 3)
                     my_data = now + timedelta(days=user_db[0][6])
+                    human_data = my_data
                     my_data = int(my_data.timestamp() * 1000)
                     print(api_operation.reset_client_traffic(client_id, client_email, get_server_domain[0][0]))
 
@@ -102,7 +106,7 @@ class Task(ManageDb):
                                          status_of_pay=1, context=context)
 
                 report_status_to_admin(context, text=f'User Upgrade Service\nService Name: {get_client[0][9]}'
-                                                     f'\nTraffic: {traffic}\nPeriod: {my_data}',
+                                                     f'\nTraffic: {user_db[0][5]}GB\nPeriod: {human_data.day}day',
                                        chat_id=get_client[0][4])
 
                 break
@@ -1378,13 +1382,16 @@ def financial_transactions(update, context):
         with open(f'financial_transactions/{query.message.chat_id}.txt', 'r', encoding='utf-8') as e:
             get_factors = e.read()
 
+        data = query.data.replace('financial_transactions', '')
+        number_in_page = 15
+        get_limit = int(data) if data else number_in_page
+
         list_of_t = get_factors.split('\n\n')
         list_of_t.reverse()
-        number_in_page = 15
 
-        data = query.data.replace('financial_transactions', '')
-        get_limit = int(data) if data else number_in_page
         get_purchased = list_of_t[get_limit - number_in_page:get_limit]
+        get_purchased.reverse()
+
 
         if len(list_of_t) > number_in_page:
             keyboard_backup = []
@@ -1851,6 +1858,7 @@ def remove_service(update, context):
                 record_operation_in_file(chat_id=chat_id, price=price,
                                          name_of_operation=f'حذف سرویس و بازپرداخت به کیف پول {get_uuid[0][2]}', operation=1,
                                          status_of_pay=1, context=context)
+            report_status_to_admin(context, f'User Deleted Service!\nEmail: {email}\nuser Name:{get_uuid[0][2]}\nuser id: {chat_id}', chat_id)
 
         query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
 
