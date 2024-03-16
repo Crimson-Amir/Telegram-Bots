@@ -12,8 +12,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
 import ranking
 import utilities
-from admin_task import (add_client_bot, api_operation, second_to_ms, message_to_user, wallet_manage, sqlite_manager, ranking_manage,
-                        traffic_to_gb)
+from admin_task import (add_client_bot, api_operation, second_to_ms, message_to_user, wallet_manage, sqlite_manager, ranking_manage)
 import qrcode
 from io import BytesIO
 import pytz
@@ -21,6 +20,7 @@ import re
 import functools
 from sqlite_manager import ManageDb
 import json
+
 
 class Task(ManageDb):
     def __init__(self): super().__init__('v2ray')
@@ -240,7 +240,8 @@ def get_card_pay_evidence(update, context):
         price = ranking_manage.discount_calculation(query.from_user['id'], direct_price=package[0][7], more_detail=True)
 
         context.user_data['package'] = package
-        keyboard = [[InlineKeyboardButton("صفحه اصلی ⤶", callback_data="send_main_message")]]
+        keyboard = [[InlineKeyboardButton("ساخت ", callback_data="send_main_message")],
+                    [InlineKeyboardButton("صفحه اصلی ⤶", callback_data="send_main_message")]]
 
         ex = sqlite_manager.select('id', 'Purchased', where=f'active = 0 and chat_id = {user["id"]}', limit=1)
 
@@ -1125,6 +1126,7 @@ def support(update, context):
 
 
 def disable_service_in_data_base(context, list_of_notification, user, not_enogh_credit=False):
+    print(list_of_notification, user)
     text = ("🔴 اطلاع رسانی اتمام سرویس"
             f"\nدرود {list_of_notification[0][3]} عزیز، سرویس شما با نام {user[2]} به پایان رسید!"
             f"\nدر صورتی که تمایل دارید نسبت به بررسی و یا تمدید سرویس اقدام کنید.")
@@ -1139,18 +1141,20 @@ def disable_service_in_data_base(context, list_of_notification, user, not_enogh_
          InlineKeyboardButton("تمدید همین سرویس", callback_data=f"upgrade_service_customize_{user[0]}")],
         [InlineKeyboardButton("❤️ تجربه استفاده از فری‌بایت رو به اشتراک بگذارید:", callback_data=f"just_for_show")],
         [InlineKeyboardButton("معمولی بود",
-                              callback_data=f"rate_ok&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}"),
+                              callback_data=f"rate_ok&{list_of_notification[0][0]}_{user[0]}"),
          InlineKeyboardButton("عالی بود",
-                              callback_data=f"rate_perfect&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}")],
+                              callback_data=f"rate_perfect&{list_of_notification[0][0]}_{user[0]}")],
         [InlineKeyboardButton("ناامید شدم",
-                              callback_data=f"rate_bad&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}"),
+                              callback_data=f"rate_bad&{list_of_notification[0][0]}_{user[0]}"),
          InlineKeyboardButton("نظری ندارم",
-                              callback_data=f"rate_haveNotIdea&{list_of_notification[0][3]}&{list_of_notification[0][0]}_{user[0]}")]
+                              callback_data=f"rate_haveNotIdea&{list_of_notification[0][0]}_{user[0]}")]
     ]
     context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
     sqlite_manager.update({'Purchased': {'status': 0}}, where=f'id = {user[0]}')
-    context.bot.send_message(ADMIN_CHAT_ID,
-                             text=f'Service OF {list_of_notification[0][3]} Named {user[0]} Has Be Ended')
+
+    utilities.report_status_to_admin(context, text=f'The user service has ended.\n'
+                                                   f'User Name: {list_of_notification[0][3]}'
+                                                   f'\nService id: {user[0]}', chat_id=list_of_notification[0][0])
 
 
 def check_all_configs(context, context_2=None):
@@ -1261,8 +1265,12 @@ def rate_service(update, context):
     query = update.callback_query
     try:
         purchased_id = int(re.sub(r'rate_(.*)_', '', query.data))
-        check = query.data.replace('_', ' ')
-        context.bot.send_message(ADMIN_CHAT_ID, text=check.replace('&', ' '))
+        check = query.data.replace('_', ' ').replace('&', ' ').split(' ')
+        text = ('The user rated the service\n'
+                f'User Rate: {check[1]}\n'
+                f'Service Id: {check[3]}')
+        utilities.report_status_to_admin(context, text, chat_id=check[2])
+
         server_name = sqlite_manager.select(column='client_email', table='Purchased', where=f'id = {purchased_id}')[0][0]
         text = ("🔴 اطلاع رسانی اتمام سرویس"
                 f"\nدرود {query.from_user['name']} عزیز، سرویس شما با نام {server_name} به پایان رسید!"

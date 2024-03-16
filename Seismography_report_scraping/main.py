@@ -1,13 +1,14 @@
 from database import create_database
+create_database()
+
 import logging
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 from private import BOT_TOKEN, channel_id, channel_username
 from scrapping_class import Scraping
-check_every_min = 5
+check_every_min = 1
 
-instance = Scraping('scraping')
-create_database()
+instance = Scraping('scraping.db')
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
