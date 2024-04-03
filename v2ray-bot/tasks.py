@@ -2,8 +2,8 @@ import random
 import uuid
 from datetime import datetime, timedelta
 import telegram.error
-from utilities import (human_readable,something_went_wrong,
-                       ready_report_problem_to_admin,format_traffic,record_operation_in_file,
+from utilities import (human_readable, something_went_wrong,
+                       ready_report_problem_to_admin, format_traffic, record_operation_in_file,
                        send_service_to_customer_report, report_status_to_admin, find_next_rank,
                        change_service_server, get_rank_and_emoji, report_problem_by_user_utilitis, report_problem)
 import admin_task
@@ -12,7 +12,8 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
 import ranking
 import utilities
-from admin_task import (add_client_bot, api_operation, second_to_ms, message_to_user, wallet_manage, sqlite_manager, ranking_manage)
+from admin_task import (add_client_bot, api_operation, second_to_ms, message_to_user, wallet_manage, sqlite_manager,
+                        ranking_manage)
 import qrcode
 from io import BytesIO
 import pytz
@@ -23,8 +24,8 @@ import json
 
 
 class Task(ManageDb):
-    def __init__(self): super().__init__('v2ray')
-
+    def __init__(self):
+        super().__init__('v2ray')
 
     @staticmethod
     def handle_exceptions(func):
@@ -36,6 +37,7 @@ class Task(ManageDb):
                 side = 'Task Func'
                 print(f"[{side}] An error occurred in {func.__name__}: {e}")
                 report_problem(func.__name__, e, side)
+
         return wrapper
 
     @staticmethod
@@ -61,7 +63,7 @@ class Task(ManageDb):
 
         price = ranking_manage.discount_calculation(user_db[0][3], user_db[0][5], user_db[0][6])
 
-        client_id = get_client[0][10]
+        # client_id = get_client[0][10]
         client_email = get_client[0][9]
         inbound_id = get_client[0][7]
         now = datetime.now(pytz.timezone('Asia/Tehran'))
@@ -113,7 +115,9 @@ class Task(ManageDb):
 
         return get_client[0][4], price
 
+
 task = Task()
+
 
 def handle_telegram_exceptions(func):
     @functools.wraps(func)
@@ -165,23 +169,26 @@ def get_service_of_server(update, context):
     for country in country_unic:
         if query.data == country:
             service_list = [service for service in plans if service[4] == country]
-            keyboard = [[InlineKeyboardButton(f"سرویس {pattern[5]} روزه - {pattern[6]} گیگابایت - {ranking_manage.discount_calculation(query.from_user['id'], direct_price=pattern[7]):,} تومان",
-                                              callback_data=f"service_{pattern[0]}")] for pattern in service_list]
+            keyboard = [[InlineKeyboardButton(
+                f"سرویس {pattern[5]} روزه - {pattern[6]} گیگابایت - {ranking_manage.discount_calculation(query.from_user['id'], direct_price=pattern[7]):,} تومان",
+                callback_data=f"service_{pattern[0]}")] for pattern in service_list]
 
-            keyboard.append([InlineKeyboardButton("✪ سرویس دلخواه", callback_data=f"personalization_service_{plans[0][0]}"),
-                             InlineKeyboardButton("✪ سرویس ساعتی", callback_data=f"pay_per_use_{plans[0][0]}")])
+            keyboard.append(
+                [InlineKeyboardButton("✪ سرویس دلخواه", callback_data=f"personalization_service_{plans[0][0]}"),
+                 InlineKeyboardButton("✪ سرویس ساعتی", callback_data=f"pay_per_use_{plans[0][0]}")])
 
             keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="select_server")])
 
-            query.edit_message_text(text= text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+            query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
 
 @handle_telegram_exceptions
 def hide_buttons(update, context):
     query = update.callback_query
-    text = query.message.text
+    # text = query.message.text
     query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup([]))
     query.answer('OK')
+
 
 def payment_page(update, context):
     query = update.callback_query
@@ -246,12 +253,15 @@ def get_card_pay_evidence(update, context):
         ex = sqlite_manager.select('id', 'Purchased', where=f'active = 0 and chat_id = {user["id"]}', limit=1)
 
         if not ex:
-            ex = sqlite_manager.insert('Purchased',rows= [{'active': 0,'status': 0, 'name': user["first_name"],'user_name': user["username"],
-                                                           'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0, 'notif_gb': 0}])
+            ex = sqlite_manager.insert('Purchased', rows=[
+                {'active': 0, 'status': 0, 'name': user["first_name"], 'user_name': user["username"],
+                 'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0, 'notif_gb': 0}])
         else:
             sqlite_manager.update({'Purchased':
-                                       {'active': 0, 'status': 0, 'name': user["first_name"], 'user_name': user["username"],
-                                        'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0, 'notif_gb': 0}}, where=f'id = {ex[0][0]}')
+                                       {'active': 0, 'status': 0, 'name': user["first_name"],
+                                        'user_name': user["username"],
+                                        'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0, 'notif_gb': 0}},
+                                  where=f'id = {ex[0][0]}')
             ex = ex[0][0]
 
         check_off = f'\n<b>تخفیف: {price[1]} درصد</b>' if price[1] else ''
@@ -303,7 +313,8 @@ def send_evidence_to_admin(update, context):
             file_id = update.message.photo[-1].file_id
             text += f"caption: {update.message.caption}" or 'Witout caption!'
             text += service_detail
-            context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text , reply_markup=InlineKeyboardMarkup(keyboard))
+            context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text,
+                                   reply_markup=InlineKeyboardMarkup(keyboard))
             update.message.reply_text(text_)
 
         elif update.message.text:
@@ -317,7 +328,7 @@ def send_evidence_to_admin(update, context):
         context.user_data.clear()
         return ConversationHandler.END
     except Exception as e:
-        ready_report_problem_to_admin(context,'SEND EVIDENCE TO ADMIN', user['id'], e)
+        ready_report_problem_to_admin(context, 'SEND EVIDENCE TO ADMIN', user['id'], e)
         text = ("مشکلی وجود داشت!"
                 "گزارش به ادمین ها ارسال شد، نتیجه بهتون اعلام میشه")
         keyboard = [[InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]]
@@ -360,7 +371,8 @@ def send_clean_for_customer(query, context, id_):
         get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
         try:
             get_product = sqlite_manager.select(table='Product', where=f'id = {get_client[0][6]}')
-            get_user_detail = sqlite_manager.select(column='invited_by', table='User', where=f'chat_id={get_client[0][4]}')
+            get_user_detail = sqlite_manager.select(column='invited_by', table='User',
+                                                    where=f'chat_id={get_client[0][4]}')
 
             get_domain = get_product[0][10]
             get_server_domain = get_product[0][11]
@@ -389,16 +401,16 @@ def send_clean_for_customer(query, context, id_):
                                          name_of_operation=f'خرید سرویس {get_client[0][9]}', operation=0,
                                          status_of_pay=1, context=context)
 
-
-                send_service_to_customer_report(context, status=1, chat_id=get_client[0][4], service_name=get_client[0][9])
-
+                send_service_to_customer_report(context, status=1, chat_id=get_client[0][4],
+                                                service_name=get_client[0][9])
 
                 invite_chat_id = get_user_detail[0][0]
                 subcategory_auto(context, invite_chat_id, price)
 
                 return True
             else:
-                send_service_to_customer_report(context, status=0, chat_id=get_client[0][4], service_name=get_client[0][9],
+                send_service_to_customer_report(context, status=0, chat_id=get_client[0][4],
+                                                service_name=get_client[0][9],
                                                 more_detail=create)
                 print('wrong: ', returned)
                 return False
@@ -422,7 +434,8 @@ def apply_card_pay(update, context):
             keyboard = [[InlineKeyboardButton("YES", callback_data=f"ok_card_pay_{status}")]
                 , [InlineKeyboardButton("NO", callback_data=f"cancel_pay")]]
             query.answer('Confirm Pleas!')
-            context.bot.send_message(text='Are You Sure?', reply_markup=InlineKeyboardMarkup(keyboard), chat_id=ADMIN_CHAT_ID)
+            context.bot.send_message(text='Are You Sure?', reply_markup=InlineKeyboardMarkup(keyboard),
+                                     chat_id=ADMIN_CHAT_ID)
         elif 'ok_card_pay_accept_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_accept_', ''))
             send_clean_for_customer(query, context, id_)
@@ -431,7 +444,9 @@ def apply_card_pay(update, context):
         elif 'ok_card_pay_refuse_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_refuse_', ''))
             get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
-            context.bot.send_message(text=f'متاسفانه درخواست شما برای ثبت سرویس پذیرفته نشد❌\n ارتباط با پشتیبانی: \n @Fupport ', chat_id=get_client[0][4])
+            context.bot.send_message(
+                text=f'متاسفانه درخواست شما برای ثبت سرویس پذیرفته نشد❌\n ارتباط با پشتیبانی: \n @Fupport ',
+                chat_id=get_client[0][4])
             query.answer('Done ✅')
             query.delete_message()
             record_operation_in_file(chat_id=get_client[0][4], price=0,
@@ -442,7 +457,7 @@ def apply_card_pay(update, context):
             query.answer('Done ✅')
             query.delete_message()
     except Exception as e:
-        ready_report_problem_to_admin(context,'APLLY CARD PAY', query.message.chat_id, e)
+        ready_report_problem_to_admin(context, 'APLLY CARD PAY', query.message.chat_id, e)
         query.answer('Fail')
         print('errot:', e)
 
@@ -460,12 +475,14 @@ def my_service(update, context):
 
     get_limit = int(data) if data else number_in_page
     get_all_purchased = sqlite_manager.select(table='Purchased', where=check)
-    get_purchased = get_all_purchased[get_limit-number_in_page:get_limit]
+    get_purchased = get_all_purchased[get_limit - number_in_page:get_limit]
 
     if get_purchased:
         disable_service = enable_service = all_service = 0
 
-        keyboard = [[InlineKeyboardButton(f"{'✅' if ser[11] == 1 else '❌'} {ser[9]}", callback_data=f"view_service_{ser[9]}")] for ser in get_purchased]
+        keyboard = [
+            [InlineKeyboardButton(f"{'✅' if ser[11] == 1 else '❌'} {ser[9]}", callback_data=f"view_service_{ser[9]}")]
+            for ser in get_purchased]
 
         for service in get_all_purchased:
             if service[11] == 1:
@@ -477,9 +494,13 @@ def my_service(update, context):
 
         if len(get_all_purchased) > number_in_page:
             keyboard_backup = []
-            keyboard_backup.append(InlineKeyboardButton("قبل ⤌", callback_data=f"my_service{get_limit - number_in_page}")) if get_limit != number_in_page else None
-            keyboard_backup.append(InlineKeyboardButton(f"صفحه {int(get_limit / number_in_page)}", callback_data="just_for_show"))
-            keyboard_backup.append(InlineKeyboardButton("⤍ بعد", callback_data=f"my_service{get_limit + number_in_page}")) if get_limit < len(get_all_purchased) else None
+            keyboard_backup.append(InlineKeyboardButton("قبل ⤌",
+                                                        callback_data=f"my_service{get_limit - number_in_page}")) if get_limit != number_in_page else None
+            keyboard_backup.append(
+                InlineKeyboardButton(f"صفحه {int(get_limit / number_in_page)}", callback_data="just_for_show"))
+            keyboard_backup.append(InlineKeyboardButton("⤍ بعد",
+                                                        callback_data=f"my_service{get_limit + number_in_page}")) if get_limit < len(
+                get_all_purchased) else None
             keyboard.append(keyboard_backup)
 
         keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="main_menu")])
@@ -498,8 +519,9 @@ def my_service(update, context):
         keyboard = [[InlineKeyboardButton("آشنایی با سرویس‌ها", callback_data="robots_service_help"),
                      InlineKeyboardButton("🛒 خرید سرویس", callback_data="select_server")],
                     [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]]
-        query.edit_message_text('<b>• درحال حاضر شما صاحب سرویس نیستید\n\nدرمورد سرویس ها مطالعه کنید و یک سرویس بخرید! :</b>',
-                                reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+        query.edit_message_text(
+            '<b>• درحال حاضر شما صاحب سرویس نیستید\n\nدرمورد سرویس ها مطالعه کنید و یک سرویس بخرید! :</b>',
+            reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
 
 def server_detail_customer(update, context):
@@ -507,9 +529,10 @@ def server_detail_customer(update, context):
     email = update.callback_query.data.replace('view_service_', '')
     try:
         get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
-        get_server_country = sqlite_manager.select(column='name,server_domain', table='Product', where=f'id = {get_data[0][6]}')
+        get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
+                                                   where=f'id = {get_data[0][6]}')
         get_server_domain = get_server_country[0][1]
-        get_server_country = get_server_country[0][0].replace('سرور ','').replace('pay_per_use_', '')
+        get_server_country = get_server_country[0][0].replace('سرور ', '').replace('pay_per_use_', '')
 
         expiry_month = '♾️'
         total_traffic = '♾️'
@@ -521,13 +544,15 @@ def server_detail_customer(update, context):
         download_gb = round(int(ret_conf['obj']['down']) / (1024 ** 3), 2)
         usage_traffic = round(upload_gb + download_gb, 2)
 
-        change_active, advanced_option_pattern = ('فعال ✅', f'advanced_option_{email}') if ret_conf['obj']['enable'] else ('غیرفعال ❌', 'not_for_depleted_service')
+        change_active, advanced_option_pattern = ('فعال ✅', f'advanced_option_{email}') if ret_conf['obj'][
+            'enable'] else ('غیرفعال ❌', 'not_for_depleted_service')
 
         purchase_date = datetime.strptime(get_data[0][12], "%Y-%m-%d %H:%M:%S.%f%z").replace(tzinfo=None)
         auto_renwal_emoji = 'فعال ✓' if get_data[0][15] else 'غیرفعال ✗'
         auto_renwal = f'\n\n🔄 تمدیدخودکار: {auto_renwal_emoji}'
 
-        keyboard = [[InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"upgrade_service_customize_{get_data[0][0]}")]]
+        keyboard = [
+            [InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"upgrade_service_customize_{get_data[0][0]}")]]
 
         if int(ret_conf['obj']['total']) != 0:
             total_traffic = int(round(ret_conf['obj']['total'] / (1024 ** 3), 2))
@@ -549,17 +574,19 @@ def server_detail_customer(update, context):
 
             context.user_data['period_for_upgrade'] = (expiry_date - purchase_date).days
             context.user_data['traffic_for_upgrade'] = total_traffic
-            keyboard = [[InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"upgrade_service_customize_{get_data[0][0]}")]]
+            keyboard = [
+                [InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"upgrade_service_customize_{get_data[0][0]}")]]
 
         elif int(ret_conf['obj']['total']) == 0:
             service_activate_status = 'غیرفعال سازی ⤈' if ret_conf['obj']['enable'] else 'فعال سازی ↟'
-            keyboard = [[InlineKeyboardButton(service_activate_status, callback_data=f"change_infiniti_service_status_{get_data[0][0]}_{ret_conf['obj']['enable']}")]]
-
+            keyboard = [[InlineKeyboardButton(service_activate_status,
+                                              callback_data=f"change_infiniti_service_status_{get_data[0][0]}_{ret_conf['obj']['enable']}")]]
 
         keyboard.append([InlineKeyboardButton("حذف سرویس ⇣", callback_data=f"remove_service_{email}"),
                          InlineKeyboardButton("تازه سازی ↻", callback_data=f"view_service_{email}")])
 
-        keyboard.append([InlineKeyboardButton("گزینه های پیشرفته ⥣", callback_data=advanced_option_pattern)])  # advanced_option_{email}
+        keyboard.append([InlineKeyboardButton("گزینه های پیشرفته ⥣",
+                                              callback_data=advanced_option_pattern)])  # advanced_option_{email}
         keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="my_service")])
 
         text_ = (
@@ -577,7 +604,8 @@ def server_detail_customer(update, context):
         )
 
         query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
-        sqlite_manager.update({'Purchased': {'status': 1 if ret_conf['obj']['enable'] else 0}}, where=f'client_email = "{email}"')
+        sqlite_manager.update({'Purchased': {'status': 1 if ret_conf['obj']['enable'] else 0}},
+                              where=f'client_email = "{email}"')
 
     except TypeError as e:
         keyboard = [
@@ -609,7 +637,8 @@ def server_detail_customer(update, context):
                 f'{e}'
                 )
         query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
-        ready_report_problem_to_admin(context, text='SERVICE DETAIL FOR CUSTOMER', error=e, chat_id=query.message.chat_id,
+        ready_report_problem_to_admin(context, text='SERVICE DETAIL FOR CUSTOMER', error=e,
+                                      chat_id=query.message.chat_id,
                                       detail=f'Service Email: {email}')
         query.answer('مشکلی وجود دارد!')
         print(e)
@@ -630,10 +659,13 @@ def change_infiniti_service_status(update, context):
             "id": int(get_data[0][7]),
             "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
                         "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":0,\"expiryTime\":{2},"
-                        "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(get_data[0][10], get_data[0][9], change_to)}
+                        "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(get_data[0][10], get_data[0][9],
+                                                                                   change_to)}
 
         print(api_operation.update_client(get_data[0][10], data, get_server_domain[0][0]))
-        report_status_to_admin(context, text=f'Service With Email {get_data[0][9]} Has Be Changed Activity By User To {change_to}', chat_id=get_data[0][4])
+        report_status_to_admin(context,
+                               text=f'Service With Email {get_data[0][9]} Has Be Changed Activity By User To {change_to}',
+                               chat_id=get_data[0][4])
 
         query.answer(f'سرویس با موفقیت {status} شد')
         keyboard = [
@@ -669,7 +701,7 @@ def remove_service_from_db(update, context):
         query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     except Exception as e:
         query.answer('مشکلی در حذف این سرویس وجود داشت!')
-        ready_report_problem_to_admin(context,'REMOVE SERVICE FROM DATABASE', query.message.chat_id, e)
+        ready_report_problem_to_admin(context, 'REMOVE SERVICE FROM DATABASE', query.message.chat_id, e)
         print(e)
 
 
@@ -681,7 +713,8 @@ def create_file_and_return(update, context):
         with open(f'text_file/create_v2ray_file_with_id_{random_number}.txt', 'w', encoding='utf-8') as f:
             f.write(config_)
         with open(f'text_file/create_v2ray_file_with_id_{random_number}.txt', 'rb') as document_file:
-            context.bot.send_document(document=document_file, chat_id=query.message.chat_id, filename='Open_And_Copy_Service.txt')
+            context.bot.send_document(document=document_file, chat_id=query.message.chat_id,
+                                      filename='Open_And_Copy_Service.txt')
         query.answer('فایل ارسال شد.')
         context.user_data.clear()
     except Exception as e:
@@ -724,15 +757,17 @@ def personalization_service(update, context):
         elif 'accept_personalization' in query.data:
             id_ = context.user_data['personalization_service_id']
 
-            inbound_id = sqlite_manager.select(column='inbound_id,name,country,server_domain,domain,country', table='Product', where=f'id = {id_}')
+            inbound_id = sqlite_manager.select(column='inbound_id,name,country,server_domain,domain,country',
+                                               table='Product', where=f'id = {id_}')
 
-            check_available = sqlite_manager.select(table='Product', where=f'is_personalization = {query.message.chat_id} and country = "{inbound_id[0][5]}"')
+            check_available = sqlite_manager.select(table='Product',
+                                                    where=f'is_personalization = {query.message.chat_id} and country = "{inbound_id[0][5]}"')
 
             get_data = {'inbound_id': inbound_id[0][0], 'active': 0,
                         'name': inbound_id[0][1], 'country': inbound_id[0][2],
                         'period': period, 'traffic': traffic,
                         'price': price[2], 'date': datetime.now(pytz.timezone('Asia/Tehran')),
-                        'is_personalization': query.message.chat_id,'domain': inbound_id[0][4],
+                        'is_personalization': query.message.chat_id, 'domain': inbound_id[0][4],
                         'server_domain': inbound_id[0][3], 'status': 1}
 
             if check_available:
@@ -740,7 +775,6 @@ def personalization_service(update, context):
                 new_id = check_available[0][0]
             else:
                 new_id = sqlite_manager.insert('Product', [get_data])
-
 
             texted = ('*• شخصی سازی را تایید میکنید؟:*'
                       f'\n\nحجم سرویس: {traffic}GB'
@@ -754,8 +788,8 @@ def personalization_service(update, context):
             context.user_data.clear()
             return
 
-
-        sqlite_manager.update({'User': {'traffic':traffic, 'period': period}},where=f'chat_id = {query.message.chat_id}')
+        sqlite_manager.update({'User': {'traffic': traffic, 'period': period}},
+                              where=f'chat_id = {query.message.chat_id}')
         price = ranking_manage.discount_calculation(chat_id, traffic, period)
 
         text = ('*• تو این بخش میتونید سرویس مورد نظر خودتون رو شخصی سازی کنید:*'
@@ -820,8 +854,7 @@ def personalization_service_lu(update, context):
         period = period + period_t
         period = period if period <= 500 else 500
 
-
-    sqlite_manager.update({'User': {'traffic':traffic, 'period': period}},where=f'chat_id = {chat_id}')
+    sqlite_manager.update({'User': {'traffic': traffic, 'period': period}}, where=f'chat_id = {chat_id}')
     price = ranking_manage.discount_calculation(chat_id, traffic, period)
 
     text = ('*• تو این بخش میتونید سرویس مورد نظر خودتون رو تمدید کنید و یا ارتقا دهید:*'
@@ -869,7 +902,8 @@ def payment_page_upgrade(update, context):
         query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
     except Exception as e:
         print(e)
-        ready_report_problem_to_admin(context, text='PAYMENT PAGER FOR UPGRADE (payment_page_upgrade)', chat_id=chat_id, error=e)
+        ready_report_problem_to_admin(context, text='PAYMENT PAGER FOR UPGRADE (payment_page_upgrade)', chat_id=chat_id,
+                                      error=e)
         something_went_wrong(update, context)
 
 
@@ -890,12 +924,14 @@ def pay_page_get_evidence_for_upgrade(update, context):
                 f"\n\n*• لطفا مبلغ رو به شماره‌حساب زیر واریز کنید و اسکرین‌شات یا شماره‌پیگیری رو بعد از همین پیام ارسال کنید، اطمینان حاصل کنید ربات درخواست رو ثبت کنه.*"
                 f"\n\n`6219861938619417` - امیرحسین نجفی"
                 f"\n\n*• بعد از تایید شدن پرداخت، سرویس برای شما ارسال میشه، زمان تقریبی 5 دقیقه الی 3 ساعت.*")
-        context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='markdown',
+                                 reply_markup=InlineKeyboardMarkup(keyboard))
         query.answer('فاکتور برای شما ارسال شد.')
         return GET_EVIDENCE
     except Exception as e:
         print(e)
-        ready_report_problem_to_admin(context, text='PAY PAGE GET EVIDENCE UPGRADE', chat_id=query.message.chat_id, error=e)
+        ready_report_problem_to_admin(context, text='PAY PAGE GET EVIDENCE UPGRADE', chat_id=query.message.chat_id,
+                                      error=e)
         something_went_wrong(update, context)
 
 
@@ -916,7 +952,7 @@ def send_evidence_to_admin_for_upgrade(update, context):
             text = "- Check the new payment to the card [UPGRADE SERVICE]:\n\n"
 
         else:
-            upgrade_service = task.upgrade_service(context, purchased_id)
+            task.upgrade_service(context, purchased_id)
             keyboard = []
             text_ = f'سرویس با موفقیت ارتقا یافت✅'
             text = '- The user rank was sufficient to get the service without confirm [UPGRADE SERVICE]\n\n'
@@ -928,7 +964,8 @@ def send_evidence_to_admin_for_upgrade(update, context):
             file_id = update.message.photo[-1].file_id
             text += f"caption: {update.message.caption}" or 'Witout caption!'
             text += service_detail
-            context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, reply_markup=InlineKeyboardMarkup(keyboard))
+            context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text,
+                                   reply_markup=InlineKeyboardMarkup(keyboard))
             update.message.reply_text(text_, parse_mode='html')
 
         elif update.message.text:
@@ -962,6 +999,7 @@ upgrade_service_by_card_conv = ConversationHandler(
     allow_reentry=True
 )
 
+
 def apply_card_pay_lu(update, context):
     query = update.callback_query
     try:
@@ -970,11 +1008,13 @@ def apply_card_pay_lu(update, context):
             keyboard = [[InlineKeyboardButton("YES", callback_data=f"ok_card_pay_lu_{status}")]
                 , [InlineKeyboardButton("NO", callback_data=f"cancel_pay")]]
             query.answer('Confirm Pleas!')
-            context.bot.send_message(text='Are You Sure?', reply_markup=InlineKeyboardMarkup(keyboard), chat_id=ADMIN_CHAT_ID)
+            context.bot.send_message(text='Are You Sure?', reply_markup=InlineKeyboardMarkup(keyboard),
+                                     chat_id=ADMIN_CHAT_ID)
         elif 'ok_card_pay_lu_accept_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_lu_accept_', ''))
             upgrade_service = task.upgrade_service(context, id_)
-            context.bot.send_message(text='سفارش شما برای تمدید و یا ارتقا با موفقیت تایید شد ✅', chat_id=upgrade_service[0])
+            context.bot.send_message(text='سفارش شما برای تمدید و یا ارتقا با موفقیت تایید شد ✅',
+                                     chat_id=upgrade_service[0])
             query.answer('Done ✅')
             query.delete_message()
 
@@ -984,7 +1024,9 @@ def apply_card_pay_lu(update, context):
 
             keyboard = [[InlineKeyboardButton("پشتیبانی", url="@Fupport")]]
 
-            context.bot.send_message(text='درخواست شما برای سفارش یا ارتقا سرویس تایید نشد!\nاگر فکر میکنید خطایی رخ داده با پشتیبانی در ارتباط باشید:', chat_id=get_client[0][4], reply_markup=InlineKeyboardMarkup(keyboard))
+            context.bot.send_message(
+                text='درخواست شما برای سفارش یا ارتقا سرویس تایید نشد!\nاگر فکر میکنید خطایی رخ داده با پشتیبانی در ارتباط باشید:',
+                chat_id=get_client[0][4], reply_markup=InlineKeyboardMarkup(keyboard))
             query.answer('Done ✅')
             query.delete_message()
 
@@ -996,7 +1038,8 @@ def apply_card_pay_lu(update, context):
             query.answer('Done ✅')
             query.delete_message()
     except Exception as e:
-        ready_report_problem_to_admin(context, text='APPLY CARD PAY LU (FOR UPGRADE)', chat_id=query.message.chat_id, error=e)
+        ready_report_problem_to_admin(context, text='APPLY CARD PAY LU (FOR UPGRADE)', chat_id=query.message.chat_id,
+                                      error=e)
         print('errot:', e)
 
 
@@ -1041,7 +1084,8 @@ def show_help(update, context):
     if help_what == 'apps':
         text = "<b>از طریق گزینه های زیر به صفحه رسمی نرم افزار برید \nو نسخه مرتبط با دستگاه خودتون رو دانلود کنید.</b>"
         keyboard = [
-            [InlineKeyboardButton("V2RayNG", url="https://play.google.com/store/apps/details?id=com.v2ray.ang&hl=en&gl=US"),
+            [InlineKeyboardButton("V2RayNG",
+                                  url="https://play.google.com/store/apps/details?id=com.v2ray.ang&hl=en&gl=US"),
              InlineKeyboardButton("اندروید:", callback_data="just_for_show")],
             [InlineKeyboardButton("V2Box", url="https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690"),
              InlineKeyboardButton("آیفون و مک:", callback_data="just_for_show")],
@@ -1083,10 +1127,14 @@ def show_help(update, context):
         text = "<b>در این قسمت میتونید جواب سوالات متداول رو پیدا کنید:</b>"
 
         keyboard = [
-            [InlineKeyboardButton("استفاده از vpn مصرف اینترنت را افزایش میدهد؟", callback_data="ask_vpn_increase_traffic")],
-            [InlineKeyboardButton("میتوانم سرویس خریداری شده را حذف و مبلغ رو برگردانم؟", callback_data="ask_can_i_remove_service")],
-            [InlineKeyboardButton("در صورت قطعی و فیلتر شدن سرویس، تکلیف چیست؟", callback_data="ask_what_if_service_blocked")],
-            [InlineKeyboardButton("چرا با سرویس ها، نمیتوانم وارد سایت های ایرانی شوم؟", callback_data="ask_persian_web_dont_open")],
+            [InlineKeyboardButton("استفاده از vpn مصرف اینترنت را افزایش میدهد؟",
+                                  callback_data="ask_vpn_increase_traffic")],
+            [InlineKeyboardButton("میتوانم سرویس خریداری شده را حذف و مبلغ رو برگردانم؟",
+                                  callback_data="ask_can_i_remove_service")],
+            [InlineKeyboardButton("در صورت قطعی و فیلتر شدن سرویس، تکلیف چیست؟",
+                                  callback_data="ask_what_if_service_blocked")],
+            [InlineKeyboardButton("چرا با سرویس ها، نمیتوانم وارد سایت های ایرانی شوم؟",
+                                  callback_data="ask_persian_web_dont_open")],
             [InlineKeyboardButton("برگشت ⤶", callback_data="guidance")]]
 
     query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
@@ -1122,7 +1170,8 @@ def support(update, context):
     query = update.callback_query
     keyboard = [[InlineKeyboardButton("پرایوت", url="https://t.me/fupport")],
                 [InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]]
-    query.edit_message_text('از طریق روش های زیر میتونید با پشتیبان صحبت کنید', reply_markup=InlineKeyboardMarkup(keyboard))
+    query.edit_message_text('از طریق روش های زیر میتونید با پشتیبان صحبت کنید',
+                            reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 def disable_service_in_data_base(context, list_of_notification, user, not_enogh_credit=False):
@@ -1162,8 +1211,11 @@ def check_all_configs(context, context_2=None):
         context = context_2
 
     get_all = api_operation.get_all_inbounds()
-    get_from_db = sqlite_manager.select(column='id,chat_id,client_email,status,date,notif_day,notif_gb,auto_renewal,product_id,inbound_id,client_id', table='Purchased', where='active=1')
-    get_users_notif = sqlite_manager.select(column='chat_id,notification_gb,notification_day,name,traffic,period,wallet', table='User')
+    get_from_db = sqlite_manager.select(
+        column='id,chat_id,client_email,status,date,notif_day,notif_gb,auto_renewal,product_id,inbound_id,client_id',
+        table='Purchased', where='active=1')
+    get_users_notif = sqlite_manager.select(
+        column='chat_id,notification_gb,notification_day,name,traffic,period,wallet', table='User')
 
     for server in get_all:
         for config in server['obj']:
@@ -1179,10 +1231,14 @@ def check_all_configs(context, context_2=None):
                                 traffic = client['total'] * 2
                                 expiry_timestamp = client['expiryTime']
                                 expiry_datetime = datetime.fromtimestamp(expiry_timestamp / 1000)
-                                new_expiry_datetime = (expiry_datetime - datetime.strptime(user[4].split('+')[0], "%Y-%m-%d %H:%M:%S.%f")).days
-                                period = datetime.now(pytz.timezone('Asia/Tehran')) + timedelta(days=new_expiry_datetime)
+                                new_expiry_datetime = (expiry_datetime - datetime.strptime(user[4].split('+')[0],
+                                                                                           "%Y-%m-%d %H:%M:%S.%f")).days
+                                period = datetime.now(pytz.timezone('Asia/Tehran')) + timedelta(
+                                    days=new_expiry_datetime)
                                 my_data = int(period.timestamp() * 1000)
-                                price = ranking_manage.discount_calculation(list_of_notification[0][0], admin_task.traffic_to_gb(client['total']), new_expiry_datetime)
+                                price = ranking_manage.discount_calculation(list_of_notification[0][0],
+                                                                            admin_task.traffic_to_gb(client['total']),
+                                                                            new_expiry_datetime)
 
                                 if list_of_notification[0][6] >= price:
                                     get_server_domain = sqlite_manager.select(column='server_domain', table='Product',
@@ -1191,7 +1247,8 @@ def check_all_configs(context, context_2=None):
                                     text = ("🟢 اطلاع رسانی اتمام سرویس و تمدید خودکار"
                                             f"\nدرود {list_of_notification[0][3]} عزیز، سرویس شما با نام {user[2]} به پایان رسید!"
                                             f"\nسرویس شما به صورت خودکار تمدید شد، میتونید جزئیات سرویس رو بررسی کنید.")
-                                    keyboard = [[InlineKeyboardButton("مشاهده جزئیات سرویس", callback_data=f"view_service_{user[2]}")]]
+                                    keyboard = [[InlineKeyboardButton("مشاهده جزئیات سرویس",
+                                                                      callback_data=f"view_service_{user[2]}")]]
 
                                     # print(api_operation.reset_client_traffic(user[9], user[2], get_server_domain[0][0]))
 
@@ -1205,13 +1262,17 @@ def check_all_configs(context, context_2=None):
 
                                     print(api_operation.update_client(user[10], data, get_server_domain[0][0]))
 
-                                    wallet_manage.less_from_wallet(list_of_notification[0][0], price, user_detail={'name': list_of_notification[0][0],'username': list_of_notification[0][0]})
+                                    wallet_manage.less_from_wallet(list_of_notification[0][0], price,
+                                                                   user_detail={'name': list_of_notification[0][0],
+                                                                                'username': list_of_notification[0][0]})
 
                                     sqlite_manager.update({'Purchased': {'date': datetime.now(
                                         pytz.timezone('Asia/Tehran')), 'notif_day': 0, 'notif_gb': 0}}
                                         , where=f'client_email = "{user[2]}"')
 
-                                    context.bot.send_message(text=text, chat_id=list_of_notification[0][0], reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+                                    context.bot.send_message(text=text, chat_id=list_of_notification[0][0],
+                                                             reply_markup=InlineKeyboardMarkup(keyboard),
+                                                             parse_mode='html')
 
                                     record_operation_in_file(chat_id=list_of_notification[0][0], price=price,
                                                              name_of_operation=f'تمدید یا ارتقا سرویس {user[2]}',
@@ -1222,12 +1283,14 @@ def check_all_configs(context, context_2=None):
                                                            text=f'User Upgrade Service automate\nService Name: {user[2]}',
                                                            chat_id=list_of_notification[0][0])
                                 else:
-                                    disable_service_in_data_base(context, list_of_notification, user, not_enogh_credit=True)
+                                    disable_service_in_data_base(context, list_of_notification, user,
+                                                                 not_enogh_credit=True)
 
 
                         elif client['enable'] and not user[3]:
                             sqlite_manager.update(
-                                {'Purchased': {'status': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran')), 'notif_day': 0, 'notif_gb': 0}}
+                                {'Purchased': {'status': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
+                                               'notif_day': 0, 'notif_gb': 0}}
                                 , where=f'id = "{user[0]}"')
 
                         if client['expiryTime'] and client['total']:
@@ -1240,25 +1303,29 @@ def check_all_configs(context, context_2=None):
                             usage_traffic = upload_gb + download_gb
                             total_traffic = client['total'] / (1024 ** 3)
                             traffic_percent = (usage_traffic / total_traffic) * 100
-                            traffic_left = total_traffic - usage_traffic
+                            traffic_left = round((total_traffic - usage_traffic), 2)
 
-                            keyboard = [[InlineKeyboardButton("مشاهده جزئیات سرویس", callback_data=f"view_service_{user[2]}"),
-                                         InlineKeyboardButton("تمدید یا ارتقا سرویس", callback_data=f"upgrade_service_customize_{user[0]}")]]
+                            keyboard = [
+                                [InlineKeyboardButton("مشاهده جزئیات سرویس", callback_data=f"view_service_{user[2]}"),
+                                 InlineKeyboardButton("تمدید یا ارتقا سرویس",
+                                                      callback_data=f"upgrade_service_customize_{user[0]}")]]
 
                             if not user[5] and time_left <= list_of_notification[0][2]:
                                 text = ("🔵 اطلاع رسانی تاریخ انقضا سرویس"
                                         f"\nدرود {list_of_notification[0][3]} عزیز، از سرویس شما با نام {user[2]} کمتر از {int(time_left) + 1} روز باقی مونده."
                                         f"\nدر صورتی که تمایل دارید نسبت به بررسی و یا تمدید سرویس اقدام کنید.")
-                                context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
-                                sqlite_manager.update({'Purchased': {'notif_day': 1}},where=f'id = "{user[0]}"')
+                                context.bot.send_message(user[1], text=text,
+                                                         reply_markup=InlineKeyboardMarkup(keyboard))
+                                sqlite_manager.update({'Purchased': {'notif_day': 1}}, where=f'id = "{user[0]}"')
 
                             if not user[6] and traffic_percent >= list_of_notification[0][1]:
                                 text = ("🔵 اطلاع رسانی حجم سرویس"
                                         f"\nدرود {list_of_notification[0][3]} عزیز، شما {int(traffic_percent)} درصد حجم ترافیک سرویس {user[2]} رو مصرف کردید، "
                                         f"\nحجم باقی مونده از سرویس {format_traffic(traffic_left)} است. "
                                         f"\nدر صورتی که تمایل دارید نسبت به بررسی و یا تمدید سرویس اقدام کنید.")
-                                context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
-                                sqlite_manager.update({'Purchased': {'notif_gb': 1}},where=f'id = "{user[0]}"')
+                                context.bot.send_message(user[1], text=text,
+                                                         reply_markup=InlineKeyboardMarkup(keyboard))
+                                sqlite_manager.update({'Purchased': {'notif_gb': 1}}, where=f'id = "{user[0]}"')
 
 
 def rate_service(update, context):
@@ -1271,7 +1338,8 @@ def rate_service(update, context):
                 f'Service Id: {check[3]}')
         utilities.report_status_to_admin(context, text, chat_id=check[2])
 
-        server_name = sqlite_manager.select(column='client_email', table='Purchased', where=f'id = {purchased_id}')[0][0]
+        server_name = sqlite_manager.select(column='client_email', table='Purchased', where=f'id = {purchased_id}')[0][
+            0]
         text = ("🔴 اطلاع رسانی اتمام سرویس"
                 f"\nدرود {query.from_user['name']} عزیز، سرویس شما با نام {server_name} به پایان رسید!"
                 f"\nدر صورتی که تمایل دارید نسبت به بررسی و یا تمدید سرویس اقدام کنید.")
@@ -1296,7 +1364,8 @@ def setting(update, context):
         [InlineKeyboardButton("• تراکنش های مالی", callback_data="financial_transactions")],
         [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]
     ]
-    query.edit_message_text(text='*در این قسمت میتونید تنظیمات ربات رو مشاهده و یا شخصی سازی کنید:*', parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+    query.edit_message_text(text='*در این قسمت میتونید تنظیمات ربات رو مشاهده و یا شخصی سازی کنید:*',
+                            parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 def change_notif(update, context):
@@ -1336,10 +1405,13 @@ def change_notif(update, context):
             wallet_notif = wallet_notif + wallet_t
             wallet_notif = wallet_notif if wallet_notif <= 1_000_000 else 1_000_000
 
-        sqlite_manager.update({'User': {'notification_gb':traffic, 'notification_day': period,
-                                        'notification_wallet': wallet_notif}},where=f'chat_id = {query.message.chat_id}')
+        sqlite_manager.update({'User': {'notification_gb': traffic, 'notification_day': period,
+                                        'notification_wallet': wallet_notif}},
+                              where=f'chat_id = {query.message.chat_id}')
 
-        if any(query.data.startswith(prefix) for prefix in ['service_notification', 'notif_traffic_low_', 'notif_traffic_high_', 'notif_day_low_', 'notif_day_high_']):
+        if any(query.data.startswith(prefix) for prefix in
+               ['service_notification', 'notif_traffic_low_', 'notif_traffic_high_', 'notif_day_low_',
+                'notif_day_high_']):
 
             keyboard = [
                 [InlineKeyboardButton("«", callback_data="notif_traffic_low_5"),
@@ -1355,7 +1427,8 @@ def change_notif(update, context):
                     f'\n\nدریافت اعلان بعد مصرف {traffic}% حجم'
                     f'\nدریافت اعلان {period} روز قبل تمام شدن سرویس')
 
-        elif any(query.data.startswith(call) for call in ['wallet_notification', 'notif_wallet_low_', 'notif_wallet_high_']):
+        elif any(query.data.startswith(call) for call in
+                 ['wallet_notification', 'notif_wallet_low_', 'notif_wallet_high_']):
             keyboard = [
                 [InlineKeyboardButton("«", callback_data="notif_wallet_low_5000"),
                  InlineKeyboardButton(f"{wallet_notif:,} تومان", callback_data="just_for_show"),
@@ -1376,7 +1449,7 @@ def change_notif(update, context):
 def get_pay_file(update, context):
     query = update.callback_query
     with open(f'financial_transactions/{query.message.chat_id}.txt', 'r', encoding='utf-8') as file:
-        context.bot.send_document(chat_id=query.message.chat_id, document= file,
+        context.bot.send_document(chat_id=query.message.chat_id, document=file,
                                   filename=f'All transactions of {query.from_user["name"]}.txt')
     query.answer('فایل برای شما ارسال شد!')
 
@@ -1400,24 +1473,29 @@ def financial_transactions(update, context):
         get_purchased = list_of_t[get_limit - number_in_page:get_limit]
         get_purchased.reverse()
 
-
         if len(list_of_t) > number_in_page:
             keyboard_backup = []
-            keyboard_backup.append(InlineKeyboardButton("قبل ⤌", callback_data=f"financial_transactions{get_limit - number_in_page}")) if get_limit != number_in_page else None
-            keyboard_backup.append(InlineKeyboardButton(f"صفحه {int(get_limit / number_in_page)}", callback_data="just_for_show"))
-            keyboard_backup.append(InlineKeyboardButton("⤍ بعد", callback_data=f"financial_transactions{get_limit + number_in_page}")) if get_limit < len(list_of_t) else None
+            keyboard_backup.append(InlineKeyboardButton("قبل ⤌",
+                                                        callback_data=f"financial_transactions{get_limit - number_in_page}")) if get_limit != number_in_page else None
+            keyboard_backup.append(
+                InlineKeyboardButton(f"صفحه {int(get_limit / number_in_page)}", callback_data="just_for_show"))
+            keyboard_backup.append(InlineKeyboardButton("⤍ بعد",
+                                                        callback_data=f"financial_transactions{get_limit + number_in_page}")) if get_limit < len(
+                list_of_t) else None
             keyboard.append(keyboard_backup)
 
         keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="setting")])
 
-        query.edit_message_text(text=f"لیست تراکنش های مالی شما: \n" + "\n\n".join(get_purchased), reply_markup=InlineKeyboardMarkup(keyboard))
+        query.edit_message_text(text=f"لیست تراکنش های مالی شما: \n" + "\n\n".join(get_purchased),
+                                reply_markup=InlineKeyboardMarkup(keyboard))
 
 
     except FileNotFoundError:
         query.answer('شما تا به حال تراکنشی نداشتید!')
     except Exception as e:
         query.answer('مشکلی وجود داشت!')
-        ready_report_problem_to_admin(context,chat_id=query.message.chat_id, error=e, text='Error In Financial Transactions')
+        ready_report_problem_to_admin(context, chat_id=query.message.chat_id, error=e,
+                                      text='Error In Financial Transactions')
 
 
 def start_timer(update, context):
@@ -1436,10 +1514,12 @@ def wallet_page(update, context):
         if lasts_operation:
             last_op = human_readable(f'{lasts_operation[0][7]}')
             last_5 = "• تراکنش های اخیر:\n"
-            last_5 += "\n".join([f"{'💰 دریافت' if op[4] else '💸 برداشت'} {int(op[5]):,} تومان - {human_readable(op[7])}" for op in lasts_operation])
+            last_5 += "\n".join(
+                [f"{'💰 دریافت' if op[4] else '💸 برداشت'} {int(op[5]):,} تومان - {human_readable(op[7])}" for op in
+                 lasts_operation])
 
         else:
-            last_op ='شما تا به حال تراکنشی در کیف پول نداشتید!'
+            last_op = 'شما تا به حال تراکنشی در کیف پول نداشتید!'
             last_5 = ''
 
         keyboard = [
@@ -1472,7 +1552,9 @@ def financial_transactions_wallet(update, context):
 
         if lasts_operation:
             last_5 = "• تراکنش های کیف پول شما:\n\n"
-            last_5 += "\n".join([f"{'💰 دریافت' if op[4] else '💸 برداشت'} {op[5]:,} تومان - {human_readable(op[7])}" for op in lasts_operation])
+            last_5 += "\n".join(
+                [f"{'💰 دریافت' if op[4] else '💸 برداشت'} {op[5]:,} تومان - {human_readable(op[7])}" for op in
+                 lasts_operation])
         else:
             last_5 = 'شما تا به حال تراکنشی در کیف پول نداشتید!'
 
@@ -1492,11 +1574,13 @@ def buy_credit_volume(update, context):
     query = update.callback_query
     try:
         if query.data == "buy_credit_volume":
-            sqlite_manager.insert(table='Credit_History', rows=[{'active': 0, 'chat_id': query.message.chat_id, 'value': 25_000,
-                                                                 'name': query.from_user.name, 'user_name': query.from_user.username,
-                                                                 'operation': 1}])
+            sqlite_manager.insert(table='Credit_History',
+                                  rows=[{'active': 0, 'chat_id': query.message.chat_id, 'value': 25_000,
+                                         'name': query.from_user.name, 'user_name': query.from_user.username,
+                                         'operation': 1}])
 
-        get_credit = sqlite_manager.select(column='value, id', table='Credit_History', where=f'chat_id = {query.message.chat_id}',
+        get_credit = sqlite_manager.select(column='value, id', table='Credit_History',
+                                           where=f'chat_id = {query.message.chat_id}',
                                            order_by='id DESC', limit=1)
         credit_id = get_credit[0][1]
         value = get_credit[0][0]
@@ -1512,7 +1596,7 @@ def buy_credit_volume(update, context):
         elif 'set_credit_' in query.data:
             value = int(query.data.replace('set_credit_', ''))
 
-        sqlite_manager.update({'Credit_History': {'value':value}},where=f'id = {credit_id}')
+        sqlite_manager.update({'Credit_History': {'value': value}}, where=f'id = {credit_id}')
 
         text = ('*• مشخص کنید چه مقدار اعتبار به کیف پولتون اضافه بشه:*'
                 f'*\n\n• مبلغ: {value:,} *تومان'
@@ -1571,7 +1655,8 @@ def pay_by_card_for_credit(update, context):
                 f"\n\n*• لطفا مبلغ رو به شماره‌حساب زیر واریز کنید و اسکرین‌شات یا شماره‌پیگیری رو بعد از همین پیام ارسال کنید، اطمینان حاصل کنید ربات درخواست رو ثبت کنه.*"
                 f"\n\n`6219861938619417` - امیرحسین نجفی"
                 f"\n\n*• بعد از تایید شدن پرداخت، سرویس برای شما ارسال میشه، زمان تقریبی 5 دقیقه الی 3 ساعت.*")
-        context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='markdown',
+                                 reply_markup=InlineKeyboardMarkup(keyboard))
         query.answer('فاکتور برای شما ارسال شد.')
         return GET_EVIDENCE_CREDIT
     except Exception as e:
@@ -1586,7 +1671,6 @@ def pay_by_card_for_credit_admin(update, context):
         credit_id = context.user_data['credit_id']
         price = ranking_manage.discount_calculation(user['id'], direct_price=package[0][0], without_off=True)
 
-
         if not ranking_manage.enough_rank('GET_SERVICE_WITHOUT_CONFIRM', user['id']):
             keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_credit_{credit_id}")],
                         [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_credit_{credit_id}")],
@@ -1595,7 +1679,7 @@ def pay_by_card_for_credit_admin(update, context):
             text = "- Check the new payment to the card [CHARGE CREDIT WALLET]:\n\n"
 
         else:
-            add_credit = add_credit_to_wallet(context, credit_id)
+            add_credit_to_wallet(context, credit_id)
             keyboard = []
             text_ = f'کیف پول شما با موفقیت شارژ شد✅'
             text = '- The user rank was sufficient to get the service without confirm [CHARGE CREDIT WALLET]\n\n'
@@ -1606,7 +1690,8 @@ def pay_by_card_for_credit_admin(update, context):
             file_id = update.message.photo[-1].file_id
             text += f"caption: {update.message.caption}" or 'Witout caption!'
             text += f"\n\nPrice: {price:,} T"
-            context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, reply_markup=InlineKeyboardMarkup(keyboard))
+            context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text,
+                                   reply_markup=InlineKeyboardMarkup(keyboard))
             update.message.reply_text(text_, parse_mode='html')
         elif update.message.text:
             text += f"Text: {update.message.text}\n\nPrice: {price:,} T"
@@ -1618,7 +1703,8 @@ def pay_by_card_for_credit_admin(update, context):
         context.user_data.clear()
         return ConversationHandler.END
     except Exception as e:
-        ready_report_problem_to_admin(context, 'SEND EVIDENCE FOR CHARGE CREDIT TO ADMIN', update.message.from_user['id'], e)
+        ready_report_problem_to_admin(context, 'SEND EVIDENCE FOR CHARGE CREDIT TO ADMIN',
+                                      update.message.from_user['id'], e)
         update.message.reply_text('مشکلی در ارسال پیش اومد!\nگزارش به ادمین ارسلا شد و به زودی نتیجه بهتون اعلام میشه.')
 
 
@@ -1657,13 +1743,15 @@ def apply_card_pay_credit(update, context):
             keyboard = [[InlineKeyboardButton("YES", callback_data=f"ok_card_pay_credit_{status}")]
                 , [InlineKeyboardButton("NO", callback_data=f"cancel_pay")]]
             query.answer('Confirm Pleas!')
-            context.bot.send_message(text='Are You Sure?', reply_markup=InlineKeyboardMarkup(keyboard), chat_id=ADMIN_CHAT_ID)
+            context.bot.send_message(text='Are You Sure?', reply_markup=InlineKeyboardMarkup(keyboard),
+                                     chat_id=ADMIN_CHAT_ID)
         elif 'ok_card_pay_credit_accept_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_credit_accept_', ''))
 
             return_chat_id = add_credit_to_wallet(context, id_)
 
-            context.bot.send_message(text='سفارش شما برای واریز وجه به کیف پول با موفقیت تایید شد ✅', chat_id=return_chat_id)
+            context.bot.send_message(text='سفارش شما برای واریز وجه به کیف پول با موفقیت تایید شد ✅',
+                                     chat_id=return_chat_id)
             query.answer('Done ✅')
             query.delete_message()
 
@@ -1671,7 +1759,9 @@ def apply_card_pay_credit(update, context):
         elif 'ok_card_pay_credit_refuse_' in query.data:
             id_ = int(query.data.replace('ok_card_pay_credit_refuse_', ''))
             get_credit = sqlite_manager.select(column='chat_id,value', table='Credit_History', where=f'id = {id_}')
-            context.bot.send_message(text=f'متاسفانه درخواست شما برای واریز به کیف پول پذیرفته نشد❌\n ارتباط با پشتیبانی: \n @Fupport ', chat_id=get_credit[0][0])
+            context.bot.send_message(
+                text=f'متاسفانه درخواست شما برای واریز به کیف پول پذیرفته نشد❌\n ارتباط با پشتیبانی: \n @Fupport ',
+                chat_id=get_credit[0][0])
             query.answer('Done ✅')
             query.delete_message()
 
@@ -1703,11 +1793,13 @@ def pay_from_wallet(update, context):
             price = ranking_manage.discount_calculation(user['id'], package[0][5], package[0][6])
 
             keyboard = [[InlineKeyboardButton("تایید و پرداخت ✅", callback_data=f"accept_wallet_upgrade_pay_{id_}")]
-                        if get_wallet[0][0] >= price else [InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")],
+                        if get_wallet[0][0] >= price else [
+                InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")],
                         [InlineKeyboardButton("برگشت ⤶", callback_data="my_service")]]
 
             available_or_not = "اطلاعات زیر رو بررسی کنید و در صورت تایید پرداخت رو نهایی کنید:" \
-                if get_wallet[0][0] >= price else "متاسفانه موجودی کیف پول شما کافی نیست، میتونید با گزینه افزایش موجودی اعتبار خودتون رو افزایش بدید."
+                if get_wallet[0][
+                       0] >= price else "متاسفانه موجودی کیف پول شما کافی نیست، میتونید با گزینه افزایش موجودی اعتبار خودتون رو افزایش بدید."
 
             # price = ranking_manage.discount_calculation(user['id'], package[0][5], package[0][6])
 
@@ -1727,7 +1819,8 @@ def pay_from_wallet(update, context):
                 wallet_manage.less_from_wallet(query.from_user['id'], upgrade_serv[1], user_detail=query.from_user)
 
                 keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="my_service")]]
-                query.edit_message_text(text='سرویس شما با موفقیت ارتقا یافت.✅', reply_markup=InlineKeyboardMarkup(keyboard))
+                query.edit_message_text(text='سرویس شما با موفقیت ارتقا یافت.✅',
+                                        reply_markup=InlineKeyboardMarkup(keyboard))
 
             except Exception as e:
                 ready_report_problem_to_admin(context, 'PAY FROM WAWLLET FOR UPGRADE',
@@ -1741,14 +1834,17 @@ def pay_from_wallet(update, context):
             package = sqlite_manager.select(table='Product', where=f'id = {id_}')
             context.user_data['package'] = package
 
-            price = ranking_manage.discount_calculation(query.from_user['id'], direct_price=package[0][7], more_detail=True)
+            price = ranking_manage.discount_calculation(query.from_user['id'], direct_price=package[0][7],
+                                                        more_detail=True)
 
             keyboard = [[InlineKeyboardButton("تایید و پرداخت ✅", callback_data=f"accept_wallet_pay_{id_}")]
-                        if get_wallet[0][0] >= price[0] else [InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")],
+                        if get_wallet[0][0] >= price[0] else [
+                InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")],
                         [InlineKeyboardButton("برگشت ⤶", callback_data="select_server")]]
 
             available_or_not = "اطلاعات زیر رو بررسی کنید و در صورت تایید پرداخت رو نهایی کنید:" \
-                if get_wallet[0][0] >= price[0] else "متاسفانه موجودی کیف پول شما کافی نیست، میتونید با گزینه افزایش موجودی اعتبار خودتون رو افزایش بدید."
+                if get_wallet[0][0] >= price[
+                0] else "متاسفانه موجودی کیف پول شما کافی نیست، میتونید با گزینه افزایش موجودی اعتبار خودتون رو افزایش بدید."
 
             ex = sqlite_manager.select('id', 'Purchased', where=f'active = 0 and chat_id = {user["id"]}', limit=1)
 
@@ -1758,8 +1854,10 @@ def pay_from_wallet(update, context):
                      'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0, 'notif_gb': 0}])
             else:
                 sqlite_manager.update({'Purchased':
-                                           {'active': 0, 'status': 0, 'name': user["first_name"], 'user_name': user["username"],
-                                            'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0, 'notif_gb': 0}}, where=f'id = {ex[0][0]}')
+                                           {'active': 0, 'status': 0, 'name': user["first_name"],
+                                            'user_name': user["username"],
+                                            'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0,
+                                            'notif_gb': 0}}, where=f'id = {ex[0][0]}')
                 ex = ex[0][0]
 
             context.user_data['purchased_id'] = ex
@@ -1787,7 +1885,8 @@ def pay_from_wallet(update, context):
                 wallet_manage.less_from_wallet(query.from_user['id'], price, query.from_user)
 
                 keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="select_server")]]
-                query.edit_message_text(text='پرداخت با موفقیت انجام شد.✅', parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+                query.edit_message_text(text='پرداخت با موفقیت انجام شد.✅', parse_mode='markdown',
+                                        reply_markup=InlineKeyboardMarkup(keyboard))
 
             else:
                 query.answer('مشکلی وجود داره!')
@@ -1807,7 +1906,8 @@ def remove_service(update, context):
     email = email.replace('accept_rm_ser_', '')
     text = keyboard = None
 
-    get_uuid = sqlite_manager.select(column='client_id,inbound_id,name,id,product_id', table='Purchased', where=f'client_email = "{email}"')
+    get_uuid = sqlite_manager.select(column='client_id,inbound_id,name,id,product_id', table='Purchased',
+                                     where=f'client_email = "{email}"')
 
     get_server_domain = sqlite_manager.select(column='server_domain', table='Product',
                                               where=f'id = {get_uuid[0][4]}')
@@ -1831,8 +1931,7 @@ def remove_service(update, context):
         else:
             price = days_lefts = left_traffic = 0
 
-
-        if 'remove_service_' in query.data :
+        if 'remove_service_' in query.data:
             keyboard = [[InlineKeyboardButton("✓ بله مطمئنم", callback_data=f"accept_rm_ser_{email}")],
                         [InlineKeyboardButton("✗ منصرف شدم", callback_data="my_service")]]
 
@@ -1864,9 +1963,12 @@ def remove_service(update, context):
                 wallet_manage.add_to_wallet(chat_id, price, query.from_user)
 
                 record_operation_in_file(chat_id=chat_id, price=price,
-                                         name_of_operation=f'حذف سرویس و بازپرداخت به کیف پول {get_uuid[0][2]}', operation=1,
+                                         name_of_operation=f'حذف سرویس و بازپرداخت به کیف پول {get_uuid[0][2]}',
+                                         operation=1,
                                          status_of_pay=1, context=context)
-            report_status_to_admin(context, f'User Deleted Service!\nEmail: {email}\nuser Name:{get_uuid[0][2]}\nuser id: {chat_id}', chat_id)
+            report_status_to_admin(context,
+                                   f'User Deleted Service!\nEmail: {email}\nuser Name:{get_uuid[0][2]}\nuser id: {chat_id}',
+                                   chat_id)
 
         query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
 
@@ -1893,7 +1995,8 @@ def admin_reserve_service(update, context):
         else:
             sqlite_manager.update({'Purchased':
                                        {'active': 0, 'status': 0, 'name': user[0][0], 'user_name': user[0][1],
-                                        'chat_id': user_message[0], 'product_id': user_message[1], 'notif_day': 0, 'notif_gb': 0}}, where=f'id = {ex[0][0]}')
+                                        'chat_id': user_message[0], 'product_id': user_message[1], 'notif_day': 0,
+                                        'notif_gb': 0}}, where=f'id = {ex[0][0]}')
             ex = ex[0][0]
 
         send_clean_for_customer(None, context, ex)
@@ -1916,7 +2019,7 @@ def pay_per_use(update, context):
             sqlite_manager.delete({'Product': ['status', 0]})
 
             get_product_id = int(query.data.replace('pay_per_use_', ''))
-            product_db  = sqlite_manager.select(table='Product', where=f'id = {get_product_id}')
+            product_db = sqlite_manager.select(table='Product', where=f'id = {get_product_id}')
             country = product_db[0][4]
             server_domain = product_db[0][11]
 
@@ -1925,13 +2028,15 @@ def pay_per_use(update, context):
             chrge_for_next_24_hours = PRICE_PER_DAY
 
             if chrge_for_next_24_hours > user_credit:
-                status_of_user = ("<b>• اعتبار شما کافی نیست، اگر تمایل به فعال کردن این سرویس دارید، لطفا کیف پول خودتون رو شارژ کنید.</b>"
-                                  f"\n\nاعتبار مورد نیاز برای فعال کردن سرویس: {chrge_for_next_24_hours:,} تومان ")
+                status_of_user = (
+                    "<b>• اعتبار شما کافی نیست، اگر تمایل به فعال کردن این سرویس دارید، لطفا کیف پول خودتون رو شارژ کنید.</b>"
+                    f"\n\nاعتبار مورد نیاز برای فعال کردن سرویس: {chrge_for_next_24_hours:,} تومان ")
                 keyboard = [[InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")]]
 
             else:
 
-                get_infinite_product = sqlite_manager.select('id', 'Product', where=f'name = "pay_per_use_{country}" and country = "{country}"')
+                get_infinite_product = sqlite_manager.select('id', 'Product',
+                                                             where=f'name = "pay_per_use_{country}" and country = "{country}"')
 
                 if not get_infinite_product:
                     get_data = {'inbound_id': PAY_PER_USE_INBOUND_ID, 'active': 0,
@@ -1947,7 +2052,8 @@ def pay_per_use(update, context):
                     get_infinite_product_id = get_infinite_product[0][0]
 
                 status_of_user = "• با استفاده از گزینه زیر، میتونید سرویس رو فعال کنید"
-                keyboard = [[InlineKeyboardButton("فعال سازی سرویس ✓", callback_data=f"active_ppu_{get_infinite_product_id}")]]
+                keyboard = [
+                    [InlineKeyboardButton("فعال سازی سرویس ✓", callback_data=f"active_ppu_{get_infinite_product_id}")]]
 
             text = ("<b>✬ این سرویس به ازای مصرف شما در هر ساعت، هزینه رو از کیف پول کم میکنه. </b>"
                     "\n\n• در این سرویس محدودیت حجم و زمان وجود نداره، سرویس شما با به پایان رسیدن اعتبار کیف پول غیرفعال میشه."
@@ -1966,12 +2072,14 @@ def pay_per_use(update, context):
 
             ex = sqlite_manager.insert('Purchased', rows=[
                 {'active': 1, 'status': 1, 'name': query.from_user['name'], 'user_name': query.from_user['username'],
-                 'chat_id': query.message.chat_id, 'product_id': get_infinite_product_id, 'notif_day': 0, 'notif_gb': 0}])
+                 'chat_id': query.message.chat_id, 'product_id': get_infinite_product_id, 'notif_day': 0,
+                 'notif_gb': 0}])
 
             send_clean_for_customer(query, context, ex)
             keyboard = [[InlineKeyboardButton("برگشت ↰", callback_data=f"main_menu")]]
 
-            sqlite_manager.insert(table='Hourly_service', rows=[{'purchased_id': ex, 'chat_id': query.message.chat_id, 'last_traffic_usage': 0}])
+            sqlite_manager.insert(table='Hourly_service', rows=[
+                {'purchased_id': ex, 'chat_id': query.message.chat_id, 'last_traffic_usage': 0}])
 
             text = "سرویس با موفقیت برای شما فعال شد ✅"
 
@@ -1988,13 +2096,16 @@ def pay_per_use_calculator(context):
     get_from_db = sqlite_manager.select(column='id', table='Product', where=f'name LIKE "pay_per_use_%"')
     pay_per_use_products = [id_[0] for id_ in get_from_db]
 
-    get_from_db = sqlite_manager.select(column='id,chat_id,client_email,status,date,notif_day,notif_gb,inbound_id,client_id',
-                                        table='Purchased', where=f"product_id IN {tuple(pay_per_use_products)}")
+    get_from_db = sqlite_manager.select(
+        column='id,chat_id,client_email,status,date,notif_day,notif_gb,inbound_id,client_id,product_id',
+        table='Purchased', where=f"product_id IN {tuple(pay_per_use_products)}")
 
+    get_user_wallet = sqlite_manager.select(
+        column='chat_id,wallet,name,notification_wallet,notif_wallet,notif_low_wallet', table='User')
 
-    get_user_wallet = sqlite_manager.select(column='chat_id,wallet,name,notification_wallet,notif_wallet,notif_low_wallet', table='User')
-
-    get_last_traffic_uasge = sqlite_manager.select(column='chat_id,purchased_id,last_traffic_usage', table='Hourly_service')
+    get_last_traffic_uasge = sqlite_manager.select(
+        column='chat_id,purchased_id,last_traffic_usage',
+        table='Hourly_service')
     try:
         for server in get_all:
             for config in server['obj']:
@@ -2002,8 +2113,9 @@ def pay_per_use_calculator(context):
                     for user in get_from_db:
                         if user[2] == client['email']:
                             user_wallet = [wallet for wallet in get_user_wallet if wallet[0] == user[1]]
-                            last_traffic_usage = [last_traffic_use for last_traffic_use in get_last_traffic_uasge if last_traffic_use[1] == user[0]]
-                            print(last_traffic_usage, user)
+                            last_traffic_usage = [last_traffic_use for last_traffic_use in get_last_traffic_uasge if
+                                                  last_traffic_use[1] == user[0]]
+
                             if client['enable']:
 
                                 upload_gb = client['up'] / (1024 ** 3)
@@ -2011,13 +2123,17 @@ def pay_per_use_calculator(context):
                                 usage_traffic = upload_gb + download_gb
 
                                 time_price = PRICE_PER_DAY / 24
-                                traffic_use =  (usage_traffic - last_traffic_usage[0][2]) * PRICE_PER_GB
+                                traffic_use = (usage_traffic - last_traffic_usage[0][2]) * PRICE_PER_GB
                                 cost = int(time_price + traffic_use)
                                 cost = ranking_manage.discount_calculation(user[1], direct_price=cost)
 
-                                wallet_manage.less_from_wallet_with_condition_to_make_history(user[1], cost, user_detail={'name': user_wallet[0][2], 'username': user_wallet[0][2]}, con=100)
+                                wallet_manage.less_from_wallet_with_condition_to_make_history(user[1], cost,
+                                                                                              user_detail={'name': user_wallet[0][2],
+                                                                                                           'username': user_wallet[0][2]},
+                                                                                              con=100)
 
-                                sqlite_manager.update(table={'Hourly_service': {'last_traffic_usage': usage_traffic}}, where=f'purchased_id = {user[0]}')
+                                sqlite_manager.update(table={'Hourly_service': {'last_traffic_usage': usage_traffic}},
+                                                      where=f'purchased_id = {user[0]}')
 
                                 credit_now = user_wallet[0][1] - cost
 
@@ -2029,9 +2145,11 @@ def pay_per_use_calculator(context):
                                         f"\nدرود {user_wallet[0][2]} عزیز، از اعتبار کیف پول شما {user_wallet[0][1]:,} تومان باقی مانده، "
                                         f"در صورتی که تمایل دارید نسبت به افزایش اعتبار کیف پول اقدام کنید.")
 
-                                keyboard = [[InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")]]
+                                keyboard = [
+                                    [InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")]]
 
-                                context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+                                context.bot.send_message(user[1], text=text,
+                                                         reply_markup=InlineKeyboardMarkup(keyboard))
                                 sqlite_manager.update({'User': {'notif_wallet': 1}}, where=f'chat_id = "{user[1]}"')
 
                             elif credit_now <= LOW_WALLET_CREDIT and not user_wallet[0][5]:
@@ -2039,9 +2157,11 @@ def pay_per_use_calculator(context):
                                         f"\nدرود {user_wallet[0][2]} عزیز، از اعتبار کیف پول شما {credit_now:,} تومان باقی مانده، "
                                         f"در صورتی که تمایل دارید نسبت به افزایش اعتبار کیف پول اقدام کنید.")
 
-                                keyboard = [[InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")]]
+                                keyboard = [
+                                    [InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")]]
 
-                                context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+                                context.bot.send_message(user[1], text=text,
+                                                         reply_markup=InlineKeyboardMarkup(keyboard))
                                 sqlite_manager.update({'User': {'notif_low_wallet': 1}}, where=f'chat_id = "{user[1]}"')
 
                             if client['enable'] and user[3] and (credit_now <= 0):
@@ -2051,18 +2171,21 @@ def pay_per_use_calculator(context):
 
                                 keyboard = [
                                     [InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume"),
-                                     InlineKeyboardButton("مشاهده جزئیات سرویس", callback_data=f"view_service_{user[2]}")]
+                                     InlineKeyboardButton("مشاهده جزئیات سرویس",
+                                                          callback_data=f"view_service_{user[2]}")]
                                 ]
 
                                 data = {
                                     "id": int(user[7]),
                                     "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
                                                 "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":0,\"expiryTime\":{2},"
-                                                "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(user[8], user[2],
-                                                                                                           second_to_ms(datetime.now()))}
+                                                "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(user[8],
+                                                                                                           user[2],
+                                                                                                           second_to_ms(
+                                                                                                               datetime.now()))}
 
                                 get_server_domain = sqlite_manager.select(column='server_domain', table='Product',
-                                                                          where=f'id = {user[7]}')
+                                                                          where=f'id = {user[9]}')
 
                                 print(api_operation.update_client(user[8], data, get_server_domain[0][0]))
 
@@ -2070,7 +2193,8 @@ def pay_per_use_calculator(context):
                                 context.bot.send_message(ADMIN_CHAT_ID,
                                                          text=f'Service OF {user_wallet[0][2]} Named {user[2]} Has Be Ended')
 
-                                context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+                                context.bot.send_message(user[1], text=text,
+                                                         reply_markup=InlineKeyboardMarkup(keyboard))
 
     except Exception as e:
         ready_report_problem_to_admin(context, 'PAY PER USE CALCULATOR', '', e)
@@ -2083,10 +2207,14 @@ def report_problem_by_user(update, context):
     if query.data == 'report_problem_by_user':
         text = '• لطفا مشکلی که باهاش مواجه هستید رو انتخاب کنید:'
 
-        keyboard = [[InlineKeyboardButton("سرویس دچار قطعی و وصلی میشود", callback_data=f"say_to_admin_Intermittent_connection_problem")],
-                    [InlineKeyboardButton("سرویس وصل نمیشود و یا کار نمیکند", callback_data=f"say_to_admin_service_dont_connected_or_dont_work")],
-                    [InlineKeyboardButton("سرعت سرویس پایین است و اختلال دارد", callback_data=f"say_to_admin_server_speed_is_low")],
-                    [InlineKeyboardButton("در برخی اپلیکیشن ها با مشکل مواجه هستم", callback_data=f"say_to_admin_problem_in_some_apllication")],
+        keyboard = [[InlineKeyboardButton("سرویس دچار قطعی و وصلی میشود",
+                                          callback_data=f"say_to_admin_Intermittent_connection_problem")],
+                    [InlineKeyboardButton("سرویس وصل نمیشود و یا کار نمیکند",
+                                          callback_data=f"say_to_admin_service_dont_connected_or_dont_work")],
+                    [InlineKeyboardButton("سرعت سرویس پایین است و اختلال دارد",
+                                          callback_data=f"say_to_admin_server_speed_is_low")],
+                    [InlineKeyboardButton("در برخی اپلیکیشن ها با مشکل مواجه هستم",
+                                          callback_data=f"say_to_admin_problem_in_some_apllication")],
                     [InlineKeyboardButton("مشکلی غیر از موارد بالا دارم", callback_data=f"say_to_admin_somthingElse")],
                     [InlineKeyboardButton("برگشت", callback_data=f"guidance")]
                     ]
@@ -2190,8 +2318,9 @@ def rank_page(update, context):
 
     except IndexError as i:
         if 'list index out of range' in str(i):
-            sqlite_manager.insert('Rank', [{'name': query.from_user['name'],'user_name': query.from_user['username'],
-                                            'chat_id': query.from_user['id'], 'level': 0, 'rank_name': next(iter(ranking.rank_access))}])
+            sqlite_manager.insert('Rank', [{'name': query.from_user['name'], 'user_name': query.from_user['username'],
+                                            'chat_id': query.from_user['id'], 'level': 0,
+                                            'rank_name': next(iter(ranking.rank_access))}])
             query.answer('دوباره کلیک کنید')
 
     except Exception as e:
@@ -2216,7 +2345,8 @@ def subcategory(update, context):
         text = ("<b>• دوستانتون رو به ربات دعوت کنید تا با هر خریدشون، 10 درصد مبلغ به کیف‌پول شما اضافه بشه"
                 f"\n\n• همچنین +50 رتبه برای شما و کسی که با لینک شما وارد ربات بشه."
                 f"\n\n• لینک دعوت شما: \n{link}</b>")
-        query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard), disable_web_page_preview=True)
+        query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard),
+                                disable_web_page_preview=True)
 
     except Exception as e:
         print(e)
@@ -2234,7 +2364,9 @@ def service_advanced_option(update, context):
 
         if 'change_auto_renewal_status_' in query.data:
             data = query.data.replace('change_auto_renewal_status_', '').split('__')
-            changed_to, status_1 = (1, '\n\n↲ بعد از پایان سرویس، درصورت اعتبار داشتن کیف پول، بسته به صورت خودکار تمدید میشود.') if eval(data[1]) else (0, '')
+            changed_to, status_1 = (
+                1, '\n\n↲ بعد از پایان سرویس، درصورت اعتبار داشتن کیف پول، بسته به صورت خودکار تمدید میشود.') if eval(
+                data[1]) else (0, '')
             email = data[0]
             sqlite_manager.update({'Purchased': {'auto_renewal': changed_to}}, where=f'client_email = "{email}"')
             query.answer('با موفقیت تغییر یافت ✅')
@@ -2256,15 +2388,18 @@ def service_advanced_option(update, context):
                 "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
                             "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
                             "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(generate_key, get_data[0][9],
-                                                                                       ret_conf['obj']['total'], ret_conf['obj']['expiryTime'])}
+                                                                                       ret_conf['obj']['total'],
+                                                                                       ret_conf['obj']['expiryTime'])}
 
             api_operation.update_client(get_service_uuid, data, get_domain)
             get_address = get_data[0][8].replace(str(get_service_uuid), str(generate_key))
-            sqlite_manager.update({'Purchased': {'details': get_address, 'client_id': generate_key}}, where=f'client_email = "{email}"')
+            sqlite_manager.update({'Purchased': {'details': get_address, 'client_id': generate_key}},
+                                  where=f'client_email = "{email}"')
             change_shematic = '\n\n↲ پیکربندی تغییر یافت، سرویس را کپی جایگزین قبلی کنید.'
             query.answer('پیکربندی سرویس تغییر یافت ✅')
 
-            report_status_to_admin(context, f'User changed Config Shematic\nConfig Email: {email}', chat_id=query.message.chat_id)
+            report_status_to_admin(context, f'User changed Config Shematic\nConfig Email: {email}',
+                                   chat_id=query.message.chat_id)
 
         elif 'active_tls_encoding_' in query.data:
             data = query.data.replace('active_tls_encoding_', '').split('__')
@@ -2272,7 +2407,7 @@ def service_advanced_option(update, context):
             email = data[0]
             convert_to = data[1]
 
-            active_tls = utilities.convert_service_to_tls(update, email, convert_to)
+            utilities.convert_service_to_tls(update, email, convert_to)
 
             change_shematic = '\n\n↲ پیکربندی تغییر یافت، سرویس را کپی جایگزین قبلی کنید.'
             status_1 = '\n\nبا فعال بودن رمزنگاری، اطلاعات شما به صورت رمزنگاری شده رد و بدل میشود و امنیت بالاتر میرود'
@@ -2294,8 +2429,11 @@ def service_advanced_option(update, context):
 
             print(get_server_country[0][0].replace('pay_per_use_', ''))
 
-            keyboard_main = [[InlineKeyboardButton(f"{key} {'✅' if get_server_country[0][0] == key or get_server_country[0][0].replace('pay_per_use_', '') == value else ''}",
-                                                   callback_data='alredy_have_show' if get_server_country[0][0] == key or get_server_country[0][0].replace('pay_per_use_', '') == value else f'changed_server_to_{email}__{value}')] for key, value in unic_plans.items()]
+            keyboard_main = [[InlineKeyboardButton(
+                f"{key} {'✅' if get_server_country[0][0] == key or get_server_country[0][0].replace('pay_per_use_', '') == value else ''}",
+                callback_data='alredy_have_show' if get_server_country[0][0] == key or get_server_country[0][0].replace(
+                    'pay_per_use_', '') == value else f'changed_server_to_{email}__{value}')] for key, value in
+                unic_plans.items()]
 
             keyboard_main.append([InlineKeyboardButton("برگشت ↰", callback_data=f"advanced_option_{email}")])
 
@@ -2312,7 +2450,9 @@ def service_advanced_option(update, context):
             unic_plans = {name[3]: name[4] for name in plans}
 
             keyboard_main = [[InlineKeyboardButton(f"{key} {'✅' if get_new_inbound[0][2] == key else ''}",
-                                                   callback_data='alredy_have_show' if get_new_inbound[0][2] == key else f'changed_server_to_{email}__{value}')] for key, value in unic_plans.items()]
+                                                   callback_data='alredy_have_show' if get_new_inbound[0][
+                                                                                           2] == key else f'changed_server_to_{email}__{value}')]
+                             for key, value in unic_plans.items()]
 
             keyboard_main.append([InlineKeyboardButton("برگشت ↰", callback_data=f"advanced_option_{email}")])
 
@@ -2322,16 +2462,17 @@ def service_advanced_option(update, context):
             report_status_to_admin(context, f'User changed Config Server\nConfig Email: {email}\nNew Server: {country}',
                                    chat_id=query.message.chat_id)
 
-
         get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
         get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
                                                    where=f'id = {get_data[0][6]}')
 
         get_server_country = get_server_country[0][0].replace('سرور ', '').replace('pay_per_use_', '')
-        auto_renewal, auto_renewal_button, chenge_to = ('فعال ✓', 'غیرفعال کردن تمدید خودکار ✗', False) if get_data[0][15] \
+        auto_renewal, auto_renewal_button, chenge_to = ('فعال ✓', 'غیرفعال کردن تمدید خودکار ✗', False) if get_data[0][
+            15] \
             else ('غیرفعال ✗', 'فعال کردن تمدید خودکار ✓', True)
 
-        tls_encodeing, tls_status, change_to_ = ('✓', 'فعال ✓', False) if get_data[0][7] == TLS_INBOUND else ('✗', 'غیرفعال ✗', True)
+        tls_encodeing, tls_status, change_to_ = ('✓', 'فعال ✓', False) if get_data[0][7] == TLS_INBOUND else (
+            '✗', 'غیرفعال ✗', True)
 
         text_ = (
             "<b>🟡 با تغییر گزینه‌ها، تنظیمات سرویس تغییر می‌کند و اگر به این سرویس متصل هستید،"
@@ -2346,14 +2487,18 @@ def service_advanced_option(update, context):
             f"{change_server_notif}"
         )
 
-        keyboard = [[InlineKeyboardButton(f"{auto_renewal_button}", callback_data=f"change_auto_renewal_status_{email}__{chenge_to}")],
+        keyboard = [[InlineKeyboardButton(f"{auto_renewal_button}",
+                                          callback_data=f"change_auto_renewal_status_{email}__{chenge_to}")],
                     [InlineKeyboardButton(f" تعویض کانفیگ ⤰", callback_data=f"change_config_shematic_{email}"),
                      InlineKeyboardButton(f"تغییر لوکیشن ⇈", callback_data=f"change_server_{email}")],
-                    [InlineKeyboardButton(f"رمزگذاری TLS {tls_encodeing}", callback_data=f"active_tls_encoding_{email}__{change_to_}"),
+                    [InlineKeyboardButton(f"رمزگذاری TLS {tls_encodeing}",
+                                          callback_data=f"active_tls_encoding_{email}__{change_to_}"),
                      InlineKeyboardButton("• انتقال مالکیت", callback_data=f"change_service_ownership_{email}")],
                     [InlineKeyboardButton("برگشت ↰", callback_data=f"view_service_{email}")]]
 
-        query.edit_message_text(text_, reply_markup=InlineKeyboardMarkup(keyboard if not keyboard_main else keyboard_main), parse_mode='html')
+        query.edit_message_text(text_,
+                                reply_markup=InlineKeyboardMarkup(keyboard if not keyboard_main else keyboard_main),
+                                parse_mode='html')
 
 
     except EOFError as eof:
@@ -2398,16 +2543,22 @@ def change_service_ownership_func(update, context):
 
             new_user_detail = sqlite_manager.select(table='User', where=f'chat_id = {new_owner_chat_id}')
 
-            sqlite_manager.update({'Purchased': {'name': new_user_detail[0][1],'user_name': new_user_detail[0][2],
-                                                 'chat_id': new_owner_chat_id}}, where=f'chat_id = {user["id"]} and client_email = "{email}"')
+            sqlite_manager.update({'Purchased': {'name': new_user_detail[0][1], 'user_name': new_user_detail[0][2],
+                                                 'chat_id': new_owner_chat_id}},
+                                  where=f'chat_id = {user["id"]} and client_email = "{email}"')
 
-            report_status_to_admin(context, f'Change Service [{email}] OwnerShip to {new_owner_chat_id}', chat_id=user['id'])
-            update.message.reply_text(f'<b>انتقال سرویس با موفقیت انجام شد ✅</b>', reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+            report_status_to_admin(context, f'Change Service [{email}] OwnerShip to {new_owner_chat_id}',
+                                   chat_id=user['id'])
+            update.message.reply_text(f'<b>انتقال سرویس با موفقیت انجام شد ✅</b>',
+                                      reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
-            message_to_user(update, context, message=f'<b>کاربر {user["first_name"]} یک سرویس برای شما فرستاد!\nنام سرویس: {email}</b>', chat_id=new_owner_chat_id)
+            message_to_user(update, context,
+                            message=f'<b>کاربر {user["first_name"]} یک سرویس برای شما فرستاد!\nنام سرویس: {email}</b>',
+                            chat_id=new_owner_chat_id)
 
         else:
-            update.message.reply_text('مشکلی وجود داشت. فقط آیدی عددی با فرمت مناسب قابل قبول است!', reply_markup=InlineKeyboardMarkup(keyboard))
+            update.message.reply_text('مشکلی وجود داشت. فقط آیدی عددی با فرمت مناسب قابل قبول است!',
+                                      reply_markup=InlineKeyboardMarkup(keyboard))
 
         context.user_data.clear()
         return ConversationHandler.END
@@ -2419,7 +2570,6 @@ def change_service_ownership_func(update, context):
         keyboard = [[InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]]
         update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
         return ConversationHandler.END
-
 
 
 change_service_ownership_conver = ConversationHandler(
@@ -2434,3 +2584,187 @@ change_service_ownership_conver = ConversationHandler(
 )
 
 
+def admin_all_config(update, context):
+    chat_id = update.message.chat_id
+    if chat_id != ADMIN_CHAT_ID:
+        update.message.reply_text('Suck My Big Fat Cock Stupid son of a BITCH! 🖕')
+        return
+    keyboard = [[InlineKeyboardButton('Lets Check', callback_data='adm_check_all_conf')]]
+    update.message.reply_text('Click This Button To See All Configs:', reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+def all_services(update, context):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    number_in_page = 20
+    data = query.data.replace('adm_check_all_conf', '')
+
+    get_limit = int(data) if data else number_in_page
+    get_all_purchased = sqlite_manager.select(table='Purchased')
+    get_purchased = get_all_purchased[get_limit - number_in_page:get_limit]
+
+    if get_purchased:
+        disable_service = enable_service = all_service = 0
+
+        keyboard = [
+            [InlineKeyboardButton(f"{'✅' if ser[11] == 1 else '❌'} {ser[9]}", callback_data=f"adm_view_service_{ser[9]}")]
+            for ser in get_purchased]
+
+        for service in get_all_purchased:
+            if service[11] == 1:
+                enable_service += 1
+            else:
+                disable_service += 1
+
+            all_service += 1
+
+        if len(get_all_purchased) > number_in_page:
+            keyboard_backup = []
+            keyboard_backup.append(InlineKeyboardButton("قبل ⤌",
+                                                        callback_data=f"adm_check_all_conf{get_limit - number_in_page}")) if get_limit != number_in_page else None
+            keyboard_backup.append(
+                InlineKeyboardButton(f"صفحه {int(get_limit / number_in_page)}", callback_data="just_for_show"))
+            keyboard_backup.append(InlineKeyboardButton("⤍ بعد",
+                                                        callback_data=f"adm_check_all_conf{get_limit + number_in_page}")) if get_limit < len(
+                get_all_purchased) else None
+            keyboard.append(keyboard_backup)
+
+        keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="main_menu")])
+        text = ("<b>برای مشاهده جزئیات، سرویس مورد نظر را انتخاب کنید:"
+                f"\n\n• تعداد: {all_service}"
+                f"\n• فعال: {enable_service}"
+                f"\n• غیرفعال: {disable_service}"
+                "</b>")
+        try:
+            query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+        except telegram.error.BadRequest:
+            query.answer('در یک پیام جدید فرستادم!')
+            context.bot.send_message(chat_id=chat_id, text=text,
+                                     reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+    else:
+        keyboard = [[InlineKeyboardButton("آشنایی با سرویس‌ها", callback_data="robots_service_help"),
+                     InlineKeyboardButton("🛒 خرید سرویس", callback_data="select_server")],
+                    [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]]
+        query.edit_message_text(
+            '<b>• درحال حاضر شما صاحب سرویس نیستید\n\nدرمورد سرویس ها مطالعه کنید و یک سرویس بخرید! :</b>',
+            reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+
+
+def admin_server_detail(update, context):
+    query = update.callback_query
+    email = update.callback_query.data.replace('adm_view_service_', '')
+    try:
+        get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
+        get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
+                                                   where=f'id = {get_data[0][6]}')
+        get_server_domain = get_server_country[0][1]
+        get_server_country = get_server_country[0][0].replace('سرور ', '').replace('pay_per_use_', '')
+
+        expiry_month = '♾️'
+        total_traffic = '♾️'
+        exist_day = '(بدون محدودیت زمانی)'
+
+        ret_conf = api_operation.get_client(email, get_server_domain)
+
+        upload_gb = round(int(ret_conf['obj']['up']) / (1024 ** 3), 2)
+        download_gb = round(int(ret_conf['obj']['down']) / (1024 ** 3), 2)
+        usage_traffic = round(upload_gb + download_gb, 2)
+
+        change_active, advanced_option_pattern = ('فعال ✅', f'advanced_option_{email}') if ret_conf['obj'][
+            'enable'] else ('غیرفعال ❌', 'not_for_depleted_service')
+
+        purchase_date = datetime.strptime(get_data[0][12], "%Y-%m-%d %H:%M:%S.%f%z").replace(tzinfo=None)
+        auto_renwal_emoji = 'فعال ✓' if get_data[0][15] else 'غیرفعال ✗'
+        auto_renwal = f'\n\n🔄 تمدیدخودکار: {auto_renwal_emoji}'
+
+        keyboard = [
+            [InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"upgrade_service_customize_{get_data[0][0]}")]]
+
+        if int(ret_conf['obj']['total']) != 0:
+            total_traffic = int(round(ret_conf['obj']['total'] / (1024 ** 3), 2))
+
+        if int(ret_conf['obj']['expiryTime']) != 0:
+            expiry_timestamp = ret_conf['obj']['expiryTime'] / 1000
+            expiry_date = datetime.fromtimestamp(expiry_timestamp)
+            expiry_month = expiry_date.strftime("%Y/%m/%d")
+            days_lefts = (expiry_date - datetime.now())
+            days_lefts_days = days_lefts.days
+
+            days_left_2 = abs(days_lefts_days)
+
+            if days_left_2 >= 1:
+                exist_day = f"({days_left_2} روز {'مانده' if days_lefts_days >= 0 else 'گذشته'})"
+            else:
+                days_left_2 = abs(int(days_lefts.seconds / 3600))
+                exist_day = f"({days_left_2} ساعت {'مانده' if days_left_2 >= 1 else 'گذشته'})"
+
+            context.user_data['period_for_upgrade'] = (expiry_date - purchase_date).days
+            context.user_data['traffic_for_upgrade'] = total_traffic
+            keyboard = [
+                [InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"upgrade_service_customize_{get_data[0][0]}")]]
+
+        elif int(ret_conf['obj']['total']) == 0:
+            service_activate_status = 'غیرفعال سازی ⤈' if ret_conf['obj']['enable'] else 'فعال سازی ↟'
+            keyboard = [[InlineKeyboardButton(service_activate_status,
+                                              callback_data=f"change_infiniti_service_status_{get_data[0][0]}_{ret_conf['obj']['enable']}")]]
+
+        keyboard.append([InlineKeyboardButton("حذف سرویس ⇣", callback_data=f"remove_service_{email}"),
+                         InlineKeyboardButton("تازه سازی ↻", callback_data=f"view_service_{email}")])
+
+        keyboard.append([InlineKeyboardButton("گزینه های پیشرفته ⥣",
+                                              callback_data=advanced_option_pattern)])  # advanced_option_{email}
+        keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="adm_check_all_conf")])
+
+        text_ = (
+            f"<b>اطلاعات سرویس انتخاب شده:</b>"
+            f"\n\n🔷 نام سرویس: {email}"
+            f"\n💡 وضعیت: {change_active}"
+            f"\n🗺 موقعیت سرور: {get_server_country}"
+            f"\n📅 تاریخ انقضا: {expiry_month} {exist_day}"
+            f"\n\n🔼 آپلود↑: {format_traffic(upload_gb)}"
+            f"\n🔽 دانلود↓: {format_traffic(download_gb)}"
+            f"\n📊 مصرف کل: {usage_traffic}/{total_traffic}{'GB' if isinstance(total_traffic, int) else ''}"
+            f"{auto_renwal}"
+            f"\n⏰ تاریخ خرید/تمدید: {purchase_date.strftime('%H:%M:%S | %Y/%m/%d')}"
+            f"\n\n🌐 آدرس سرویس:\n <code>{get_data[0][8]}</code>"
+        )
+
+        query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+        sqlite_manager.update({'Purchased': {'status': 1 if ret_conf['obj']['enable'] else 0}},
+                              where=f'client_email = "{email}"')
+
+    except TypeError as e:
+        keyboard = [
+            [InlineKeyboardButton("پشتیبانی", callback_data="guidance")],
+            [InlineKeyboardButton("حذف سرویس ⇣", callback_data=f"remove_service_from_db_{email}"),
+             InlineKeyboardButton("تازه سازی ⟳", callback_data=f"view_service_{email}")],
+            [InlineKeyboardButton("برگشت ↰", callback_data="adm_check_all_conf")]]
+
+        text = ('*متاسفانه مشکلی در دریافت اطلاعات این کانفیگ وجود داشت*'
+                '*\n\n• اگر از انقضا این کانفیگ مدتی گذشته، احتمالا از سرور حذف شده ولی هنوز داخل دیتابیس وجود داره *'
+                '*\n\n• میتونید سرویس رو پاک کنید، اگر مشکل دیگه ای وجود داره با پشتیبانی در ارتباط باشید*'
+                )
+
+        query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+        ready_report_problem_to_admin(context, text='SERVICE DETAIL FOR CUSTOMER [EXpiry Time Probably]',
+                                      error=e, chat_id=query.message.chat_id, detail=f'Service Email: {email}')
+
+    except Exception as e:
+        if "specified new message content and reply markup are exactly the same" in str(e):
+            return query.answer('آپدیت نشد، احتمالا اطلاعات تغییری نکرده!')
+        keyboard = [
+            [InlineKeyboardButton("پشتیبانی", callback_data="guidance")],
+            [InlineKeyboardButton("حذف سرویس ⇣", callback_data=f"remove_service_from_db_{email}"),
+             InlineKeyboardButton("تازه سازی ⟳", callback_data=f"view_service_{email}")],
+            [InlineKeyboardButton("برگشت ↰", callback_data="adm_check_all_conf")]]
+        text = ('*متاسفانه مشکلی در دریافت اطلاعات این کانفیگ وجود داشت*'
+                '*\n\n• اطلاعات این کانفیگ و مشکل به وجود اومده به ادمین ارسال شد و نتیجه بهتون اعلام میشه *'
+                '*\n\n• علت خطا*'
+                f'{e}'
+                )
+        query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='markdown')
+        ready_report_problem_to_admin(context, text='SERVICE DETAIL FOR CUSTOMER', error=e,
+                                      chat_id=query.message.chat_id,
+                                      detail=f'Service Email: {email}')
+        query.answer('مشکلی وجود دارد!')
+        print(e)

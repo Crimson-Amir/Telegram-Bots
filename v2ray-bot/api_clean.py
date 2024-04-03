@@ -15,8 +15,10 @@ class XuiApiClean(ManageDb):
 
         for domain in get_domain_uniq:
             self.login = self.connect.post(f'{protocol}{domain}:{PORT}/login', data=auth)
+
         get_cookies = self.login.cookies.get('session')
         self.headers = {'Cookie': f'session={get_cookies}'}
+
         if self.login.status_code == 200:
             print(self.login.json())
         else:

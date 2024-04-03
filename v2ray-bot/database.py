@@ -35,11 +35,12 @@ def create_database():
               ' client_id text, status integer, date text, notif_day integer, notif_gb integer,'
               ' auto_renewal integer DEFAULT 0)')
 
+    c.execute('CREATE TABLE IF NOT EXISTS Statistics(id integer primary key, traffic_usage text, date text)')
+
+    c.execute('CREATE TABLE IF NOT EXISTS Last_usage(id integer primary key, last_usage text, date text)')
+
     # c.execute('ALTER TABLE Purchased ADD COLUMN auto_renewal integer DEFAULT 0')
-
-
     # c.execute('CREATE TABLE IF NOT EXISTS Ticket(id integer primary key, answered integer, chat_id text, last_traffic_usage integer)')
-    #
     # c.execute('CREATE TABLE IF NOT EXISTS Initialization(id integer primary key, answered integer, chat_id text, last_traffic_usage integer)')
 
     conn.commit()

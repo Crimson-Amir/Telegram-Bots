@@ -1,5 +1,5 @@
 from telegram.ext import (Updater, CommandHandler, CallbackQueryHandler)
-from private import telegram_bot_token
+from private import telegram_bot_token, ADMIN_CHAT_ID
 from database import create_database
 from bot_start import bot_start, main_menu, send_main_message
 from tasks import (show_servers, get_service_of_server, payment_page, get_service_con, apply_card_pay,
@@ -11,7 +11,7 @@ from tasks import (show_servers, get_service_of_server, payment_page, get_servic
                    check_all_configs, remove_service_from_db, rate_service, get_pay_file,
                    admin_reserve_service, people_ask, pay_per_use, pay_per_use_calculator, change_infiniti_service_status,
                    report_problem_by_user, tickect_by_user, service_advanced_option, rank_page, subcategory,
-                   change_service_ownership_conver, hide_buttons)
+                   change_service_ownership_conver, hide_buttons, admin_all_config, all_services, admin_server_detail)
 
 from utilities import not_ready_yet, just_for_show, message_to_user, alredy_have_show, not_for_depleted_service
 
@@ -20,13 +20,14 @@ from admin_task import (admin_add_update_inbound, add_service, all_service, del_
                         add_credit_to_server_customer_wallet, add_credit_to_customer, admin_rank_up)
 
 import logging
+import requests
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 create_database()
 
-# telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
-# requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'🟠 THE BOT STARTED'})
+telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
+requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'🟠 THE BOT STARTED'})
 
 
 def main():
@@ -38,6 +39,7 @@ def main():
         'help': bot_start,
         'add_inbound': admin_add_update_inbound,
         'check_all_configs': check_all_configs,
+        'all_configs': admin_all_config,
         'add_service': add_service,
         'all_service': all_service,
         'del_service': del_service,
@@ -71,6 +73,7 @@ def main():
 
     dp.add_handler(CallbackQueryHandler(show_servers, pattern='select_server'))
     dp.add_handler(CallbackQueryHandler(my_service, pattern=r'my_service(.*)'))
+    dp.add_handler(CallbackQueryHandler(all_services, pattern=r'adm_check_all_conf(.*)'))
 
 
     dp.add_handler(CallbackQueryHandler(rate_service, pattern=r'rate_(.*)'))
@@ -137,6 +140,7 @@ def main():
 
 
     dp.add_handler(CallbackQueryHandler(server_detail_customer, pattern=r'view_service_(.*)'))
+    dp.add_handler(CallbackQueryHandler(admin_server_detail, pattern=r'adm_view_service_(.*)'))
     dp.add_handler(CallbackQueryHandler(show_help, pattern=r'(.*)_help'))
 
     dp.add_handler(CallbackQueryHandler(create_file_and_return, pattern=r'create_txt_file'))
