@@ -3,6 +3,10 @@ from utilities import (ready_report_problem_to_admin)
 import pytz
 from admin_task import (api_operation, sqlite_manager)
 from private import *
+from utilities import format_mb_traffic, make_day_name_farsi
+
+
+STATISTICS_TIMER_HORSE = 3
 
 
 def statistics_timer(context):
@@ -58,32 +62,128 @@ def statistics_timer(context):
         ready_report_problem_to_admin(context, 'Statistics Timer IndexError!', '', e)
 
 
-def reports_section(purchased, period, chat_id):
+def datetime_range(start, end, delta):
+    current = start
+    while current <= end:
+        yield current
+        current += delta
+
+
+def reports_section(update, context):
+    # query = update.callback_query
+    # data = query.data.split('_')
+    # chat_id = query.message.chat_id
+    data = [0, 'monthly', 'all']
+    chat_id = 81532053
+
     date_now = datetime.now(pytz.timezone('Asia/Tehran'))
-    get_all_purchased = purchased
+
+    purchased = data[2]
+    period = data[1]
 
     if purchased == 'all':
         get_all_purchased_from_db = sqlite_manager.select(column='id', table='Purchased', where=f'chat_id = {chat_id}')
-        get_all_purchased = [str(id_[0]) for id_ in get_all_purchased_from_db]
+        purchased = [str(id_[0]) for id_ in get_all_purchased_from_db]
 
+    period_mapping = {
+        'daily': (1, 'روزانه'),
+        'weekly': (7, 'هفتگی'),
+        'monthly': (30, 'ماهانه'),
+        'yearly': (365, 'سالانه')
+    }
 
-    if period == 'daily':
-        date = date_now.strftime('%Y-%m-%d')
-    elif period == 'weekly':
-        date = date_now - timedelta(days=7)
-    elif period == 'monthly':
-        date = date_now - timedelta(days=30)
-    else:
-        date = date_now - timedelta(days=365)
+    period_info = period_mapping.get(period, (365, 'سالانه'))
+    delta_days, period_text = period_info
+    date = date_now - timedelta(days=delta_days)
 
     get_db = sqlite_manager.select(table='Statistics', where=f'date > "{date}"')
     user_usage_dict = {}
 
     for get_date in get_db:
-        get_user_usage = [{user_purchased[0]: user_purchased[1]} for user_purchased in eval(get_date[1]).items() if user_purchased[0] in get_all_purchased]
+        get_user_usage = [{user_purchased[0]: user_purchased[1]} for user_purchased in eval(get_date[1]).items() if user_purchased[0] in purchased]
         user_usage_dict[get_date[2]] = get_user_usage
 
-    return user_usage_dict
+    usage_text = ''
+
+    if period == 'daily':
+        for _ in user_usage_dict.items():
+            time = datetime.strptime(_[0], '%Y-%m-%d %H:%M:%S')
+            first_time = time - timedelta(hours=STATISTICS_TIMER_HORSE)
+            usage_detail, all_usage_traffic = [], 0
+
+            for usage in _[1]:
+                usage_name = next(iter(usage.keys()))
+                usage_traffic = next(iter(usage.values()))
+
+                usage_detail.append(f'\n- سرویس شماره {usage_name}: {format_mb_traffic(usage_traffic)}' if usage_traffic else '')
+                all_usage_traffic += usage_traffic
+
+            usage_text += f'\n\n• از ساعت {first_time.strftime("%H:%M")} تا {time.strftime("%H:%M")} = {format_mb_traffic(all_usage_traffic)}'
+            usage_text += ''.join(usage_detail[:4])
+
+    elif period == 'weekly':
+        for our_date in datetime_range(date, date_now, timedelta(days=1)):
+            date_ = our_date.strftime('%Y-%m-%d')
+            get_usage = {}
+            get_traff = 0
+            for _ in user_usage_dict.items():
+                time = datetime.strptime(_[0], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+                if time == date_:
+                    for usage in _[1]:
+                        usage_name = next(iter(usage.keys()))
+                        usage_traffic = next(iter(usage.values()))
+                        get_traff += usage_traffic
+                        get_usage[usage_name] = get_usage.get(usage_name, 0) + usage_traffic
+
+            usage_detail = [f'\n- سرویس شماره {get_name} = {format_mb_traffic(get_traffic)}' for get_name, get_traffic in get_usage.items() if get_traffic]
+
+            usage_text += f'\n\n• در {make_day_name_farsi(our_date.strftime('%A'))} {date_} = {format_mb_traffic(get_traff)}'
+            usage_text += ''.join(usage_detail[:5])
+
+    elif period == 'monthly':
+        for our_date in datetime_range(date, date_now, timedelta(days=7)):
+            date_ = our_date.strftime('%Y-%m')
+            get_usage = {}
+            get_traff = 0
+            for _ in user_usage_dict.items():
+                time = datetime.strptime(_[0], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m')
+                if time == date_:
+                    for usage in _[1]:
+                        usage_name = next(iter(usage.keys()))
+                        usage_traffic = next(iter(usage.values()))
+                        get_traff += usage_traffic
+                        get_usage[usage_name] = get_usage.get(usage_name, 0) + usage_traffic
+
+            usage_detail = [f'\n- سرویس شماره {get_name} = {format_mb_traffic(get_traffic)}' for get_name, get_traffic
+                            in get_usage.items() if get_traffic]
+
+            usage_text += f'\n\n• در {make_day_name_farsi(our_date.strftime('%A'))} {date_} = {format_mb_traffic(get_traff)}'
+            usage_text += ''.join(usage_detail[:5])
+
+    elif period == 'yearly':
+        for our_date in datetime_range(date, date_now, timedelta(days=30)):
+            date_ = our_date.strftime('%Y-%m')
+            get_usage = {}
+            get_traff = 0
+            for _ in user_usage_dict.items():
+                time = datetime.strptime(_[0], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m')
+                if time == date_:
+                    for usage in _[1]:
+                        usage_name = next(iter(usage.keys()))
+                        usage_traffic = next(iter(usage.values()))
+                        get_traff += usage_traffic
+                        get_usage[usage_name] = get_usage.get(usage_name, 0) + usage_traffic
+
+            usage_detail = [f'\n- سرویس شماره {get_name} = {format_mb_traffic(get_traffic)}' for get_name, get_traffic
+                            in get_usage.items() if get_traffic]
+
+            usage_text += f'\n\n• در {make_day_name_farsi(our_date.strftime('%A'))} {our_date} = {format_mb_traffic(get_traff)}'
+            usage_text += ''.join(usage_detail[:5])
 
 
-reports_section('all', 'monthly', 101854406)
+    print(usage_text)
+
+
+
+reports_section('all', 'monthly')
+# statistics_timer(1)

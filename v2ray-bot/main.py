@@ -21,6 +21,7 @@ from admin_task import (admin_add_update_inbound, add_service, all_service, del_
 
 import logging
 import requests
+from statistics import statistics_timer, STATISTICS_TIMER_HORSE
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -182,6 +183,7 @@ def main():
     job = updater.job_queue
     job.run_repeating(check_all_configs, interval=100, first=0)
     job.run_repeating(pay_per_use_calculator, interval=3600, first=0)
+    job.run_repeating(statistics_timer, interval=STATISTICS_TIMER_HORSE * 3600, first=0)
 
     updater.start_polling()
     updater.idle()
