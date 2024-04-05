@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytz
 import utilities
 from private import ADMIN_CHAT_ID
-from utilities import ready_report_problem_to_admin, message_to_user, sqlite_manager, api_operation
+from utilities import ready_report_problem_to_admin, message_to_user, sqlite_manager, api_operation, infinity_name
 from wallet import WalletManage
 import ranking
 
@@ -160,7 +160,7 @@ def add_client_bot(purchased_id, personalization=None):
         if get_service_db[0][6]:
             traffic_to_gb_ = traffic_to_gb(get_service_db[0][6], False)
         else:
-            email_ = f"{purchased_id}_Infinite_Service"
+            email_ = f"{purchased_id}{infinity_name}"
             traffic_to_gb_ = 0
 
         if get_service_db[0][5]:

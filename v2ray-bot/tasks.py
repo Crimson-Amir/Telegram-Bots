@@ -2190,6 +2190,7 @@ def pay_per_use_calculator(context):
                                 print(api_operation.update_client(user[8], data, get_server_domain[0][0]))
 
                                 sqlite_manager.update({'Purchased': {'status': 0}}, where=f'id = {user[0]}')
+
                                 context.bot.send_message(ADMIN_CHAT_ID,
                                                          text=f'Service OF {user_wallet[0][2]} Named {user[2]} Has Be Ended')
 

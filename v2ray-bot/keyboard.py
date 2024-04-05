@@ -9,7 +9,9 @@ main_key = [
     [InlineKeyboardButton("⏳ دریافت سرویس تست", callback_data='service_1')],
 
     [InlineKeyboardButton("⚙️ تنظیمات", callback_data='settings'),
-     InlineKeyboardButton("🔰 رتبه‌بندی", callback_data='rank_page')],
+     InlineKeyboardButton("📊 گزارش ها", callback_data='reports')],
 
     [InlineKeyboardButton("📚 راهنمایی و پشتیبانی", callback_data='guidance')]
 ]
+
+# InlineKeyboardButton("🔰 رتبه‌بندی", callback_data='rank_page')

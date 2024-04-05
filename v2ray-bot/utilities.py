@@ -9,6 +9,8 @@ from api_clean import XuiApiClean
 
 api_operation = XuiApiClean()
 sqlite_manager = ManageDb('v2ray')
+infinity_name = '_Infinite_Service'
+
 
 def human_readable(number):
     get_date = arrow.get(number)
