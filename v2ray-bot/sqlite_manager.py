@@ -106,10 +106,17 @@ class ManageDb:
         return self.cursor.lastrowid
 
     @connecting_manage
-    def custom(self, order: str):
+    def custom(self, order: str, return_fetcall=True):
         self.cursor.execute(order)
         self.db.commit()
-        return self.cursor.fetchall()
+        if return_fetcall:
+            return self.cursor.fetchall()
+
+    @connecting_manage
+    def custom_multi(self, *order):
+        for order_ in order:
+            self.cursor.execute(order_)
+            self.db.commit()
 
 # t = {
 #     "student": {

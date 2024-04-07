@@ -1,7 +1,10 @@
 from telegram.ext import (Updater, CommandHandler, CallbackQueryHandler)
 from private import telegram_bot_token, ADMIN_CHAT_ID
+
 from database import create_database
-from bot_start import bot_start, main_menu, send_main_message
+create_database()
+
+from bot_start import bot_start, main_menu, send_main_message, main_menu_delete_main_message
 from tasks import (show_servers, get_service_of_server, payment_page, get_service_con, apply_card_pay,
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
                    personalization_service_lu, apply_card_pay_lu, upgrade_service_by_card_conv, get_free_service, guidance,
@@ -21,11 +24,10 @@ from admin_task import (admin_add_update_inbound, add_service, all_service, del_
 
 import logging
 import requests
-from statistics import statistics_timer, STATISTICS_TIMER_HORSE
+from statistics import statistics_timer, STATISTICS_TIMER_HORSE, report_section
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
-create_database()
 
 telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
 requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'🟠 THE BOT STARTED'})
@@ -85,6 +87,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(pay_from_wallet, pattern=r'accept_wallet_pay_\d+'))
     dp.add_handler(CallbackQueryHandler(pay_from_wallet, pattern=r'payment_by_wallet_upgrade_service_\d+'))
 
+    dp.add_handler(CallbackQueryHandler(report_section, pattern=r'statistics_(.*)'))
     dp.add_handler(CallbackQueryHandler(remove_service, pattern=r'remove_service_(.*)'))
     dp.add_handler(CallbackQueryHandler(remove_service, pattern=r'accept_rm_ser_(.*)'))
     dp.add_handler(CallbackQueryHandler(report_problem_by_user, pattern=r'say_to_admin_(.*)'))
@@ -97,6 +100,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(report_problem_by_user, pattern='report_problem_by_user'))
 
     dp.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu'))
+    dp.add_handler(CallbackQueryHandler(main_menu_delete_main_message, pattern='menu_delete_main_message'))
     dp.add_handler(CallbackQueryHandler(alredy_have_show, pattern='alredy_have_show'))
     dp.add_handler(CallbackQueryHandler(subcategory, pattern='subcategory'))
     dp.add_handler(CallbackQueryHandler(rank_page, pattern='rank_page'))

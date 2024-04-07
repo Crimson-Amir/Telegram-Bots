@@ -1,41 +1,61 @@
+import datetime
+
 import matplotlib.pyplot as plt
-import numpy as np
-from io import BytesIO
+import io
 
-def generate_chart(data):
-    total_volume = sum(data)
-    percentages = [(value / total_volume) * 100 for value in data]
+def get_plot(data, period):
+    # period = ['12-3', '3-6', '6-9', '9-00', '00-03', '03-06', '06-09', '09-12']
+    # usage = [44, 53, 123, 4, 42, 64, 13, 4]
+    period = data.keys()
+    usage = data.values() or [0 for _ in range(0, len(period))]
 
-    labels = ["Upload", "Download", "Remaining"]
-    colors = ['#FF5E78', '#488bf7', '#758AA2']  # Custom color palette
+    list_of_period_name = {
+        'day': 'Hours',
+        'week': 'Days',
+        'month': 'Weeks',
+        'year': 'Months'
+    }
 
-    fig, ax = plt.subplots(figsize=(8, 8))
-    fig.patch.set_facecolor('#f7f7f7')  # Background color for the entire figure
+    fig, ax = plt.subplots(figsize=(9, 6))
 
-    wedges, texts = ax.pie(percentages, labels=None, autopct=None,
-                           textprops=dict(color="w", fontsize=12, fontweight='bold'),
-                           colors=colors, wedgeprops=dict(width=0.4, edgecolor='#c4c4c4'))
+    bars = ax.bar(period, usage, color='#3449eb', edgecolor='black', linewidth=0.5, alpha=0.8)
 
-    centre_circle = plt.Circle((0, 0), 0.5, color='white', fc='white', linewidth=0.1)
-    ax.add_artist(centre_circle)
+    for bar in bars:
+        height = bar.get_height()
+        ax.annotate('{}'.format(height),
+                    xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 3),
+                    textcoords="offset points",
+                    ha='center', va='bottom', color='black')
 
-    for wedge, label, percentage in zip(wedges, labels, percentages):
-        angle = (wedge.theta2 - wedge.theta1) / 2.0 + wedge.theta1
-        x = 0.68 * np.cos(np.radians(angle))
-        y = 0.68 * np.sin(np.radians(angle))
-        ax.text(x, y, f'{label}\n{percentage:.1f}%', ha='center', va='center', fontsize=15, color='#2b2b2b')
+    background_color = '#F0F0F0'
+    fig.patch.set_facecolor(background_color)
+    ax.set_facecolor(background_color)
 
-    remaining_percentage = (data[2] / total_volume) * 100
-    info_text = f'Total Traffic:\n{100 - remaining_percentage:.2f}%\n{data[0] + data[1]}GB/{total_volume}GB'
-    ax.text(0, 0, info_text, ha='center', va='center', fontsize=15, color='#414141',
-            bbox=dict(boxstyle='round', facecolor='white', edgecolor='white'))
+    font_dict = {'fontsize': 14, 'color': 'black'}
+    plt.xlabel(list_of_period_name[period], **font_dict)
+    plt.ylabel('Usage (MB)', **font_dict)
 
-    title_font = {'fontsize': 20, 'fontweight': 'bold', 'fontfamily': 'Arial'}
-    ax.set_title("Traffic Chart of This Service", fontdict=title_font, y=.99, color='#414141')
+    # plt.title('Usage in the Last 24 Horse', fontsize=16, color='black')
 
-    buffer = BytesIO()
-    plt.savefig(buffer, format='png', dpi=80, bbox_inches='tight', facecolor=fig.get_facecolor())
-    binary_data = buffer.getvalue()
-    buffer.close()
+    ax.tick_params(axis='y', labelsize=12, colors='black')
 
-    return binary_data
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    # ax.spines['left'].set_visible(False)
+
+    x_position = len(period) - 0.5
+    y_position = max(usage)
+
+    ax.text(x_position, y_position, 'Now', fontsize=12, color='black', ha='center')
+
+    image_bytes = io.BytesIO()
+    plt.savefig(image_bytes, format='png')
+    image_bytes.seek(0)
+
+    plt.close()
+    return image_bytes
+
+
+# get_plot(5)

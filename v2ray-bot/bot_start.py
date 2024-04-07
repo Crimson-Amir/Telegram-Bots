@@ -71,7 +71,18 @@ def main_menu(update, context, send_message=False):
         query.edit_message_text(text=user_text, reply_markup=InlineKeyboardMarkup(key), parse_mode='HTML')
     else:
         context.bot.send_message(text=user_text, reply_markup=InlineKeyboardMarkup(key), parse_mode='HTML', chat_id=query.message.chat_id)
-        query.answer(text="در یک پیام جدید فرستادم!", show_alert=False)
+        query.answer(text="در یک پیام جدید ارسال شد!", show_alert=False)
+
+
+def main_menu_delete_main_message(update, context):
+    query = update.callback_query
+    user = query.from_user
+
+    user_text = f"<b>درود <a href='tg://user?id={user['id']}'>{user['first_name']}</a> عزیز، به FreeByte خوش آمدید.\nبرای ادامه بخش مورد نظر خودتون رو انتخاب کنید:\n</b>"
+    query.delete_message()
+    context.bot.send_message(text=user_text, reply_markup=InlineKeyboardMarkup(key), parse_mode='HTML',
+                             chat_id=query.message.chat_id)
+
 
 def send_main_message(update, context):
     main_menu(update, context, send_message=True)
