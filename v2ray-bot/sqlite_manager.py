@@ -43,6 +43,8 @@ class ManageDb:
         where_ = f'WHERE {where}' if where else ''
 
         sql = f"SELECT {distinct_}{column} FROM {table} {where_} {order_by_} {limit_}"
+
+        # print(f"SELECT {distinct_}{column} FROM {table} {where_} {order_by_} {limit_}")
         self.cursor.execute(sql)
         self.db_values = self.cursor.fetchall()
         return self.db_values

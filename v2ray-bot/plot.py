@@ -3,7 +3,7 @@ import datetime
 import matplotlib.pyplot as plt
 import io
 
-def get_plot(data, period):
+def get_plot(data, period_):
     # period = ['12-3', '3-6', '6-9', '9-00', '00-03', '03-06', '06-09', '09-12']
     # usage = [44, 53, 123, 4, 42, 64, 13, 4]
     period = data.keys()
@@ -18,7 +18,7 @@ def get_plot(data, period):
 
     fig, ax = plt.subplots(figsize=(9, 6))
 
-    bars = ax.bar(period, usage, color='#3449eb', edgecolor='black', linewidth=0.5, alpha=0.8)
+    bars = ax.bar(period, usage, color=f'#3449eb', edgecolor='black', linewidth=0.5, alpha=0.8)
 
     for bar in bars:
         height = bar.get_height()
@@ -33,7 +33,7 @@ def get_plot(data, period):
     ax.set_facecolor(background_color)
 
     font_dict = {'fontsize': 14, 'color': 'black'}
-    plt.xlabel(list_of_period_name[period], **font_dict)
+    plt.xlabel(list_of_period_name[period_], **font_dict)
     plt.ylabel('Usage (MB)', **font_dict)
 
     # plt.title('Usage in the Last 24 Horse', fontsize=16, color='black')

@@ -39,6 +39,9 @@ def create_database():
 
     c.execute('CREATE TABLE IF NOT EXISTS Last_usage(id integer primary key, last_usage text, date text)')
 
+    c.execute('CREATE TABLE IF NOT EXISTS Gift_service(id integer primary key, name text, user_name text,'
+              'chat_id integer, traffic integer, date text)')
+
     # c.execute('ALTER TABLE Purchased ADD COLUMN auto_renewal integer DEFAULT 0')
     # c.execute('CREATE TABLE IF NOT EXISTS Ticket(id integer primary key, answered integer, chat_id text, last_traffic_usage integer)')
     # c.execute('CREATE TABLE IF NOT EXISTS Initialization(id integer primary key, answered integer, chat_id text, last_traffic_usage integer)')

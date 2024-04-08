@@ -51,6 +51,7 @@ def something_went_wrong(update, context):
     else:
         update.message.reply_text(text)
 
+
 def just_for_show(update, context):
     query = update.callback_query
     query.answer(text="این دکمه برای نمایش دادن اطلاعات است!", show_alert=False)

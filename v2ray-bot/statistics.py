@@ -6,6 +6,7 @@ from admin_task import (api_operation, sqlite_manager)
 from utilities import format_mb_traffic, make_day_name_farsi
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from plot import get_plot
+from tasks import handle_telegram_exceptions
 
 
 STATISTICS_TIMER_HORSE = 3
@@ -73,6 +74,7 @@ def datetime_range(start, end, delta):
         current += delta
 
 
+@handle_telegram_exceptions
 def reports_func(data):
 
     chat_id = data[0]
@@ -102,7 +104,7 @@ def reports_func(data):
         get_user_usage = [{user_purchased[0]: user_purchased[1]} for user_purchased in eval(get_date[1]).items() if user_purchased[0] in purchased]
         user_usage_dict[get_date[2]] = get_user_usage
 
-    detail_text, final_dict, final_traffic, avreage_traffic, index = '', {}, 0, 0, 1
+    detail_text, final_dict, final_traffic, avreage_traffic, index = 'None', {}, 0, 0, 1
 
     if period == 'day':
         for index, (timestamp, usage_list) in enumerate(user_usage_dict.items()):
@@ -143,7 +145,7 @@ def reports_func(data):
             detail_text += ''.join(usage_detail[:5]) if get_purchased[0] == 'all' else ''
 
             final_traffic += get_traff
-            final_dict[f"{our_date.strftime('%A')}"] = get_traff
+            final_dict[f"{our_date.strftime('%a %d')}"] = get_traff
 
         avreage_traffic = final_traffic / index
 
@@ -159,7 +161,7 @@ def reports_func(data):
                 date_ = our_date.strftime(period_value['date_format'])
                 get_usage, get_traff = {}, 0
                 for _ in user_usage_dict.items():
-                    time = datetime.strptime(_[0], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m')
+                    time = datetime.strptime(_[0], '%Y-%m-%d %H:%M:%S').strftime(period_value['date_format'])
                     if time == date_:
                         for usage in _[1]:
                             usage_name, usage_traffic = next(iter(usage.items()))
@@ -173,7 +175,7 @@ def reports_func(data):
                 detail_text += ''.join(usage_detail[:5]) if get_purchased[0] == 'all' else ''
 
                 final_traffic += get_traff
-                final_dict[f"{our_date.strftime('%Y-%m')}"] = get_traff
+                final_dict[f"{our_date.strftime('%m-%d')}"] = get_traff
 
             avreage_traffic = final_traffic / index
             break
@@ -181,6 +183,7 @@ def reports_func(data):
     return detail_text, final_dict, final_traffic, avreage_traffic
 
 
+@handle_telegram_exceptions
 def report_section(update, context):
     query = update.callback_query
     data_org = query.data.split('_')  # statistics_day_all_hide
@@ -190,7 +193,7 @@ def report_section(update, context):
 
     if sum(get_data[1].values()) == 0:
         keyboard = [[InlineKeyboardButton("برگشت ↰", callback_data='main_menu')]]
-        query.edit_message_text('<b>مصرفی برای شما ثبت نشده است.</b>', reply_markup=InlineKeyboardMarkup(keyboard))
+        query.edit_message_text(text='<b>مصرفی برای شما ثبت نشده است.</b>', reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
         return
 
     mapping = {
@@ -203,10 +206,10 @@ def report_section(update, context):
     back_button, button_name, next_button, constituent_name = (
         mapping.get(data[1], (f'statistics_day_{data[2]}', 'هفته', f'statistics_month_{data[2]}', 'روز')))
 
-    detail_emoji, detail_callback, detail_text = '➕', 'open', ''
+    detail_emoji, detail_callback, detail_text = '+', 'open', ''
 
     if data_org[3] == 'open':
-        detail_emoji, detail_callback = '➖', 'hide'
+        detail_emoji, detail_callback = '-', 'hide'
         detail_text = get_data[0]
 
     arrows = []
@@ -217,7 +220,7 @@ def report_section(update, context):
     keyboard = [
         arrows,
         [InlineKeyboardButton(f"{detail_emoji} جزئیات گزارش", callback_data=f'statistics_{data[1]}_{data[2]}_{detail_callback}')],
-        [InlineKeyboardButton(f"مشاهده گزارش سرویس ها", callback_data=f'service_statistics_all')],
+        [InlineKeyboardButton(f"مشاهده گزارش سرویس ها", callback_data=f'service_statistics_all_10')],
         [InlineKeyboardButton("برگشت ↰", callback_data='menu_delete_main_message')]
     ]
 
@@ -229,7 +232,7 @@ def report_section(update, context):
     text += f'\n{detail_text}'
 
     if query.message.photo:
-        media_photo = InputMediaPhoto(media=get_plot_image, caption=text, parse_mode='html')
+        media_photo = InputMediaPhoto(media=get_plot_image, parse_mode='html')
         context.bot.edit_message_media(media=media_photo, chat_id=chat_id, message_id=query.message.message_id)
         context.bot.edit_message_caption(caption=text, parse_mode='html', chat_id=chat_id,
                                          message_id=query.message.message_id,
@@ -241,5 +244,5 @@ def report_section(update, context):
                                reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
 
-# reports_func('all')
+# print(reports_func([81532053, 'month', 'week']))
 # statistics_timer(1)
