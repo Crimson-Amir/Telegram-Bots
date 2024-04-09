@@ -144,7 +144,7 @@ def traffic_to_gb(traffic, byte_to_gb:bool = True):
     if byte_to_gb:
         return traffic / (1024 ** 3)
     else:
-        return traffic * (1024 ** 3)
+        return int(traffic * (1024 ** 3))
 
 
 def second_to_ms(date, time_to_ms: bool = True):
@@ -163,7 +163,8 @@ def add_client_bot(purchased_id):
         get_service_db = sqlite_manager.select(table='Product', where=f'id = {get_client_db[0][6]}')
 
         id_ = f"{get_client_db[0][4]}_{random_number}"
-        email_ = f"{purchased_id}_{get_service_db[0][6]}GB"
+        name = 'Gift' if 'gift' in get_service_db[0][3] else f'{get_service_db[0][6]}GB'
+        email_ = f"{purchased_id}_{name}"
 
         if get_service_db[0][6]:
             traffic_to_gb_ = traffic_to_gb(get_service_db[0][6], False)
@@ -187,6 +188,10 @@ def add_client_bot(purchased_id):
         }
 
         create = api_operation.add_client(data, get_service_db[0][11])
+
+        check_servise_available = api_operation.get_client(email_, domain=get_service_db[0][11])
+        if not check_servise_available['obj']: return False, create, 'service do not create'
+
         get_cong = api_operation.get_client_url(email_, int(get_service_db[0][1]),
                                                 domain=get_service_db[0][10], server_domain=get_service_db[0][11])
 
@@ -194,15 +199,15 @@ def add_client_bot(purchased_id):
                                              'client_id': id_, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
                                              'details': get_cong, 'active': 1, 'status': 1}},
                               where=f'id = {purchased_id}')
-        print(create)
+
         if create['success']:
-            return True, create
+            return True, create, 'service create success'
         else:
-            return False, create
+            return False, create, 'create service is failed'
 
     except Exception as e:
         utilities.report_problem_to_admin_witout_context('ADD CLIENT BOT [ADMIN TASK]', chat_id=None, error=e)
-        return False
+        return False, None, f'Error: {e}'
 
 
 def run_in_system(update, context):

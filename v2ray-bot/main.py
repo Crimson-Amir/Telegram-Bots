@@ -190,9 +190,9 @@ def main():
     dp.add_handler(CallbackQueryHandler(get_service_of_server))
 
     job = updater.job_queue
-    job.run_repeating(check_all_configs, interval=100, first=0)
-    job.run_repeating(pay_per_use_calculator, interval=3600, first=0)
-    job.run_repeating(statistics_timer, interval=STATISTICS_TIMER_HORSE * 3600, first=0)
+    job.run_repeating(check_all_configs, interval=100)
+    job.run_repeating(pay_per_use_calculator, interval=3600)
+    job.run_repeating(statistics_timer, interval=STATISTICS_TIMER_HORSE * 3600)
 
     updater.start_polling()
     updater.idle()

@@ -56,15 +56,18 @@ class Task(ManageDb):
         return unic_plans
 
     @handle_exceptions
-    def upgrade_service(self, context, service_id):
+    def upgrade_service(self, context, service_id, by_list=None):
         get_client = sqlite_manager.select(table='Purchased', where=f'id = {service_id}')
 
         get_server_domain = sqlite_manager.select(column='server_domain', table='Product',
                                                   where=f'id = {get_client[0][6]}')
 
-        user_db = sqlite_manager.select(table='User', where=f'chat_id = {get_client[0][4]}')
-
-        price = ranking_manage.discount_calculation(user_db[0][3], user_db[0][5], user_db[0][6])
+        if not by_list:
+            user_db = sqlite_manager.select(table='User', where=f'chat_id = {get_client[0][4]}')
+            price = ranking_manage.discount_calculation(user_db[0][3], user_db[0][5], user_db[0][6])
+        else:
+            user_db = by_list  # [0, 0, 0, 0, 0, traffic_gb, period_day]
+            price = 0
 
         # client_id = get_client[0][10]
         client_email = get_client[0][9]
@@ -81,14 +84,14 @@ class Task(ManageDb):
 
                 if client['enable']:
                     tra = client['totalGB']
-                    traffic = (user_db[0][5] * (1024 ** 3)) + tra
+                    traffic = int((user_db[0][5] * (1024 ** 3)) + tra)
                     expiry_timestamp = client['expiryTime']
                     expiry_datetime = datetime.fromtimestamp(expiry_timestamp / 1000)
                     new_expiry_datetime = expiry_datetime + timedelta(days=user_db[0][6])
                     human_data = new_expiry_datetime
                     my_data = int(new_expiry_datetime.timestamp() * 1000)
                 else:
-                    traffic = user_db[0][5] * (1024 ** 3)
+                    traffic = int(user_db[0][5] * (1024 ** 3))
                     my_data = now + timedelta(days=user_db[0][6])
                     human_data = my_data
                     my_data = int(my_data.timestamp() * 1000)
@@ -112,7 +115,7 @@ class Task(ManageDb):
                                          status_of_pay=1, context=context)
 
                 report_status_to_admin(context, text=f'User Upgrade Service\nService Name: {get_client[0][9]}'
-                                                     f'\nTraffic: {user_db[0][5]}GB\nPeriod: {(human_data - now.replace(tzinfo=None)).days}day',
+                                                     f'\nTraffic: {user_db[0][5]}GB\nPeriod: {user_db[0][6]}day',
                                        chat_id=get_client[0][4])
 
                 break
@@ -369,7 +372,7 @@ def subcategory_auto(context, invite_chat_id, price):
         utilities.message_to_user(None, context, message=text, chat_id=invite_chat_id)
 
 
-def send_clean_for_customer(query, context, id_):
+def send_clean_for_customer(query, context, id_, max_retries=2):
     create = add_client_bot(id_)
     if create[0]:
         get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
@@ -411,24 +414,30 @@ def send_clean_for_customer(query, context, id_):
                 invite_chat_id = get_user_detail[0][0]
                 subcategory_auto(context, invite_chat_id, price)
 
-                return {'success': True}
+                return {'success': True, 'msg': 'config created successfull', 'purchased_id': id_}
             else:
                 send_service_to_customer_report(context, status=0, chat_id=get_client[0][4],
                                                 service_name=get_client[0][9],
                                                 more_detail=create)
-                print('wrong: ', returned)
-                return {'success': False}
+                return {'success': False, 'msg': returned}
 
         except Exception as e:
-            print(e)
             send_service_to_customer_report(context, status=0, chat_id=get_client[0][4], service_name=get_client[0][9],
                                             more_detail='ERROR IN SEND CLEAN FOR CUSTOMER', error=e)
-            return {'success': False}
+            return {'success': False, 'msg': str(e)}
+
+    elif not create[0] and create[2] == 'service do not create':
+        send_service_to_customer_report(context, status=0, chat_id=None, service_name=None,
+                                        more_detail=f'SERVICE DONT CREATED SUCCESSFULL AND TRY ONE MORE TIME (SEND CLEAN FOR CUSTOMER)\n{create}')
+        if max_retries > 0:
+            return send_clean_for_customer(query, context, id_, max_retries - 1)
+        else:
+            return {'success': False, 'msg': 'Maximum retries exceeded'}
 
     else:
         send_service_to_customer_report(context, status=0, chat_id=None, service_name=None,
                                         more_detail=f'EEROR IN ADD CLIENT (SEND CLEAN FOR CUSTOMER)\n{create}')
-        raise Exception(f'Error: {create}')
+        return Exception(f'Error: {create}')
 
 
 def apply_card_pay(update, context):
@@ -559,8 +568,10 @@ def server_detail_customer(update, context):
         keyboard = [
             [InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"upgrade_service_customize_{get_data[0][0]}")]]
 
-        if int(ret_conf['obj']['total']) != 0:
-            total_traffic = int(round(ret_conf['obj']['total'] / (1024 ** 3), 2))
+        # report_status_to_admin(context, chat_id=None, text=ret_conf['obj'])
+
+        if ret_conf['obj']['total'] != 0:
+            total_traffic = round(ret_conf['obj']['total'] / (1024 ** 3), 2)
 
         if int(ret_conf['obj']['expiryTime']) != 0:
             expiry_timestamp = ret_conf['obj']['expiryTime'] / 1000
@@ -602,7 +613,7 @@ def server_detail_customer(update, context):
             f"\n📅 تاریخ انقضا: {expiry_month} {exist_day}"
             f"\n\n🔼 آپلود↑: {format_traffic(upload_gb)}"
             f"\n🔽 دانلود↓: {format_traffic(download_gb)}"
-            f"\n📊 مصرف کل: {usage_traffic}/{total_traffic}{'GB' if isinstance(total_traffic, int) else ''}"
+            f"\n📊 مصرف کل: {usage_traffic}/{total_traffic}{'GB' if isinstance(total_traffic, float) else ''}"
             f"{auto_renwal}"
             f"\n⏰ تاریخ خرید/تمدید: {purchase_date.strftime('%H:%M:%S | %Y/%m/%d')}"
             f"\n\n🌐 آدرس سرویس:\n <code>{get_data[0][8]}</code>"
@@ -1358,7 +1369,6 @@ def setting(update, context):
     keyboard = [
         [InlineKeyboardButton("نوتیفیکیشن سرویس", callback_data="service_notification"),
          InlineKeyboardButton("نوتیفیکیشن کیف‌پول", callback_data="wallet_notification")],
-        [InlineKeyboardButton("• تراکنش های مالی", callback_data="financial_transactions")],
         [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]
     ]
     query.edit_message_text(text='*در این قسمت میتونید تنظیمات ربات رو مشاهده و یا شخصی سازی کنید:*',
@@ -1481,7 +1491,7 @@ def financial_transactions(update, context):
                 list_of_t) else None
             keyboard.append(keyboard_backup)
 
-        keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="setting")])
+        keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="wallet_page")])
 
         query.edit_message_text(text=f"لیست تراکنش های مالی شما: \n" + "\n\n".join(get_purchased),
                                 reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1523,6 +1533,7 @@ def wallet_page(update, context):
             [InlineKeyboardButton("تازه سازی ⟳", callback_data=f"wallet_page"),
              InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")],
             [InlineKeyboardButton("مشاهده تراکنش های کیف پول", callback_data=f"financial_transactions_wallet")],
+            [InlineKeyboardButton("• تراکنش های مالی", callback_data="financial_transactions")],
             [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]]
 
         text_ = (
@@ -1906,13 +1917,13 @@ def remove_service(update, context):
     get_uuid = sqlite_manager.select(column='client_id,inbound_id,name,id,product_id', table='Purchased',
                                      where=f'client_email = "{email}"')
 
-    get_server_domain = sqlite_manager.select(column='server_domain', table='Product',
+    get_server_domain = sqlite_manager.select(column='server_domain,price', table='Product',
                                               where=f'id = {get_uuid[0][4]}')
 
     ret_conf = api_operation.get_client(email, get_server_domain[0][0])
 
     try:
-        if int(ret_conf['obj']['total']):
+        if int(ret_conf['obj']['total']) and get_server_domain[0][1]:
             upload_gb = int(ret_conf['obj']['up']) / (1024 ** 3)
             download_gb = int(ret_conf['obj']['down']) / (1024 ** 3)
             usage_traffic = round(upload_gb + download_gb, 2)
@@ -1926,7 +1937,7 @@ def remove_service(update, context):
             price = ranking_manage.discount_calculation(chat_id, left_traffic, days_lefts)
 
         else:
-            price = days_lefts = left_traffic = 0
+            price, days_lefts, left_traffic = 0, 0, 0
 
         if 'remove_service_' in query.data:
             keyboard = [[InlineKeyboardButton("✓ بله مطمئنم", callback_data=f"accept_rm_ser_{email}")],
@@ -2818,26 +2829,45 @@ def service_statistics(update, context):
             query.answer('شما صاحب سرویسی نیستید!')
 
 
-@handle_telegram_exceptions
-def get_product_id_for_gift(traffic):
-    traffic = round(int(traffic) / 1000, 2)
-    get_id = sqlite_manager.select('id', table='Product', where=f'price = 0 and traffic = {traffic}')
+# @handle_telegram_exceptions
+def upgrade_or_create(traffic, user, context):
+    chat_id = int(user['id'])
 
-    if not get_id:
-        get_data = {'inbound_id': 2, 'active': 0,
-                    'name': private.country_main_name, 'country': private.country_main,
-                    'period': 1, 'traffic': traffic,
-                    'price': 0, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
-                    'is_personalization': None, 'domain': PAY_PER_USE_DOMAIN,
-                    'server_domain': private.DOMAIN, 'status': 0}
-        get_id = sqlite_manager.insert('Product', rows=[get_data])
+    try:
+        traffic = round(int(traffic) / 1000, 2)
+        get_id = sqlite_manager.select('id', table='Product', where=f'name LIKE "gift%"')
+        if not get_id:
+            get_data = {'inbound_id': 2, 'active': 0,
+                        'name': f'gift_{private.country_main}', 'country': private.country_main,
+                        'period': 1, 'traffic': traffic,
+                        'price': 0, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
+                        'is_personalization': None, 'domain': PAY_PER_USE_DOMAIN,
+                        'server_domain': private.DOMAIN, 'status': 0}
 
-    else:
-        get_id = get_id[0][0]
+            get_id = sqlite_manager.insert('Product', rows=[get_data])
+
+        else:
+            get_id = get_id[0][0]
 
 
-    return get_id
+        get_purchased_id = sqlite_manager.select('id', table='Purchased',
+                                                 where=f'product_id = {get_id} AND chat_id = {user["id"]}')
+        if get_purchased_id:
 
+            task.upgrade_service(context, get_purchased_id[0][0], [(0, 0, 0, 0, 0, traffic, 1),])
+            context.bot.send_message(text=f'🔵 کانفیگ شماره {get_purchased_id[0][0]} ارتقا یافت!', chat_id=chat_id)
+
+            return {'msg': 'upgrade service', 'purchased_id': get_purchased_id[0][0]}
+
+        else:
+            id_ = sqlite_manager.insert('Purchased', rows=[
+                {'active': 1, 'status': 1, 'name': user["first_name"], 'user_name': user["username"],
+                 'chat_id': user['id'], 'product_id': get_id, 'notif_day': 1, 'notif_gb': 0}])
+
+            get_res = send_clean_for_customer(1, context, id_)
+            return get_res
+    except Exception as e:
+        ready_report_problem_to_admin(context, text='Error In Daily Gift', error=e, chat_id=chat_id)
 
 
 @handle_telegram_exceptions
@@ -2846,7 +2876,6 @@ def daily_gift(update, context):
     user = query.from_user
     # user = {'id': 1,'first_name': 1,'username': 1}
     chat_id = int(user["id"])
-
     is_user_start_bot = sqlite_manager.select(table='User', where=f'chat_id = {chat_id}')
     if not is_user_start_bot:
         query.answer('کاربر عزیز، ابتدا ربات رو استارت کنید و دوباره اقدام کنید:'
@@ -2870,30 +2899,25 @@ def daily_gift(update, context):
 
 
     if is_this_24_hours:
-        gifts_chance = {'0': 2, '100': 2, '500': 5, '1000': 3,
-                        '2000': 0.9, '3000': 0.8, '5000': 0.7, '8000': 0.6,
-                        '10000': 0.1, '25000': 0.05, '50000': 0.01,
-                        '75000': 0.005, '100000': 0.001}
+        gifts_chance = {'0': 2, '100': 10, '200': 9, '300': 8, '400': 7, '500': 6, '600': 5, '700': 4, '800': 3, '900': 2, '1000': 1}
 
         chance = random.choices(list(gifts_chance.keys()), weights=list(gifts_chance.values()))[0]
 
         text = 'متاسفانه امروز برنده نشدی!\nفردا دوباره امتحان کن.'
 
         if int(chance):
-            product_id = get_product_id_for_gift(chance)
+            get_final_res = upgrade_or_create(chance, user, context)
             traffic_formated = format_mb_traffic(int(chance))
 
-            id_ = sqlite_manager.insert('Purchased', rows=[
-                {'active': 1, 'status': 1, 'name': user["first_name"], 'user_name': user["username"],
-                 'chat_id': chat_id, 'product_id': product_id, 'notif_day': 1, 'notif_gb': 0}])
-
-            sqlite_manager.insert('Gift_service', rows=[{'name': user['first_name'],'user_name': user['username'],
-                                                         'chat_id': chat_id,'traffic': int(chance),'date': now.strftime('%Y-%m-%d %H:%M:%S')}])
-
-            send_clean_for_customer(1, context, id_)
-
-            text = (f'🎉 تبریک، شما برنده سرویس هدیه {traffic_formated} شدید!'
+            text = (f'🎉 تبریک، شما برنده هدیه {traffic_formated} شدید!'
                     '\nجزئیات از طریق ربات ارسال شد.')
+
+            if get_final_res.get('msg') == 'Forbidden: bot was blocked by the user':
+                text = 'شما ربات را بلاک کردید!\nتلاش برای ارسال سرویس ناموفق بود!'
+
+        sqlite_manager.insert('Gift_service', rows=[{'name': user['first_name'], 'user_name': user['username'],
+                                                     'chat_id': chat_id, 'traffic': int(chance),
+                                                     'date': now.strftime('%Y-%m-%d %H:%M:%S')}])
 
         query.answer(text, show_alert=True)
         report_status_to_admin(context, text=f'User Win Gift Service [{chance}MB]', chat_id=chat_id)
@@ -2916,14 +2940,13 @@ def daily_gift(update, context):
 
         query.answer(text, show_alert=True)
 
-
 @handle_telegram_exceptions
 def daily_gift_message(update, context):
     target_chat_id = context.args[0]
 
     text = (
         f"به عنوان تشکر از حمایت شما؛"
-        f"\nهر روز یک سرویس از <b>100مگابایت تا 100گیگابایت</b> هدیه بگیرید!"
+        f"\nهر روز یک سرویس تا 1 گیگابایت هدیه بگیرید!"
         f"\n\nبرای دریافت هدیه‌ی روزانه، دکمه زیر را فشار دهید."
         f"\n\nاز اعتماد شما متشکریم و امیدواریم که از هدیه‌ها لذت ببرید."
     )

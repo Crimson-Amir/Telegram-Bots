@@ -13,25 +13,26 @@ STATISTICS_TIMER_HORSE = 3
 
 
 def statistics_timer(context):
-    get_all = api_operation.get_all_inbounds()
-
     date_now = datetime.now(pytz.timezone('Asia/Tehran'))
     date = datetime.strftime(date_now, '%Y-%m-%d %H:%M:%S')
-    print(date)
-    get_from_db = sqlite_manager.select(
-        column='id,chat_id,client_email,status,date,notif_day,notif_gb,inbound_id,client_id,product_id',
-        table='Purchased')
-
-    get_last_traffic_uasge = sqlite_manager.select(
-        column='last_usage,date',
-        table='Last_usage',
-        order_by='id DESC',
-        limit=1
-    )
-
-    last_usage_dict, statistics_usage_traffic = {}, {}
 
     try:
+
+        get_all = api_operation.get_all_inbounds()
+
+        get_from_db = sqlite_manager.select(
+            column='id,chat_id,client_email,status,date,notif_day,notif_gb,inbound_id,client_id,product_id',
+            table='Purchased')
+
+        get_last_traffic_uasge = sqlite_manager.select(
+            column='last_usage,date',
+            table='Last_usage',
+            order_by='id DESC',
+            limit=1
+        )
+
+        last_usage_dict, statistics_usage_traffic = {}, {}
+
         for server in get_all:
             for config in server['obj']:
                 for client in config['clientStats']:
@@ -56,7 +57,6 @@ def statistics_timer(context):
         sqlite_manager.custom_multi(*list_of_order)
 
 
-
     except IndexError as e:
         ready_report_problem_to_admin(context, 'Statistics Timer IndexError!', '', e)
         if 'list index out of range' in str(e):
@@ -65,6 +65,7 @@ def statistics_timer(context):
 
     except Exception as e:
         ready_report_problem_to_admin(context, 'Statistics Timer IndexError!', '', e)
+
 
 
 def datetime_range(start, end, delta):
