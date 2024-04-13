@@ -81,19 +81,18 @@ class Task(ManageDb):
         for client in client_list:
             if client['email'] == client_email:
                 client_id = client['id']
+                get_client_status = api_operation.get_client(client_email, get_server_domain[0][0])
 
-                if client['enable']:
+                if get_client_status['obj']['enable']:
                     tra = client['totalGB']
                     traffic = int((user_db[0][5] * (1024 ** 3)) + tra)
                     expiry_timestamp = client['expiryTime']
                     expiry_datetime = datetime.fromtimestamp(expiry_timestamp / 1000)
                     new_expiry_datetime = expiry_datetime + timedelta(days=user_db[0][6])
-                    human_data = new_expiry_datetime
                     my_data = int(new_expiry_datetime.timestamp() * 1000)
                 else:
                     traffic = int(user_db[0][5] * (1024 ** 3))
                     my_data = now + timedelta(days=user_db[0][6])
-                    human_data = my_data
                     my_data = int(my_data.timestamp() * 1000)
                     print(api_operation.reset_client_traffic(client_id, client_email, get_server_domain[0][0]))
 
@@ -260,9 +259,8 @@ def get_card_pay_evidence(update, context):
         ex = sqlite_manager.select('id', 'Purchased', where=f'active = 0 and chat_id = {user["id"]}', limit=1)
 
         if not ex:
-            ex = sqlite_manager.insert('Purchased', rows=[
-                {'active': 0, 'status': 0, 'name': user["first_name"], 'user_name': user["username"],
-                 'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0, 'notif_gb': 0}])
+            ex = sqlite_manager.insert('Purchased', rows={'active': 0, 'status': 0, 'name': user["first_name"], 'user_name': user["username"],
+                                                          'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0, 'notif_gb': 0})
         else:
             sqlite_manager.update({'Purchased':
                                        {'active': 0, 'status': 0, 'name': user["first_name"],
@@ -680,7 +678,7 @@ def change_infiniti_service_status(update, context):
 
         print(api_operation.update_client(get_data[0][10], data, get_server_domain[0][0]))
         report_status_to_admin(context,
-                               text=f'Service With Email {get_data[0][9]} Has Be Changed Activity By User To {change_to}',
+                               text=f'Service With Email {get_data[0][9]} Has Be Changed Activity By User To {status}',
                                chat_id=get_data[0][4])
 
         query.answer(f'سرویس با موفقیت {status} شد')
@@ -790,7 +788,7 @@ def personalization_service(update, context):
                 sqlite_manager.update({'Product': get_data}, where=f'id = {check_available[0][0]}')
                 new_id = check_available[0][0]
             else:
-                new_id = sqlite_manager.insert('Product', [get_data])
+                new_id = sqlite_manager.insert('Product', get_data)
 
             texted = ('*• شخصی سازی را تایید میکنید؟:*'
                       f'\n\nحجم سرویس: {traffic}GB'
@@ -1064,10 +1062,10 @@ def get_free_service(update, context):
     user = query.from_user
     try:
         sqlite_manager.update({'User': {'free_service': 1}}, where=f"chat_id = {user['id']}")
-        ex = sqlite_manager.insert('Purchased', rows=[
-            {'active': 1, 'status': 1, 'name': user["first_name"], 'user_name': user["username"],
-             'chat_id': int(user["id"]), 'product_id': 1, 'inbound_id': 1, 'date': datetime.now(),
-             'notif_day': 0, 'notif_gb': 0}])
+        ex = sqlite_manager.insert('Purchased', rows=
+        {'active': 1, 'status': 1, 'name': user["first_name"], 'user_name': user["username"],
+         'chat_id': int(user["id"]), 'product_id': 1, 'inbound_id': 1, 'date': datetime.now(),
+         'notif_day': 0, 'notif_gb': 0})
         send_clean_for_customer(update.callback_query, context, ex)
         context.bot.send_message(ADMIN_CHAT_ID, f'🟢 User {user["name"]} With ID: {user["id"]} TAKE A FREE SERVICE')
         keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]]
@@ -1158,6 +1156,7 @@ def show_help(update, context):
 def people_ask(update, context):
     query = update.callback_query
     help_what = query.data.replace('ask_', '')
+    text = 'None'
 
     if help_what == 'vpn_increase_traffic':
         text = ("<b>خیر، به طول کلی استفاده از vpn باعث افزایش مصرف ترافیک نمیشود!"
@@ -1583,9 +1582,9 @@ def buy_credit_volume(update, context):
     try:
         if query.data == "buy_credit_volume":
             sqlite_manager.insert(table='Credit_History',
-                                  rows=[{'active': 0, 'chat_id': query.message.chat_id, 'value': 25_000,
-                                         'name': query.from_user.name, 'user_name': query.from_user.username,
-                                         'operation': 1}])
+                                  rows={'active': 0, 'chat_id': query.message.chat_id, 'value': 25_000,
+                                        'name': query.from_user.name, 'user_name': query.from_user.username,
+                                        'operation': 1})
 
         get_credit = sqlite_manager.select(column='value, id', table='Credit_History',
                                            where=f'chat_id = {query.message.chat_id}',
@@ -1857,9 +1856,9 @@ def pay_from_wallet(update, context):
             ex = sqlite_manager.select('id', 'Purchased', where=f'active = 0 and chat_id = {user["id"]}', limit=1)
 
             if not ex:
-                ex = sqlite_manager.insert('Purchased', rows=[
-                    {'active': 0, 'status': 0, 'name': user["first_name"], 'user_name': user["username"],
-                     'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0, 'notif_gb': 0}])
+                ex = sqlite_manager.insert('Purchased', rows=
+                {'active': 0, 'status': 0, 'name': user["first_name"], 'user_name': user["username"],
+                 'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0, 'notif_gb': 0})
             else:
                 sqlite_manager.update({'Purchased':
                                            {'active': 0, 'status': 0, 'name': user["first_name"],
@@ -1997,9 +1996,9 @@ def admin_reserve_service(update, context):
         ex = sqlite_manager.select('id', 'Purchased', where=f'active = 0 and chat_id = {user_message[0]}', limit=1)
 
         if not ex:
-            ex = sqlite_manager.insert('Purchased', rows=[
-                {'active': 0, 'status': 0, 'name': user[0][0], 'user_name': user[0][1],
-                 'chat_id': user_message[0], 'product_id': user_message[1], 'notif_day': 0, 'notif_gb': 0}])
+            ex = sqlite_manager.insert('Purchased', rows=
+            {'active': 0, 'status': 0, 'name': user[0][0], 'user_name': user[0][1],
+             'chat_id': user_message[0], 'product_id': user_message[1], 'notif_day': 0, 'notif_gb': 0})
         else:
             sqlite_manager.update({'Purchased':
                                        {'active': 0, 'status': 0, 'name': user[0][0], 'user_name': user[0][1],
@@ -2054,7 +2053,7 @@ def pay_per_use(update, context):
                                 'is_personalization': None, 'domain': PAY_PER_USE_DOMAIN,
                                 'server_domain': server_domain, 'status': 0}
 
-                    get_infinite_product_id = sqlite_manager.insert('Product', rows=[get_data])
+                    get_infinite_product_id = sqlite_manager.insert('Product', rows=get_data)
 
                 else:
                     get_infinite_product_id = get_infinite_product[0][0]
@@ -2078,16 +2077,16 @@ def pay_per_use(update, context):
 
             sqlite_manager.update({'Product': {'status': 1}}, where=f'id = {get_infinite_product_id}')
 
-            ex = sqlite_manager.insert('Purchased', rows=[
-                {'active': 1, 'status': 1, 'name': query.from_user['name'], 'user_name': query.from_user['username'],
-                 'chat_id': query.message.chat_id, 'product_id': get_infinite_product_id, 'notif_day': 0,
-                 'notif_gb': 0}])
+            ex = sqlite_manager.insert('Purchased', rows=
+            {'active': 1, 'status': 1, 'name': query.from_user['name'], 'user_name': query.from_user['username'],
+             'chat_id': query.message.chat_id, 'product_id': get_infinite_product_id, 'notif_day': 0,
+             'notif_gb': 0})
 
             send_clean_for_customer(query, context, ex)
             keyboard = [[InlineKeyboardButton("برگشت ↰", callback_data=f"main_menu")]]
 
-            sqlite_manager.insert(table='Hourly_service', rows=[
-                {'purchased_id': ex, 'chat_id': query.message.chat_id, 'last_traffic_usage': 0}])
+            sqlite_manager.insert(table='Hourly_service', rows=
+            {'purchased_id': ex, 'chat_id': query.message.chat_id, 'last_traffic_usage': 0})
 
             text = "سرویس با موفقیت برای شما فعال شد ✅"
 
@@ -2327,9 +2326,9 @@ def rank_page(update, context):
 
     except IndexError as i:
         if 'list index out of range' in str(i):
-            sqlite_manager.insert('Rank', [{'name': query.from_user['name'], 'user_name': query.from_user['username'],
-                                            'chat_id': query.from_user['id'], 'level': 0,
-                                            'rank_name': next(iter(ranking.rank_access))}])
+            sqlite_manager.insert('Rank', {'name': query.from_user['name'], 'user_name': query.from_user['username'],
+                                           'chat_id': query.from_user['id'], 'level': 0,
+                                           'rank_name': next(iter(ranking.rank_access))})
             query.answer('دوباره کلیک کنید')
 
     except Exception as e:
@@ -2842,9 +2841,9 @@ def upgrade_or_create(traffic, user, context):
                         'period': 1, 'traffic': traffic,
                         'price': 0, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
                         'is_personalization': None, 'domain': PAY_PER_USE_DOMAIN,
-                        'server_domain': private.DOMAIN, 'status': 0}
+                        'server_domain': private.DOMAIN, 'status': 1}
 
-            get_id = sqlite_manager.insert('Product', rows=[get_data])
+            get_id = sqlite_manager.insert('Product', rows=get_data)
 
         else:
             get_id = get_id[0][0]
@@ -2860,9 +2859,9 @@ def upgrade_or_create(traffic, user, context):
             return {'msg': 'upgrade service', 'purchased_id': get_purchased_id[0][0]}
 
         else:
-            id_ = sqlite_manager.insert('Purchased', rows=[
-                {'active': 1, 'status': 1, 'name': user["first_name"], 'user_name': user["username"],
-                 'chat_id': user['id'], 'product_id': get_id, 'notif_day': 1, 'notif_gb': 0}])
+            id_ = sqlite_manager.insert('Purchased', rows=
+            {'active': 1, 'status': 1, 'name': user["first_name"], 'user_name': user["username"],
+             'chat_id': user['id'], 'product_id': get_id, 'notif_day': 1, 'notif_gb': 0})
 
             get_res = send_clean_for_customer(1, context, id_)
             return get_res
@@ -2915,9 +2914,9 @@ def daily_gift(update, context):
             if get_final_res.get('msg') == 'Forbidden: bot was blocked by the user':
                 text = 'شما ربات را بلاک کردید!\nتلاش برای ارسال سرویس ناموفق بود!'
 
-        sqlite_manager.insert('Gift_service', rows=[{'name': user['first_name'], 'user_name': user['username'],
-                                                     'chat_id': chat_id, 'traffic': int(chance),
-                                                     'date': now.strftime('%Y-%m-%d %H:%M:%S')}])
+        sqlite_manager.insert('Gift_service', rows={'name': user['first_name'], 'user_name': user['username'],
+                                                    'chat_id': chat_id, 'traffic': int(chance),
+                                                    'date': now.strftime('%Y-%m-%d %H:%M:%S')})
 
         query.answer(text, show_alert=True)
         report_status_to_admin(context, text=f'User Win Gift Service [{chance}MB]', chat_id=chat_id)

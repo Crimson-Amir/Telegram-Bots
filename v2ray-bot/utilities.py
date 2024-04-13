@@ -3,7 +3,7 @@ import arrow
 import pytz
 from private import *
 import requests
-from ranking import rank_emojis, rank_title_fa, rank_access_fa, rank_access
+from ranking import rank_emojis, rank_title_fa, rank_access
 from sqlite_manager import ManageDb
 from api_clean import XuiApiClean
 
