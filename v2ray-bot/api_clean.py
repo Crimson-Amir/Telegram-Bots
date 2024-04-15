@@ -1,9 +1,19 @@
 import json
 import requests
 
-import utilities
-from private import PORT, auth, telegram_bot_url, ADMIN_CHAT_ID, DOMAIN, protocol
+from private import PORT, auth, telegram_bot_url, ADMIN_CHAT_ID, DOMAIN, protocol, telegram_bot_token
 from sqlite_manager import ManageDb
+
+def report_problem_to_admin_witout_context(text, chat_id, error, detail=None):
+    text = ("🔴 Report Problem in Bot\n\n"
+            f"Something Went Wrong In {text} Section."
+            f"\nUser ID: {chat_id}"
+            f"\nError Type: {type(error).__name__}"
+            f"\nError Reason:\n{error}")
+    text += f"\nDetail:\n {detail}" if detail else ''
+    telegram_bot_url_ = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
+    requests.post(telegram_bot_url_, data={'chat_id': ADMIN_CHAT_ID, 'text': text})
+    print(f'* REPORT TO ADMIN SUCCESS: ERR: {error}')
 
 class XuiApiClean(ManageDb):
     def __init__(self):
@@ -50,7 +60,7 @@ class XuiApiClean(ManageDb):
                     self.send_telegram_message(text)
                     raise ConnectionError
         except Exception as e:
-            utilities.report_problem_to_admin_witout_context('make_requests_api_section', None, e)
+            report_problem_to_admin_witout_context('make_requests_api_section', None, e)
             raise e
 
     def get_all_inbounds(self):
@@ -168,5 +178,12 @@ class XuiApiClean(ManageDb):
         inb = self.make_request('post', f'{protocol}{main_domain}:{PORT}/panel/api/inbounds/onlines')
         return inb
 
+    def restart_xray(self, domain=None):
+        main_domain = domain or DOMAIN
+        inb = self.make_request('post', f'{protocol}{main_domain}:{PORT}/server/restartXrayService')
+        return inb
+
 # test = XuiApiClean()
+# a = test.restart_xray()
 # print(test.get_ips('kyhm2hhk'))
+# breakpoint()

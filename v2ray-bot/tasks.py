@@ -94,7 +94,7 @@ class Task(ManageDb):
                     traffic = int(user_db[0][5] * (1024 ** 3))
                     my_data = now + timedelta(days=user_db[0][6])
                     my_data = int(my_data.timestamp() * 1000)
-                    print(api_operation.reset_client_traffic(client_id, client_email, get_server_domain[0][0]))
+                    print(api_operation.reset_client_traffic(int(get_client[0][7]), client_email, get_server_domain[0][0]))
 
                 data = {
                     "id": int(get_client[0][7]),
@@ -253,8 +253,7 @@ def get_card_pay_evidence(update, context):
         price = ranking_manage.discount_calculation(query.from_user['id'], direct_price=package[0][7], more_detail=True)
 
         context.user_data['package'] = package
-        keyboard = [[InlineKeyboardButton("ساخت ", callback_data="send_main_message")],
-                    [InlineKeyboardButton("صفحه اصلی ⤶", callback_data="send_main_message")]]
+        keyboard = [[InlineKeyboardButton("صفحه اصلی ⤶", callback_data="send_main_message")]]
 
         ex = sqlite_manager.select('id', 'Purchased', where=f'active = 0 and chat_id = {user["id"]}', limit=1)
 
@@ -571,7 +570,7 @@ def server_detail_customer(update, context):
         if ret_conf['obj']['total'] != 0:
             total_traffic = round(ret_conf['obj']['total'] / (1024 ** 3), 2)
 
-        if int(ret_conf['obj']['expiryTime']) != 0:
+        if int(ret_conf['obj']['expiryTime']) != 0 and int(ret_conf['obj']['total']) != 0:
             expiry_timestamp = ret_conf['obj']['expiryTime'] / 1000
             expiry_date = datetime.fromtimestamp(expiry_timestamp)
             expiry_month = expiry_date.strftime("%Y/%m/%d")
@@ -2100,6 +2099,8 @@ def pay_per_use(update, context):
 def pay_per_use_calculator(context):
     get_all = api_operation.get_all_inbounds()
 
+    api_operation.restart_xray()
+
     get_from_db = sqlite_manager.select(column='id', table='Product', where=f'name LIKE "pay_per_use_%"')
     pay_per_use_products = [id_[0] for id_ in get_from_db]
 
@@ -2692,7 +2693,7 @@ def admin_server_detail(update, context):
         if int(ret_conf['obj']['total']) != 0:
             total_traffic = int(round(ret_conf['obj']['total'] / (1024 ** 3), 2))
 
-        if int(ret_conf['obj']['expiryTime']) != 0:
+        if int(ret_conf['obj']['expiryTime']) != 0 and int(ret_conf['obj']['total']) != 0:
             expiry_timestamp = ret_conf['obj']['expiryTime'] / 1000
             expiry_date = datetime.fromtimestamp(expiry_timestamp)
             expiry_month = expiry_date.strftime("%Y/%m/%d")
@@ -2709,8 +2710,7 @@ def admin_server_detail(update, context):
 
             context.user_data['period_for_upgrade'] = (expiry_date - purchase_date).days
             context.user_data['traffic_for_upgrade'] = total_traffic
-            keyboard = [
-                [InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"upgrade_service_customize_{get_data[0][0]}")]]
+            keyboard = [[InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"upgrade_service_customize_{get_data[0][0]}")]]
 
         elif int(ret_conf['obj']['total']) == 0:
             service_activate_status = 'غیرفعال سازی ⤈' if ret_conf['obj']['enable'] else 'فعال سازی ↟'

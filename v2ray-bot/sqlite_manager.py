@@ -37,7 +37,7 @@ class ManageDb:
 
         with sqlite3.connect(self.db_name) as db:
             cursor = db.cursor()
-            cursor.execute(f'INSERT INTO {table} ({column}) VALUES {", ".join(values)}')
+            cursor.execute(f'INSERT INTO {table} ({column}) VALUES ({", ".join(values)})')
             db.commit()
         return cursor.lastrowid
 

@@ -47,9 +47,9 @@ class WalletManage(ManageDb):
 
             self.clear_wallet_notif(user_id)
             self.insert(table='Credit_History',
-                                  rows=[{'active': 1, 'chat_id': user_id, 'value': credit,
-                                         'name': user_detail['name'], 'user_name': user_detail['username'],
-                                         'operation': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}])
+                        rows={'active': 1, 'chat_id': user_id, 'value': credit,
+                              'name': user_detail['name'], 'user_name': user_detail['username'],
+                              'operation': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran'))})
 
             return get_credit
         except Exception as e:
@@ -77,9 +77,9 @@ class WalletManage(ManageDb):
                                      where=f'{self.USER_ID} = {user_id}')
 
             self.insert(table='Credit_History',
-                        rows=[{'active': 1, 'chat_id': user_id, 'value': credit,
-                               'name': user_detail['name'], 'user_name': user_detail['username'],
-                               'operation': 0, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}])
+                        rows={'active': 1, 'chat_id': user_id, 'value': credit,
+                              'name': user_detail['name'], 'user_name': user_detail['username'],
+                              'operation': 0, 'date': datetime.now(pytz.timezone('Asia/Tehran'))})
 
             return get_credit
         except Exception as e:
@@ -95,9 +95,9 @@ class WalletManage(ManageDb):
 
             if credit > con:
                 self.insert(table='Credit_History',
-                            rows=[{'active': 1, 'chat_id': user_id, 'value': credit,
-                                   'name': user_detail['name'], 'user_name': user_detail['username'],
-                                   'operation': 0, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}])
+                            rows={'active': 1, 'chat_id': user_id, 'value': credit,
+                                  'name': user_detail['name'], 'user_name': user_detail['username'],
+                                  'operation': 0, 'date': datetime.now(pytz.timezone('Asia/Tehran'))})
 
             return get_credit
         except Exception as e:
