@@ -6,7 +6,7 @@ from admin_task import (api_operation, sqlite_manager)
 from utilities import format_mb_traffic, make_day_name_farsi
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from plot import get_plot
-from tasks import handle_telegram_exceptions
+from tasks import handle_telegram_exceptions_without_user_side
 
 
 STATISTICS_TIMER_HORSE = 3
@@ -75,7 +75,7 @@ def datetime_range(start, end, delta):
         current += delta
 
 
-@handle_telegram_exceptions
+@handle_telegram_exceptions_without_user_side
 def reports_func(data):
 
     chat_id = data[0]
@@ -105,7 +105,7 @@ def reports_func(data):
         get_user_usage = [{user_purchased[0]: user_purchased[1]} for user_purchased in eval(get_date[1]).items() if user_purchased[0] in purchased]
         user_usage_dict[get_date[2]] = get_user_usage
 
-    detail_text, final_dict, final_traffic, avreage_traffic, index = 'None', {}, 0, 0, 1
+    detail_text, final_dict, final_traffic, avreage_traffic, index = '', {}, 0, 0, 1
 
     if period == 'day':
         for index, (timestamp, usage_list) in enumerate(user_usage_dict.items()):
@@ -127,9 +127,14 @@ def reports_func(data):
             detail_text += ''.join(usage_detail[:5]) if get_purchased[0] == 'all' else ''
 
             final_traffic += get_traffic
+
+            if not index:
+                final_dict[time.strftime("%a %H:00")] = get_traffic
+                continue
+
             final_dict[time.strftime("%H:00")] = get_traffic
 
-        avreage_traffic = (final_traffic / 3) / index
+        avreage_traffic = (final_traffic / 3) / index if final_traffic and index else 0
 
 
 
@@ -152,17 +157,16 @@ def reports_func(data):
             final_traffic += get_traff
             final_dict[f"{our_date.strftime('%d')}"] = get_traff
 
-        avreage_traffic = final_traffic / index
-
+        avreage_traffic = final_traffic / index if final_traffic and index else 0
 
     period_info = {
-        'month': {'timedelta': timedelta(days=7), 'date_format': '%Y-%m'},
-        'year': {'timedelta': timedelta(days=30), 'date_format': '%Y-%m'}
+        'month': {'timedelta': timedelta(days=3), 'date_format': '%Y-%m-%d', 'plot_format': '%d', 'first_date': '%b'},
+        'year': {'timedelta': timedelta(days=30), 'date_format': '%Y-%m', 'plot_format': '%m', 'first_date': '%Y'}
     }
 
     for period_key, period_value in period_info.items():
         if period == period_key:
-            for our_date in datetime_range(date, date_now, period_value['timedelta']):
+            for index, our_date in enumerate(datetime_range(date, date_now, period_value['timedelta'])):
                 date_ = our_date.strftime(period_value['date_format'])
                 get_usage, get_traff = {}, 0
                 for _ in user_usage_dict.items():
@@ -180,15 +184,18 @@ def reports_func(data):
                 detail_text += ''.join(usage_detail[:5]) if get_purchased[0] == 'all' else ''
 
                 final_traffic += get_traff
-                final_dict[f"{our_date.strftime('%d')}"] = get_traff
+                if not index:
+                    final_dict[f"{our_date.strftime(period_value['first_date'])} {our_date.strftime(period_value['plot_format'])}"] = get_traff
+                else:
+                    final_dict[f"{our_date.strftime(period_value['plot_format'])}"] = get_traff
 
-            avreage_traffic = final_traffic / index
+            avreage_traffic = final_traffic / index if final_traffic and index else 0
             break
 
     return detail_text, final_dict, final_traffic, avreage_traffic
 
 
-@handle_telegram_exceptions
+@handle_telegram_exceptions_without_user_side
 def report_section(update, context):
     query = update.callback_query
     data_org = query.data.split('_')  # statistics_day_all_hide

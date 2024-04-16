@@ -48,7 +48,7 @@ def get_plot(data, period_):
     x_position = len(period) - 0.5
     y_position = max(usage)
 
-    ax.text(x_position, y_position, 'Now', fontsize=12, color='black', ha='center')
+    # ax.text(x_position, y_position, 'Now', fontsize=12, color='black', ha='center')
 
     image_bytes = io.BytesIO()
     plt.savefig(image_bytes, format='png')
