@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytz
 import utilities
 from private import ADMIN_CHAT_ID, OTHER_ADMIN
-from utilities import ready_report_problem_to_admin, message_to_user, sqlite_manager, api_operation, infinity_name, report_status_to_admin
+from utilities import init_name, ready_report_problem_to_admin, message_to_user, sqlite_manager, api_operation, infinity_name, report_status_to_admin
 from wallet import WalletManage
 import ranking
 from ranking import rank_access
@@ -78,7 +78,7 @@ def add_service(update, context):
         try:
             user_message = eval(update.message.reply_to_message.text)
             get_data = {'inbound_id': user_message["inbound_id"],'active': user_message["active"],
-                        'name': user_message["name"],'country': user_message["country"],
+                        'name': init_name(user_message["name"]),'country': user_message["country"],
                         'period': user_message["period"],'traffic': user_message["traffic"],
                         'price': user_message["price"],'date': datetime.now(pytz.timezone('Asia/Tehran')),
                         'domain': user_message['domain'], 'server_domain': user_message['server_domain']}

@@ -5,6 +5,15 @@ class ManageDb:
     def __init__(self, db_name: str = "test"):
         self.db_name = db_name + ".db"
 
+
+    @staticmethod
+    def init_name(name):
+        if isinstance(name, str):
+            return name.replace("'", "").replace('"', "")
+        else:
+            return name
+
+
     def create_table(self, table: dict):
         with sqlite3.connect(self.db_name) as db:
             cursor = db.cursor()
@@ -33,7 +42,7 @@ class ManageDb:
 
     def insert(self, table: str, rows: dict):
         column = ', '.join(rows.keys())
-        values = [f"'{val}'" for val in rows.values()]
+        values = [f"'{self.init_name(val)}'" for val in rows.values()]
 
         with sqlite3.connect(self.db_name) as db:
             cursor = db.cursor()
@@ -77,7 +86,7 @@ class ManageDb:
             cursor = db.cursor()
             for key, value in table.items():
                 for k, v in value.items():
-                    text = f"UPDATE {key} SET {k} = '{v}' {where}"
+                    text = f"UPDATE {key} SET {k} = '{self.init_name(v)}' {where}"
                     cursor.execute(text)
                 db.commit()
         return cursor.lastrowid

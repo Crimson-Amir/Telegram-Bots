@@ -8,7 +8,7 @@ from utilities import (human_readable, something_went_wrong,
                        ready_report_problem_to_admin, format_traffic, record_operation_in_file,
                        send_service_to_customer_report, report_status_to_admin, find_next_rank,
                        change_service_server, get_rank_and_emoji, report_problem_by_user_utilitis, report_problem,
-                       format_mb_traffic)
+                       format_mb_traffic, init_name)
 import admin_task
 from private import *
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -271,11 +271,11 @@ def get_card_pay_evidence(update, context):
         ex = sqlite_manager.select('id', 'Purchased', where=f'active = 0 and chat_id = {user["id"]}', limit=1)
 
         if not ex:
-            ex = sqlite_manager.insert('Purchased', rows={'active': 0, 'status': 0, 'name': user["first_name"], 'user_name': user["username"],
+            ex = sqlite_manager.insert('Purchased', rows={'active': 0, 'status': 0, 'name': init_name(user["first_name"]), 'user_name': user["username"],
                                                           'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0, 'notif_gb': 0})
         else:
             sqlite_manager.update({'Purchased':
-                                       {'active': 0, 'status': 0, 'name': user["first_name"],
+                                       {'active': 0, 'status': 0, 'name': init_name(user["first_name"]),
                                         'user_name': user["username"],
                                         'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0, 'notif_gb': 0}},
                                   where=f'id = {ex[0][0]}')
@@ -790,7 +790,7 @@ def personalization_service(update, context):
                                                     where=f'is_personalization = {query.message.chat_id} and country = "{inbound_id[0][5]}"')
 
             get_data = {'inbound_id': inbound_id[0][0], 'active': 0,
-                        'name': inbound_id[0][1], 'country': inbound_id[0][2],
+                        'name': init_name(inbound_id[0][1]), 'country': inbound_id[0][2],
                         'period': period, 'traffic': traffic,
                         'price': price[2], 'date': datetime.now(pytz.timezone('Asia/Tehran')),
                         'is_personalization': query.message.chat_id, 'domain': inbound_id[0][4],
@@ -1075,7 +1075,7 @@ def get_free_service(update, context):
     try:
         sqlite_manager.update({'User': {'free_service': 1}}, where=f"chat_id = {user['id']}")
         ex = sqlite_manager.insert('Purchased', rows=
-        {'active': 1, 'status': 1, 'name': user["first_name"], 'user_name': user["username"],
+        {'active': 1, 'status': 1, 'name': init_name(user["first_name"]), 'user_name': user["username"],
          'chat_id': int(user["id"]), 'product_id': 1, 'inbound_id': 1, 'date': datetime.now(),
          'notif_day': 0, 'notif_gb': 0})
         send_clean_for_customer(update.callback_query, context, ex)
@@ -1600,7 +1600,7 @@ def buy_credit_volume(update, context):
         if query.data == "buy_credit_volume":
             sqlite_manager.insert(table='Credit_History',
                                   rows={'active': 0, 'chat_id': query.message.chat_id, 'value': 25_000,
-                                        'name': query.from_user.name, 'user_name': query.from_user.username,
+                                        'name': init_name(query.from_user.name), 'user_name': query.from_user.username,
                                         'operation': 1})
 
         get_credit = sqlite_manager.select(column='value, id', table='Credit_History',
@@ -1874,11 +1874,11 @@ def pay_from_wallet(update, context):
 
             if not ex:
                 ex = sqlite_manager.insert('Purchased', rows=
-                {'active': 0, 'status': 0, 'name': user["first_name"], 'user_name': user["username"],
+                {'active': 0, 'status': 0, 'name': init_name(user["first_name"]), 'user_name': user["username"],
                  'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0, 'notif_gb': 0})
             else:
                 sqlite_manager.update({'Purchased':
-                                           {'active': 0, 'status': 0, 'name': user["first_name"],
+                                           {'active': 0, 'status': 0, 'name': init_name(user["first_name"]),
                                             'user_name': user["username"],
                                             'chat_id': int(user["id"]), 'product_id': id_, 'notif_day': 0,
                                             'notif_gb': 0}}, where=f'id = {ex[0][0]}')
@@ -2014,11 +2014,11 @@ def admin_reserve_service(update, context):
 
         if not ex:
             ex = sqlite_manager.insert('Purchased', rows=
-            {'active': 0, 'status': 0, 'name': user[0][0], 'user_name': user[0][1],
+            {'active': 0, 'status': 0, 'name': init_name(user[0][0]), 'user_name': user[0][1],
              'chat_id': user_message[0], 'product_id': user_message[1], 'notif_day': 0, 'notif_gb': 0})
         else:
             sqlite_manager.update({'Purchased':
-                                       {'active': 0, 'status': 0, 'name': user[0][0], 'user_name': user[0][1],
+                                       {'active': 0, 'status': 0, 'name': init_name(user[0][0]), 'user_name': user[0][1],
                                         'chat_id': user_message[0], 'product_id': user_message[1], 'notif_day': 0,
                                         'notif_gb': 0}}, where=f'id = {ex[0][0]}')
             ex = ex[0][0]
@@ -2095,7 +2095,7 @@ def pay_per_use(update, context):
             sqlite_manager.update({'Product': {'status': 1}}, where=f'id = {get_infinite_product_id}')
 
             ex = sqlite_manager.insert('Purchased', rows=
-            {'active': 1, 'status': 1, 'name': query.from_user['name'], 'user_name': query.from_user['username'],
+            {'active': 1, 'status': 1, 'name': init_name(query.from_user['name']), 'user_name': query.from_user['username'],
              'chat_id': query.message.chat_id, 'product_id': get_infinite_product_id, 'notif_day': 0,
              'notif_gb': 0})
 
@@ -2173,10 +2173,10 @@ def pay_per_use_calculator(context):
 
                                 keyboard = [
                                     [InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")]]
+                                sqlite_manager.update({'User': {'notif_wallet': 1}}, where=f'chat_id = "{user[1]}"')
 
                                 context.bot.send_message(user[1], text=text,
                                                          reply_markup=InlineKeyboardMarkup(keyboard))
-                                sqlite_manager.update({'User': {'notif_wallet': 1}}, where=f'chat_id = "{user[1]}"')
 
                             elif credit_now <= LOW_WALLET_CREDIT and not user_wallet[0][5]:
                                 text = ("🔵 اعتبار کیف پول شما رو به اتمام است"
@@ -2186,9 +2186,9 @@ def pay_per_use_calculator(context):
                                 keyboard = [
                                     [InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")]]
 
+                                sqlite_manager.update({'User': {'notif_low_wallet': 1}}, where=f'chat_id = "{user[1]}"')
                                 context.bot.send_message(user[1], text=text,
                                                          reply_markup=InlineKeyboardMarkup(keyboard))
-                                sqlite_manager.update({'User': {'notif_low_wallet': 1}}, where=f'chat_id = "{user[1]}"')
 
                             if client['enable'] and user[3] and (credit_now <= 0):
                                 text = ("🔴 اطلاع رسانی غیرفعال شدن سرویس ساعتی"
@@ -2345,7 +2345,7 @@ def rank_page(update, context):
 
     except IndexError as i:
         if 'list index out of range' in str(i):
-            sqlite_manager.insert('Rank', {'name': query.from_user['name'], 'user_name': query.from_user['username'],
+            sqlite_manager.insert('Rank', {'name': init_name(query.from_user['name']), 'user_name': query.from_user['username'],
                                            'chat_id': query.from_user['id'], 'level': 0,
                                            'rank_name': next(iter(ranking.rank_access))})
             query.answer('دوباره کلیک کنید')
@@ -2571,7 +2571,7 @@ def change_service_ownership_func(update, context):
 
             new_user_detail = sqlite_manager.select(table='User', where=f'chat_id = {new_owner_chat_id}')
 
-            sqlite_manager.update({'Purchased': {'name': new_user_detail[0][1], 'user_name': new_user_detail[0][2],
+            sqlite_manager.update({'Purchased': {'name': init_name(new_user_detail[0][1]), 'user_name': new_user_detail[0][2],
                                                  'chat_id': new_owner_chat_id}},
                                   where=f'chat_id = {user["id"]} and client_email = "{email}"')
 
@@ -2878,7 +2878,7 @@ def upgrade_or_create(traffic, user, context):
 
         else:
             id_ = sqlite_manager.insert('Purchased', rows=
-            {'active': 1, 'status': 1, 'name': user["first_name"], 'user_name': user["username"],
+            {'active': 1, 'status': 1, 'name': init_name(user["first_name"]), 'user_name': user["username"],
              'chat_id': user['id'], 'product_id': get_id, 'notif_day': 1, 'notif_gb': 0})
 
             get_res = send_clean_for_customer(1, context, id_)
@@ -2932,7 +2932,7 @@ def daily_gift(update, context):
             if get_final_res.get('msg') == 'Forbidden: bot was blocked by the user':
                 text = 'شما ربات را بلاک کردید!\nتلاش برای ارسال سرویس ناموفق بود!'
 
-        sqlite_manager.insert('Gift_service', rows={'name': user['first_name'], 'user_name': user['username'],
+        sqlite_manager.insert('Gift_service', rows={'name': init_name(user['first_name']), 'user_name': user['username'],
                                                     'chat_id': chat_id, 'traffic': int(chance),
                                                     'date': now.strftime('%Y-%m-%d %H:%M:%S')})
 
