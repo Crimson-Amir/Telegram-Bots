@@ -1394,7 +1394,7 @@ def setting(update, context):
 def change_notif(update, context):
     query = update.callback_query
     get_data_from_db = sqlite_manager.select(table='User', where=f'chat_id = {query.message.chat_id}')
-    text = keyboard = None
+    text, keyboard = None, None
 
     try:
         traffic = abs(get_data_from_db[0][8])
@@ -2871,8 +2871,8 @@ def upgrade_or_create(traffic, user, context):
                                                  where=f'product_id = {get_id} AND chat_id = {user["id"]}')
         if get_purchased_id:
 
-            task.upgrade_service(context, get_purchased_id[0][0], [(0, 0, 0, 0, 0, traffic, 1),])
             context.bot.send_message(text=f'🔵 کانفیگ شماره {get_purchased_id[0][0]} ارتقا یافت!', chat_id=chat_id)
+            task.upgrade_service(context, get_purchased_id[0][0], [(0, 0, 0, 0, 0, traffic, 1),])
 
             return {'msg': 'upgrade service', 'purchased_id': get_purchased_id[0][0]}
 
@@ -2883,8 +2883,10 @@ def upgrade_or_create(traffic, user, context):
 
             get_res = send_clean_for_customer(1, context, id_)
             return get_res
+
     except Exception as e:
-        ready_report_problem_to_admin(context, text='Error In Daily Gift', error=e, chat_id=chat_id)
+        ready_report_problem_to_admin(context, text='Daily Gift', error=e, chat_id=chat_id)
+        return {'msg': str(e), 'purchased_id': 0}
 
 
 @handle_telegram_exceptions
