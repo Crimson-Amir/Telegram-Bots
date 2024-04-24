@@ -44,7 +44,7 @@ def not_for_depleted_service(update, context):
 
 
 def something_went_wrong(update, context):
-    text= "مشکلی وجود داشت!"
+    text= "متاسفانه مشکلی وجود داشت!\nگزارش مشکل به ادمین ارسال شد."
     if getattr(update, 'callback_query'):
         query = update.callback_query
         query.answer(text)
@@ -162,11 +162,12 @@ def report_problem_to_admin_witout_context(text, chat_id, error, detail=None):
     print(f'* REPORT TO ADMIN SUCCESS: ERR: {error}')
 
 
-def report_problem(func_name, error, side):
+def report_problem(func_name, error, side, extra_message=None):
     text = (f"🔴 BOT Report Problem [{side}]\n\n"
             f"\nFunc Name: {func_name}"
             f"\nError Type: {type(error).__name__}"
-            f"\nError Reason:\n{error}")
+            f"\nError Reason:\n{error}"
+            f"\nExtra Message:\n{extra_message}")
 
     requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text': text})
 

@@ -48,7 +48,8 @@ def statistics_timer(context):
                             last_usage_dict[str(purchased[0])] = usage_traffic
 
                             if not last_traffic_usage: continue
-                            traffic_use = int((usage_traffic - last_traffic_usage))
+                            traffic_use = max(int((usage_traffic - last_traffic_usage)), 0)
+
                             statistics_usage_traffic[str(purchased[0])] = traffic_use
 
         list_of_order = [f'INSERT INTO Last_usage (last_usage,date) VALUES ("{str(last_usage_dict)}", "{date}")',
