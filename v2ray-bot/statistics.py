@@ -1,4 +1,7 @@
 from datetime import datetime, timedelta
+
+import telegram.error
+
 from utilities import (ready_report_problem_to_admin)
 import pytz
 from admin_task import (api_operation, sqlite_manager)
@@ -252,7 +255,13 @@ def report_section(update, context):
                                          reply_markup=InlineKeyboardMarkup(keyboard))
 
     else:
-        query.delete_message()
+        try:
+            query.delete_message()
+        except telegram.error.BadRequest as e:
+            if "Message can't be deleted for everyone" in str(e):
+                query.awnser('برای مشاهده گزارش استارت بزنید و در پیام جدید دوباره تلاش کنید.')
+            else:
+                raise e
         context.bot.send_photo(photo=get_plot_image, chat_id=chat_id, caption=text,
                                reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 

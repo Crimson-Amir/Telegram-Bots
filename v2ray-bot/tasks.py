@@ -2,7 +2,6 @@ import random
 import uuid
 from datetime import datetime, timedelta
 import telegram.error
-
 import private
 from utilities import (human_readable, something_went_wrong,
                        ready_report_problem_to_admin, format_traffic, record_operation_in_file,
@@ -238,11 +237,11 @@ def payment_page(update, context):
         free_service_is_taken = sqlite_manager.select(column='free_service', table='User', where=f'chat_id = {query.message.chat_id}')[0][0]
         if free_service_is_taken:
             keyboard_free = [
-                [InlineKeyboardButton("🔰 رتبه‌بندی", callback_data='rank_page')],
+                [InlineKeyboardButton("🎁 دریافت هدیه از کانال", url='https://t.me/FreeByte_Channel/1380')],
                 [InlineKeyboardButton("برگشت ↰", callback_data=f"main_menu")]
             ]
             query.edit_message_text(
-                text='<b>شما یک بار این سرویس رو دریافت کردید!\n\n • با ارتقا رتبه خودتون، قابلیت دریافت سرویس تست به صورت هفتگی رو به دست بیارید!</b>',
+                text='<b>شما یک بار این سرویس رو دریافت کردید!\n\n • با استفاده از گزینه زیر روزانه هدیه دریافت کنید!</b>',
                 parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard_free))
             return
         else:
@@ -837,6 +836,13 @@ def personalization_service_lu(update, context):
     chat_id = query.message.chat_id
 
     if 'upgrade_service_customize_' in query.data:
+        service_id = int(query.data.replace('upgrade_service_customize_', ''))
+
+        check_service_exist = sqlite_manager.select(table='Purchased', where=f'id = {service_id}')
+        if not check_service_exist:
+            query.answer('سرویس مورد نظر دیگر وجود ندارد!')
+            return
+
         if 'period_for_upgrade' in context.user_data and 'traffic_for_upgrade' in context.user_data:
             period_for_upgrade = context.user_data['period_for_upgrade']
             traffic_for_upgrade = context.user_data['traffic_for_upgrade']
@@ -844,7 +850,7 @@ def personalization_service_lu(update, context):
             sqlite_manager.update({'User': {'period': int(period_for_upgrade), 'traffic': int(traffic_for_upgrade)}},
                                   where=f'chat_id = {query.message.chat_id}')
 
-        context.user_data['personalization_client_lu_id'] = int(query.data.replace('upgrade_service_customize_', ''))
+        context.user_data['personalization_client_lu_id'] = service_id
 
     id_ = context.user_data['personalization_client_lu_id']
     get_data_from_db = sqlite_manager.select(table='User', where=f'chat_id = {query.message.chat_id}')
@@ -957,10 +963,14 @@ def send_evidence_to_admin_for_upgrade(update, context):
         text = "- Check the new payment to the card [UPGRADE SERVICE]:\n\n"
 
     else:
-        task.upgrade_service(context, purchased_id)
-        keyboard = []
-        text_ = f'سرویس با موفقیت ارتقا یافت✅'
-        text = '- The user rank was sufficient to get the service without confirm [UPGRADE SERVICE]\n\n'
+        try:
+            task.upgrade_service(context, purchased_id)
+            keyboard = []
+            text_ = f'سرویس با موفقیت ارتقا یافت✅'
+            text = '- The user rank was sufficient to get the service without confirm [UPGRADE SERVICE]\n\n'
+        except Exception as e:
+            text = 'مشکلی وجود داشت!'
+            ready_report_problem_to_admin(context, text, chat_id=user.id, error=e)
 
     text += f"Name: {user['first_name']}\nUserName: @{user['username']}\nID: {user['id']}\n\n"
     service_detail = f"\n\nPeriod: {package[0][6]} Day\nTraffic: {package[0][5]}GB\nPrice: {price:,} T"
@@ -1805,14 +1815,12 @@ def pay_from_wallet(update, context):
             wallet_manage.less_from_wallet(query.from_user['id'], upgrade_serv[1], user_detail=query.from_user)
 
             keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="my_service")]]
-            query.edit_message_text(text='سرویس شما با موفقیت ارتقا یافت.✅',
-                                    reply_markup=InlineKeyboardMarkup(keyboard))
+            query.edit_message_text(text='سرویس شما با موفقیت ارتقا یافت.✅', reply_markup=InlineKeyboardMarkup(keyboard))
 
         except Exception as e:
-            ready_report_problem_to_admin(context, 'PAY FROM WAWLLET FOR UPGRADE',
-                                          query.from_user['id'], e)
-            print(e)
+            ready_report_problem_to_admin(context, 'PAY FROM WAWLLET FOR UPGRADE', query.from_user['id'], e)
             query.answer('مشکلی وجود دارد! گزارش مشکل به ادمین ارسال شد')
+
     elif 'payment_by_wallet_' in query.data:
 
         id_ = int(query.data.replace('payment_by_wallet_', ''))
@@ -2830,7 +2838,7 @@ def daily_gift(update, context):
 
 
     if is_this_24_hours:
-        gifts_chance = {'0': 2, '100': 10, '200': 9, '300': 8, '400': 7, '500': 6, '600': 5, '700': 4, '800': 3, '900': 2, '1000': 1}
+        gifts_chance = {'0': 2, '100': 4, '200': 9, '300': 8, '400': 8, '500': 6, '600': 5, '700': 4, '800': 3, '900': 2, '1000': 1}
 
         chance = random.choices(list(gifts_chance.keys()), weights=list(gifts_chance.values()))[0]
 

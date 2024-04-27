@@ -3,11 +3,10 @@ from private import PRICE_PER_DAY, PRICE_PER_GB
 
 
 rank_access = {
-    'ROOKIE': {'level': range(1, 10), 'access': ['BUY_READY_SERVICE', 'BUY_COSTOMIZE_SERVICE', 'CHECK_ANALYSE',
-                                                 'CHANGE_SETTINGS', 'USE_WALLET']},
-    'BRONZE': {'level': range(10, 200), 'access': ['ROOKIE', 'REMOVE_SERVICE', 'CHANGE_SERVICE_SERVER', 'SERVICE_AUTO_RENEWAL']},
-    'SILVER': {'level': range(200, 500), 'access': ['BRONZE', 'RESET_FREE_EVERY_MONTH', '5off']},
-    'GOLD': {'level': range(500, 1_000), 'access': ['SILVER', 'PAYMENT_GETWAY', 'BUY_MAJOR_SERVICE', '9off']},
+    'ROOKIE': {'level': range(1, 10), 'access': ['BUY_SERVICE', 'CHECK_ANALYSE', 'CHANGE_SETTINGS', 'USE_WALLET']},
+    'BRONZE': {'level': range(10, 200), 'access': ['ROOKIE']},
+    'SILVER': {'level': range(200, 500), 'access': ['BRONZE', '5off']},
+    'GOLD': {'level': range(500, 1_000), 'access': ['SILVER', '9off']},
     'DIAMOND': {'level': range(1_000, 5_000), 'access': ['GOLD', 'GET_SERVICE_WITHOUT_CONFIRM', '15off']},
     'SUPER_USER': {'level': range(5_000, 20_000), 'access': ['DIAMOND', '20off']},
     'ADMIN': {'level': range(20_000, 100_000), 'access': ['SUPER_USER', 'BOT_MANAGER']},
@@ -24,9 +23,9 @@ pay_after_use_per_rank = {
 off_per_rank = {
     'ROOKIE': 0,
     'BRONZE': 2,
-    'SILVER': 7,
-    'GOLD': 10,
-    'DIAMOND': 15,
+    'SILVER': 6,
+    'GOLD': 7,
+    'DIAMOND': 9,
     'SUPER_USER': 20,
 }
 
@@ -43,10 +42,10 @@ rank_emojis = {
 
 
 rank_access_fa = {
-    'ROOKIE': ['None', 'خرید سرویس آماده', 'خرید سرویس دلخواه', 'بررسی آمار سرویس', 'تغییر تنظیمات ربات', 'استفاده از کیف پول'],
-    'BRONZE': ['ROOKIE', 'حذف سرویس با بازپرداخت', 'تغییر کشور سرویس', 'تمدید خودکار سرویس'],
-    'SILVER': ['BRONZE', 'دریافت سرویس تست در هر ماه'],
-    'GOLD': ['SILVER', 'استفاده از درگاه پرداخت', 'خرید سرویس به صورت عمده'],
+    'ROOKIE': ['None', 'خرید سرویس', 'بررسی آمار سرویس', 'تغییر تنظیمات ربات', 'استفاده از کیف پول'],
+    'BRONZE': ['ROOKIE'],
+    'SILVER': ['BRONZE'],
+    'GOLD': ['SILVER'],
     'DIAMOND': ['GOLD', 'دریافت سرویس بدون بررسی ادمین'],
     'SUPER_USER': ['DIAMOND'],
     'ADMIN': ['SUPER_USER', 'مدیریت ربات'],
