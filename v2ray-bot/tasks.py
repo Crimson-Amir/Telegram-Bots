@@ -2231,7 +2231,7 @@ def send_ticket_to_admin(update, context):
 
     if update.message.photo:
         file_id = update.message.photo[-1].file_id
-        text += f"caption: {update.message.caption}" or 'Witout caption!'
+        text += f"\ncaption: {update.message.caption}" or 'Witout caption!'
         context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text)
         update.message.reply_text(f'پیام شما ثبت شد. متشکریم!', reply_markup=InlineKeyboardMarkup(keyboard))
     elif update.message.text:
