@@ -771,7 +771,11 @@ def personalization_service(update, context):
         period = period if period <= 500 else 500
 
     elif 'accept_personalization' in query.data:
-        id_ = context.user_data['personalization_service_id']
+        try: id_ = context.user_data['personalization_service_id']
+        except KeyError:
+            query.answer('عملیات منقضی شده است، لطفا از اول تلاش کنید.')
+            return
+        except Exception as e: raise e
 
         inbound_id = sqlite_manager.select(column='inbound_id,name,country,server_domain,domain,country',
                                            table='Product', where=f'id = {id_}')
@@ -852,7 +856,14 @@ def personalization_service_lu(update, context):
 
         context.user_data['personalization_client_lu_id'] = service_id
 
-    id_ = context.user_data['personalization_client_lu_id']
+    try:
+        id_ = context.user_data['personalization_client_lu_id']
+    except KeyError:
+        query.answer('عملیات منقضی شده است، لطفا از اول تلاش کنید.')
+        return
+    except Exception as e:
+        raise e
+
     get_data_from_db = sqlite_manager.select(table='User', where=f'chat_id = {query.message.chat_id}')
 
     traffic = max(abs(get_data_from_db[0][5]), 1)
@@ -971,6 +982,7 @@ def send_evidence_to_admin_for_upgrade(update, context):
         except Exception as e:
             text = 'مشکلی وجود داشت!'
             ready_report_problem_to_admin(context, text, chat_id=user.id, error=e)
+            raise e
 
     text += f"Name: {user['first_name']}\nUserName: @{user['username']}\nID: {user['id']}\n\n"
     service_detail = f"\n\nPeriod: {package[0][6]} Day\nTraffic: {package[0][5]}GB\nPrice: {price:,} T"
@@ -1908,7 +1920,7 @@ def remove_service(update, context):
         download_gb = int(ret_conf['obj']['down']) / (1024 ** 3)
         usage_traffic = round(upload_gb + download_gb, 2)
         total_traffic = int(ret_conf['obj']['total']) / (1024 ** 3)
-        left_traffic = total_traffic - usage_traffic
+        left_traffic = round((total_traffic - usage_traffic), 2)
 
         expiry_timestamp = ret_conf['obj']['expiryTime'] / 1000
         expiry_date = datetime.fromtimestamp(expiry_timestamp)

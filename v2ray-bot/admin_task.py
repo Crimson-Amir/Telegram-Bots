@@ -163,8 +163,8 @@ def add_client_bot(purchased_id):
         get_service_db = sqlite_manager.select(table='Product', where=f'id = {get_client_db[0][6]}')
 
         id_ = f"{get_client_db[0][4]}_{random_number}"
-        name = 'Gift' if 'gift' in get_service_db[0][3] else f'{get_service_db[0][6]}GB'
-        email_ = f"{purchased_id}_{name}"
+        name = '_Gift' if 'gift' in get_service_db[0][3] else ''  # f'{get_service_db[0][6]}GB'
+        email_ = f"{purchased_id}{name}"
 
         if get_service_db[0][6]:
             traffic_to_gb_ = traffic_to_gb(get_service_db[0][6], False)

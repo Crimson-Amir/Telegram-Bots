@@ -11,20 +11,6 @@ def create_database():
               'notif_wallet INTEGER DEFAULT 0, notif_low_wallet INTEGER DEFAULT 0, invited_by integer)')
 
 
-    c.execute('CREATE TABLE IF NOT EXISTS Credit_History(id integer primary key, name text, user_name text, chat_id text,'
-              ' operation integer, value integer, value_now integer, date text, active integer)')
-
-
-    c.execute('CREATE TABLE IF NOT EXISTS Rank(id integer primary key, name text, user_name text, chat_id text,'
-              ' level integer, rank_name text)')
-
-    c.execute('CREATE TABLE IF NOT EXISTS Hourly_service(id integer primary key, purchased_id integer, chat_id text, last_traffic_usage integer)')
-
-
-    c.execute('CREATE TABLE IF NOT EXISTS Partner(id integer primary key, name text, user_name text, chat_id integer,'
-              'traffic_price integer, period_price integer)')
-
-
     c.execute('CREATE TABLE IF NOT EXISTS Product(id integer primary key, inbound_id integer, active integer, name text'
               ',country text, period integer, traffic integer, price integer, date text, is_personalization text,'
               'domain text, server_domain text, status integer)')
@@ -36,9 +22,26 @@ def create_database():
               ' auto_renewal integer DEFAULT 0)')
 
 
+    c.execute('CREATE TABLE IF NOT EXISTS Ticket(id integer primary key, ticket_id text, chat_id text,'
+              'priority integer, title text, body_text integer, date text, active integer)')
+
+
+    c.execute('CREATE TABLE IF NOT EXISTS Credit_History(id integer primary key, name text, user_name text, chat_id text,'
+              ' operation integer, value integer, value_now integer, date text, active integer)')
+
+
+    c.execute('CREATE TABLE IF NOT EXISTS Rank(id integer primary key, name text, user_name text, chat_id text, '
+              'level integer, rank_name text)')
+
+    c.execute('CREATE TABLE IF NOT EXISTS Hourly_service(id integer primary key, purchased_id integer, chat_id text, '
+              'last_traffic_usage integer)')
+
+
+    c.execute('CREATE TABLE IF NOT EXISTS Partner(id integer primary key, name text, user_name text, chat_id integer,'
+              'traffic_price integer, period_price integer)')
+
+
     c.execute('CREATE TABLE IF NOT EXISTS Statistics(id integer primary key, traffic_usage text, date text)')
-
-
     c.execute('CREATE TABLE IF NOT EXISTS Last_usage(id integer primary key, last_usage text, date text)')
 
 

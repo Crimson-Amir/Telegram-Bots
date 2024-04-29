@@ -4,8 +4,6 @@ import matplotlib.pyplot as plt
 import io
 
 def get_plot(data, period_):
-    # period = ['12-3', '3-6', '6-9', '9-00', '00-03', '03-06', '06-09', '09-12']
-    # usage = [44, 53, 123, 4, 42, 64, 13, 4]
     period = data.keys()
     usage = data.values() or [0 for _ in range(0, len(period))]
 
@@ -36,19 +34,12 @@ def get_plot(data, period_):
     plt.xlabel(list_of_period_name[period_], **font_dict)
     plt.ylabel('Usage (MB)', **font_dict)
 
-    # plt.title('Usage in the Last 24 Horse', fontsize=16, color='black')
-
     ax.tick_params(axis='y', labelsize=12, colors='black')
 
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
-    # ax.spines['left'].set_visible(False)
 
-    x_position = len(period) - 0.5
-    y_position = max(usage)
-
-    # ax.text(x_position, y_position, 'Now', fontsize=12, color='black', ha='center')
 
     image_bytes = io.BytesIO()
     plt.savefig(image_bytes, format='png')
@@ -56,6 +47,3 @@ def get_plot(data, period_):
 
     plt.close()
     return image_bytes
-
-
-# get_plot(5)
