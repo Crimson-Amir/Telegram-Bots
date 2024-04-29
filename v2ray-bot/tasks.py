@@ -1088,7 +1088,7 @@ def guidance(update, context):
          InlineKeyboardButton("آشنایی با سرویس‌ها", callback_data=f"robots_service_help")],
         [InlineKeyboardButton("شخصی‌سازی و ویژگی‌های ربات", callback_data=f"personalize_help")],
         [InlineKeyboardButton("• گزارش مشکل", callback_data=f"report_problem_by_user"),
-         InlineKeyboardButton("اضافه کردن تیکت", callback_data=f"create_new_ticket__department")],
+         InlineKeyboardButton("اضافه کردن تیکت", callback_data=f"get_ticket_department")],
         [InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]
     ]
     query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
