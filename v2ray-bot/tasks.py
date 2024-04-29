@@ -2904,9 +2904,7 @@ def say_to_user_send_ticket(update, context):
     context.user_data['priority'] = query.data.replace('set_priority_', '')
     text = ('<b>دریافت شد! حالا پیام خود را بفرستید.'
             '\nاگر نیاز به فرستادن عکس دارید، متن را در کپشن ذکر کنید.</b>')
-    keyboard = [
-        [InlineKeyboardButton(f"منصرف شدم", callback_data=f"delete_message")]
-    ]
+    keyboard = [[InlineKeyboardButton(f"منصرف شدم", callback_data=f"delete_message")]]
     query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
     return GET_TICKET
