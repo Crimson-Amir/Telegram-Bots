@@ -2,7 +2,7 @@ from telegram.ext import (Updater, CommandHandler, CallbackQueryHandler)
 from private import telegram_bot_token, ADMIN_CHAT_ID
 
 from database import create_database
-create_database()
+create_database('./v2ray.db')
 
 from bot_start import bot_start, main_menu, send_main_message, main_menu_delete_main_message
 from tasks import (show_servers, get_service_of_server, payment_page, get_service_con, apply_card_pay,
@@ -15,7 +15,7 @@ from tasks import (show_servers, get_service_of_server, payment_page, get_servic
                    admin_reserve_service, people_ask, pay_per_use, pay_per_use_calculator, change_infiniti_service_status,
                    report_problem_by_user, tickect_by_user, service_advanced_option, rank_page, subcategory,
                    change_service_ownership_conver, hide_buttons, admin_all_config, all_services, admin_server_detail,
-                   service_statistics, daily_gift, daily_gift_message)
+                   service_statistics, daily_gift, daily_gift_message, get_ticket_department, get_ticket_priority)
 
 from utilities import not_ready_yet, just_for_show, message_to_user, alredy_have_show, not_for_depleted_service
 
@@ -68,6 +68,9 @@ def main():
     dp.add_handler(get_service_con)
     dp.add_handler(credit_charge)
     dp.add_handler(change_service_ownership_conver)
+
+    dp.add_handler(CallbackQueryHandler(get_ticket_department, pattern=r'get_ticket_department'))
+    dp.add_handler(CallbackQueryHandler(get_ticket_priority, pattern=r'set_depatment_(.*)'))
 
     dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'active_tls_encoding_(.*)'))
     dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'advanced_option_(.*)'))

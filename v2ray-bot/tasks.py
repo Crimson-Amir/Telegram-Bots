@@ -24,6 +24,7 @@ import functools
 from sqlite_manager import ManageDb
 import json
 import traceback
+from ticket import TicketManager
 
 
 class Task(ManageDb):
@@ -1086,9 +1087,8 @@ def guidance(update, context):
         [InlineKeyboardButton("• سوالات متداول", callback_data=f"people_ask_help"),
          InlineKeyboardButton("آشنایی با سرویس‌ها", callback_data=f"robots_service_help")],
         [InlineKeyboardButton("شخصی‌سازی و ویژگی‌های ربات", callback_data=f"personalize_help")],
-
         [InlineKeyboardButton("• گزارش مشکل", callback_data=f"report_problem_by_user"),
-         InlineKeyboardButton("اضافه کردن تیکت", callback_data=f"ticket_send_ticket")],
+         InlineKeyboardButton("اضافه کردن تیکت", callback_data=f"create_new_ticket__department")],
         [InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]
     ]
     query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
@@ -2220,55 +2220,6 @@ def report_problem_by_user(update, context):
     query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
 
-@handle_telegram_conversetion_exceptions
-def say_to_user_send_ticket(update, context):
-    query = update.callback_query
-    query.answer('پیام خودتون رو بفرستید')
-    problem = query.data.replace('ticket_send_', '')
-    context.user_data['problem'] = problem
-    text = 'پیام خودتو رو بفرستید:\nاگر مایل به فرستادن عکس هستید، توضیحات رو در کپشن ذکر کنید.'
-    context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='markdown')
-    return GET_TICKET
-
-
-@handle_telegram_conversetion_exceptions
-def send_ticket_to_admin(update, context):
-    user = update.message.from_user
-    problem = context.user_data['problem']
-
-    text = (f"- New Ticket [{problem.replace('_', ' ')}]:\nName: {user['name']}\nUserName: {user['username']}"
-            f"\nUserID: {user['id']}")
-
-    keyboard = [[InlineKeyboardButton("صفحه اصلی", callback_data="main_menu_in_new_message")]]
-
-    if update.message.photo:
-        file_id = update.message.photo[-1].file_id
-        text += f"\ncaption: {update.message.caption}" or 'Witout caption!'
-        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text)
-        update.message.reply_text(f'پیام شما ثبت شد. متشکریم!', reply_markup=InlineKeyboardMarkup(keyboard))
-    elif update.message.text:
-        text += f"Text: {update.message.text}"
-        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text)
-        update.message.reply_text(f'پیام شما ثبت شد. متشکریم!', reply_markup=InlineKeyboardMarkup(keyboard))
-    else:
-        update.message.reply_text('مشکلی وجود داشت!', reply_markup=InlineKeyboardMarkup(keyboard))
-
-    context.user_data.clear()
-    return ConversationHandler.END
-
-
-tickect_by_user = ConversationHandler(
-    entry_points=[CallbackQueryHandler(say_to_user_send_ticket, pattern='ticket_send_')],
-    states={
-        GET_TICKET: [MessageHandler(Filters.all, send_ticket_to_admin)]
-    },
-    fallbacks=[],
-    conversation_timeout=1000,
-    per_chat=True,
-    allow_reentry=True
-)
-
-
 def rank_page(update, context):
     query = update.callback_query
     chat_id = query.message.chat_id
@@ -2784,7 +2735,8 @@ def upgrade_or_create(traffic, user, context):
 
     try:
         traffic = round(int(traffic) / 1000, 2)
-        get_id = sqlite_manager.select('id', table='Product', where=f'name LIKE "gift%"')
+        get_id = sqlite_manager.select('id,traffic', table='Product', where=f'name LIKE "gift%"')
+        defualt_traffic = None
         if not get_id:
             get_data = {'inbound_id': 2, 'active': 0,
                         'name': f'gift_{private.country_main}', 'country': private.country_main,
@@ -2796,6 +2748,7 @@ def upgrade_or_create(traffic, user, context):
             get_id = sqlite_manager.insert('Product', rows=get_data)
 
         else:
+            defualt_traffic = get_id[0][1]
             get_id = get_id[0][0]
 
 
@@ -2806,7 +2759,7 @@ def upgrade_or_create(traffic, user, context):
             context.bot.send_message(text=f'🔵 کانفیگ شماره {get_purchased_id[0][0]} ارتقا یافت!', chat_id=chat_id)
             task.upgrade_service(context, get_purchased_id[0][0], [(0, 0, 0, 0, 0, traffic, 1),])
 
-            return {'msg': 'upgrade service', 'purchased_id': get_purchased_id[0][0]}
+            return {'msg': 'upgrade service', 'purchased_id': get_purchased_id[0][0], 'defualt_trffic': defualt_traffic}
 
         else:
             id_ = sqlite_manager.insert('Purchased', rows=
@@ -2814,18 +2767,17 @@ def upgrade_or_create(traffic, user, context):
              'chat_id': user['id'], 'product_id': get_id, 'notif_day': 1, 'notif_gb': 0})
 
             get_res = send_clean_for_customer(1, context, id_)
-            return get_res
+            return get_res.update({'defualt_traffic': defualt_traffic})
 
     except Exception as e:
         ready_report_problem_to_admin(context, text='Daily Gift', error=e, chat_id=chat_id)
-        return {'msg': str(e), 'purchased_id': 0}
+        return {'msg': str(e), 'purchased_id': 0, 'defualt_traffic': None}
 
 
 @handle_telegram_exceptions
 def daily_gift(update, context):
     query = update.callback_query
     user = query.from_user
-    # user = {'id': 1,'first_name': 1,'username': 1}
     chat_id = int(user["id"])
     is_user_start_bot = sqlite_manager.select(table='User', where=f'chat_id = {chat_id}')
     if not is_user_start_bot:
@@ -2859,6 +2811,8 @@ def daily_gift(update, context):
         if int(chance):
             get_final_res = upgrade_or_create(chance, user, context)
             traffic_formated = format_mb_traffic(int(chance))
+            if get_final_res.get('defualt_traffic'):
+                traffic_formated = format_mb_traffic(int(get_final_res.get('defualt_traffic')))
 
             text = (f'🎉 تبریک، شما برنده هدیه {traffic_formated} شدید!'
                     '\nجزئیات از طریق ربات ارسال شد.')
@@ -2891,6 +2845,7 @@ def daily_gift(update, context):
 
         query.answer(text, show_alert=True)
 
+
 @handle_telegram_exceptions
 def daily_gift_message(update, context):
     target_chat_id = context.args[0]
@@ -2906,3 +2861,107 @@ def daily_gift_message(update, context):
 
     context.bot.send_message(chat_id=target_chat_id, text=text,
                              reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+
+
+def delete_message(update, context):
+    query = update.callback_query
+    query.delete_message()
+    query.answer('پیام حذف شد!')
+    context.user_data.clear()
+
+
+@handle_telegram_exceptions
+def get_ticket_department(update, context):
+    query = update.callback_query
+    query.answer('تیکت جدید ایجاد شد!')
+    text = '<b>لطفا دپارتمان مربوط را انتخاب کنید:</b>'
+    keyboard = [
+        [InlineKeyboardButton(f"بخش فنی", callback_data=f"set_depatment_technical")],
+        [InlineKeyboardButton(f"بخش فروش", callback_data=f"set_depatment_sales")],
+        [InlineKeyboardButton(f"بخش ارتباطات", callback_data=f"set_depatment_communications")],
+        [InlineKeyboardButton(f"منصرف شدم", callback_data=f"delete_message")]
+    ]
+    context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+@handle_telegram_exceptions
+def get_ticket_priority(update, context):
+    query = update.callback_query
+    context.user_data['department'] = query.data.replace('set_depatment_', '')
+    text = '<b>بسیار خب، لطفا اولویت موضوع را انتخاب کنید:</b>'
+    keyboard = [
+        [InlineKeyboardButton(f"بسیار مهم", callback_data=f"set_priority_necessary")],
+        [InlineKeyboardButton(f"مهم", callback_data=f"set_priority_medium")],
+        [InlineKeyboardButton(f"معمولی", callback_data=f"set_priority_low")],
+        [InlineKeyboardButton(f"منصرف شدم", callback_data=f"delete_message")]
+    ]
+    query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+@handle_telegram_conversetion_exceptions
+def say_to_user_send_ticket(update, context):
+    query = update.callback_query
+    context.user_data['priority'] = query.data.replace('set_priority_', '')
+    text = ('<b>دریافت شد! حالا پیام خود را بفرستید.'
+            '\nاگر نیاز به فرستادن عکس دارید، متن را در کپشن ذکر کنید.</b>')
+    keyboard = [
+        [InlineKeyboardButton(f"منصرف شدم", callback_data=f"delete_message")]
+    ]
+    query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
+    return GET_TICKET
+
+
+@handle_telegram_conversetion_exceptions
+def send_ticket_to_admin(update, context):
+    user = update.message.from_user
+    priority = context.user_data['priority']
+    department = context.user_data['department']
+
+    text = f"New Ticket | {priority} | {department}:\nName: {user['name']}\nUserName: @{user['username']} \nUserID: {user['id']}"
+
+    file_id = update.message.photo[-1].file_id if update.message.photo else None
+    user_message = update.message.text if update.message.text else update.message.caption
+
+    text += f'User Message: {user_message}'
+
+    ticket_manager = TicketManager('v2ray')
+    ticket_id = ticket_manager.create_ticket(user.id, f'{user_message[:10]} ...', user_message, priority, department, file_id)
+
+    user_responce_text = ('<b>✅ تیکت با موفقیت ایجاد شد!'
+                          f'\n\nآیدی تیکت: {ticket_id}'
+                          f'\nوضعیت: باز'
+                          f'\n\n• پاسخ ادمین از طریق ربات به اطلاع شما میرسد.</b>')
+
+    keyboard = [
+        [InlineKeyboardButton("پیام جدید 🆕", callback_data=f"reply_ticket_{ticket_id}"),
+         InlineKeyboardButton("بستن تیکت 🔒", callback_data=f"close_ticket_{ticket_id}")],
+        [InlineKeyboardButton("صفحه اصلی", callback_data="main_menu_in_new_message")]
+    ]
+
+    admin_keyboard = [
+        [InlineKeyboardButton("Awnser 🎯", callback_data=f"reply_ticket_{ticket_id}"),
+         InlineKeyboardButton("Close Ticket 🔒", callback_data=f"close_ticket_{ticket_id}")]
+    ]
+
+    update.message.reply_text(user_responce_text, reply_markup=InlineKeyboardMarkup(keyboard))
+
+    if file_id:
+        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=user_message, reply_markup=InlineKeyboardMarkup(admin_keyboard))
+    else:
+        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=user_message, reply_markup=InlineKeyboardMarkup(admin_keyboard))
+
+    context.user_data.clear()
+    return ConversationHandler.END
+
+
+tickect_by_user = ConversationHandler(
+    entry_points=[CallbackQueryHandler(say_to_user_send_ticket, pattern='set_priority_')],
+    states={
+        GET_TICKET: [MessageHandler(Filters.all, send_ticket_to_admin)]
+    },
+    fallbacks=[],
+    conversation_timeout=1000,
+    per_chat=True,
+    allow_reentry=True
+)

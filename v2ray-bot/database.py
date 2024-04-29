@@ -1,8 +1,8 @@
 import sqlite3
 
 
-def create_database():
-    conn = sqlite3.connect('./v2ray.db')
+def create_database(db_name='test'):
+    conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
     c.execute('CREATE TABLE IF NOT EXISTS User(id integer primary key, name text, c '
@@ -21,9 +21,8 @@ def create_database():
               ' client_id text, status integer, date text, notif_day integer, notif_gb integer,'
               ' auto_renewal integer DEFAULT 0)')
 
-
-    c.execute('CREATE TABLE IF NOT EXISTS Ticket(id integer primary key, ticket_id text, chat_id text,'
-              'priority integer, title text, body_text integer, date text, active integer)')
+    c.execute('CREATE TABLE IF NOT EXISTS Ticket (id INTEGER PRIMARY KEY, master_ticket_id TEXT, status TEXT, user_id TEXT,'
+              'department TEXT, priority INTEGER, title TEXT, body_text INTEGER, image BLOB, date TEXT, update_date TEXT)')
 
 
     c.execute('CREATE TABLE IF NOT EXISTS Credit_History(id integer primary key, name text, user_name text, chat_id text,'
