@@ -23,4 +23,4 @@ class Ticket(ABC, ManageDb, metaclass=Sindleton):
 
     def create_ticket(self, user_id, text, priority):
         preparation_text = PreparationAdapter().text_preparation(text)
-        self.insert(table=self.table_name, rows={'a': 1})
+        self.insert(table=self.table_name, rows={})
