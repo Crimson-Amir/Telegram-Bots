@@ -15,7 +15,7 @@ from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandl
 import ranking
 import utilities
 from admin_task import (add_client_bot, api_operation, second_to_ms, message_to_user, wallet_manage, sqlite_manager,
-                        ranking_manage)
+                        ticket_manager, ranking_manage)
 import qrcode
 from io import BytesIO
 import pytz
@@ -24,7 +24,6 @@ import functools
 from sqlite_manager import ManageDb
 import json
 import traceback
-from ticket import TicketManager
 
 
 class Task(ManageDb):
@@ -1088,7 +1087,7 @@ def guidance(update, context):
          InlineKeyboardButton("آشنایی با سرویس‌ها", callback_data=f"robots_service_help")],
         [InlineKeyboardButton("شخصی‌سازی و ویژگی‌های ربات", callback_data=f"personalize_help")],
         [InlineKeyboardButton("• گزارش مشکل", callback_data=f"report_problem_by_user"),
-         InlineKeyboardButton("اضافه کردن تیکت", callback_data=f"get_ticket_department")],
+         InlineKeyboardButton("اضافه کردن تیکت", callback_data=f"get_ticket_priority")],
         [InlineKeyboardButton("برگشت ⤶", callback_data="main_menu")]
     ]
     query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
@@ -2863,49 +2862,51 @@ def daily_gift_message(update, context):
                              reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
 
+@handle_telegram_exceptions
 def delete_message(update, context):
     query = update.callback_query
     query.delete_message()
     query.answer('پیام حذف شد!')
     context.user_data.clear()
+    return ConversationHandler.END
 
 
-@handle_telegram_exceptions
-def get_ticket_department(update, context):
-    query = update.callback_query
-    query.answer('تیکت جدید ایجاد شد!')
-    text = '<b>لطفا دپارتمان مربوط را انتخاب کنید:</b>'
-    keyboard = [
-        [InlineKeyboardButton(f"بخش فنی", callback_data=f"set_depatment_technical")],
-        [InlineKeyboardButton(f"بخش فروش", callback_data=f"set_depatment_sales")],
-        [InlineKeyboardButton(f"بخش ارتباطات", callback_data=f"set_depatment_communications")],
-        [InlineKeyboardButton(f"منصرف شدم", callback_data=f"delete_message")]
-    ]
-    context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+# @handle_telegram_exceptions
+# def get_ticket_department(update, context):
+#     query = update.callback_query
+#     query.answer('تیکت جدید ایجاد شد!')
+#     text = '<b>• لطفا دپارتمان مربوط را انتخاب کنید:</b>'
+#     keyboard = [
+#         [InlineKeyboardButton(f"بخش فنی", callback_data=f"set_depatment_technical"),
+#          InlineKeyboardButton(f"بخش فروش", callback_data=f"set_depatment_sales")],
+#         [InlineKeyboardButton(f"بخش ارتباطات", callback_data=f"set_depatment_communications")],
+#         [InlineKeyboardButton(f"منصرف شدم", callback_data=f"delete_message")]
+#     ]
+#     context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 @handle_telegram_exceptions
 def get_ticket_priority(update, context):
     query = update.callback_query
-    context.user_data['department'] = query.data.replace('set_depatment_', '')
-    text = '<b>بسیار خب، لطفا اولویت موضوع را انتخاب کنید:</b>'
+    query.answer('تیکت ایجاد شد!')
+    text = '<b>• بسیار خب، لطفا اولویت را انتخاب کنید:</b>'
     keyboard = [
         [InlineKeyboardButton(f"بسیار مهم", callback_data=f"set_priority_necessary")],
         [InlineKeyboardButton(f"مهم", callback_data=f"set_priority_medium")],
         [InlineKeyboardButton(f"معمولی", callback_data=f"set_priority_low")],
         [InlineKeyboardButton(f"منصرف شدم", callback_data=f"delete_message")]
     ]
-    query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+    context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 @handle_telegram_conversetion_exceptions
 def say_to_user_send_ticket(update, context):
     query = update.callback_query
     context.user_data['priority'] = query.data.replace('set_priority_', '')
-    text = ('<b>دریافت شد! حالا پیام خود را بفرستید.'
-            '\nاگر نیاز به فرستادن عکس دارید، متن را در کپشن ذکر کنید.</b>')
+    text = ('<b>• دریافت شد! حالا پیام خود را بفرستید.'
+            '\nهمچنین میتوانید عکس بفرستید و متن مورد نظر را در کپشن ذکر کنید.</b>')
     keyboard = [[InlineKeyboardButton(f"منصرف شدم", callback_data=f"delete_message")]]
-    query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+    query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
     return GET_TICKET
 
 
@@ -2913,17 +2914,13 @@ def say_to_user_send_ticket(update, context):
 def send_ticket_to_admin(update, context):
     user = update.message.from_user
     priority = context.user_data['priority']
-    department = context.user_data['department']
-
-    text = f"New Ticket | {priority} | {department}:\nName: {user['name']}\nUserName: @{user['username']} \nUserID: {user['id']}"
 
     file_id = update.message.photo[-1].file_id if update.message.photo else None
-    user_message = update.message.text if update.message.text else update.message.caption
+    user_message = update.message.text if update.message.text else update.message.caption or 'Witout Caption!'
 
-    text += f'User Message: {user_message}'
+    text = f"New Ticket | {priority}\nName: {user['name']}\nUserName: @{user['username']}\nUserID: {user['id']}\nUser Message: {user_message}"
 
-    ticket_manager = TicketManager('v2ray')
-    ticket_id = ticket_manager.create_ticket(user.id, f'{user_message[:10]} ...', user_message, priority, department, file_id)
+    ticket_id = ticket_manager.create_ticket(user.id, f'{user_message[:10]} ...', user_message, priority, 'sales', file_id)
 
     user_responce_text = ('<b>✅ تیکت با موفقیت ایجاد شد!'
                           f'\n\nآیدی تیکت: {ticket_id}'
@@ -2937,16 +2934,16 @@ def send_ticket_to_admin(update, context):
     ]
 
     admin_keyboard = [
-        [InlineKeyboardButton("Awnser 🎯", callback_data=f"reply_ticket_{ticket_id}"),
+        [InlineKeyboardButton("Anwser 🎯", callback_data=f"reply_ticket_{ticket_id}"),
          InlineKeyboardButton("Close Ticket 🔒", callback_data=f"close_ticket_{ticket_id}")]
     ]
 
-    update.message.reply_text(user_responce_text, reply_markup=InlineKeyboardMarkup(keyboard))
+    update.message.reply_text(user_responce_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
     if file_id:
-        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=user_message, reply_markup=InlineKeyboardMarkup(admin_keyboard))
+        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, reply_markup=InlineKeyboardMarkup(admin_keyboard))
     else:
-        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=user_message, reply_markup=InlineKeyboardMarkup(admin_keyboard))
+        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, reply_markup=InlineKeyboardMarkup(admin_keyboard))
 
     context.user_data.clear()
     return ConversationHandler.END
@@ -2956,6 +2953,93 @@ tickect_by_user = ConversationHandler(
     entry_points=[CallbackQueryHandler(say_to_user_send_ticket, pattern='set_priority_')],
     states={
         GET_TICKET: [MessageHandler(Filters.all, send_ticket_to_admin)]
+    },
+    fallbacks=[],
+    conversation_timeout=1000,
+    per_chat=True,
+    allow_reentry=True
+)
+
+
+@handle_telegram_conversetion_exceptions
+def reply_to_ticket(update, context):
+    query = update.callback_query
+    master_ticket_id = int(query.data.replace('reply_ticket_', ''))
+    context.user_data['master_ticket_id'] = master_ticket_id
+
+    if not ticket_manager.check_ticket_status(master_ticket_id)[0]:
+        query.answer('این تیکت بسته است!')
+        return ConversationHandler.END
+
+    text = ('<b>• پاسخ خود را بفرستید.'
+            '\nهمچنین میتوانید عکس بفرستید و متن مورد نظر را در کپشن ذکر کنید.</b>')
+
+    keyboard = [[InlineKeyboardButton(f"منصرف شدم", callback_data=f"delete_message")]]
+
+    context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
+    return REPLY_TICKET
+
+
+@handle_telegram_conversetion_exceptions
+def reply_ticket_manager(update, context):
+    user = update.message.from_user
+    chat_id = int(user.id)
+    master_ticket_id = context.user_data['master_ticket_id']
+
+    file_id = update.message.photo[-1].file_id if update.message.photo else None
+    user_message = update.message.text if update.message.text else update.message.caption or 'Witout Caption!'
+
+    ticket_id = ticket_manager.reply_to_ticket(master_ticket_id, chat_id, user_message, file_id)
+    ticket_owner_chat_id = ticket_manager.check_ticket_status(master_ticket_id)[1]
+
+    keyboard = [
+        [InlineKeyboardButton("پیام جدید 🆕", callback_data=f"reply_ticket_{master_ticket_id}"),
+         InlineKeyboardButton("بستن تیکت 🔒", callback_data=f"close_ticket_{master_ticket_id}")],
+        [InlineKeyboardButton("صفحه اصلی", callback_data="main_menu_in_new_message")]
+    ]
+
+
+    if ticket_owner_chat_id == chat_id:
+        text = f"New Ticket\nName: {user['name']}\nUserName: @{user['username']}\nUserID: {user['id']}\nUser Message: {user_message}"
+
+        user_responce_text = ('<b>✅ پاسخ با موفقیت ثبت شد!'
+                              f'\n\nآیدی تیکت: {ticket_id}'
+                              f'\nوضعیت: باز'
+                              f'\n\n• پاسخ از طریق ربات به اطلاع شما میرسد.</b>')
+
+        update.reply_message(text=user_responce_text, reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+    else:
+        text = f"<b>پاسخ شما با موفقیت ارسال شد!</b>"
+
+        user_responce_text = ('<b>🎯 تیکت شما پاسخ داده شد!'
+                              f'\nسلام {user.firstname} عزیز وقتتون بخیر،'
+                              f'\n\n {user_message}'
+                              f'\n\nدرخدمت شما هستیم \nبا تشکر از همراهی شما.'
+                              f'\n\nآیدی تیکت: {ticket_id}'
+                              f'\nوضعیت: باز')
+
+        if file_id:
+            context.bot.send_photo(chat_id=ticket_owner_chat_id, photo=file_id, caption=user_responce_text, reply_markup=InlineKeyboardMarkup(keyboard))
+        else:
+            context.bot.send_message(chat_id=ticket_owner_chat_id, text=user_responce_text, reply_markup=InlineKeyboardMarkup(keyboard))
+
+    if file_id:
+        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, reply_markup=InlineKeyboardMarkup(keyboard))
+    else:
+        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+
+    context.user_data.clear()
+    return ConversationHandler.END
+
+
+
+
+reply_ticket = ConversationHandler(
+    entry_points=[CallbackQueryHandler(reply_to_ticket, pattern='reply_ticket_')],
+    states={
+        REPLY_TICKET: [MessageHandler(Filters.all, reply_ticket_manager)]
     },
     fallbacks=[],
     conversation_timeout=1000,

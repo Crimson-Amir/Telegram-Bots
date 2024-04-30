@@ -7,9 +7,11 @@ from utilities import init_name, ready_report_problem_to_admin, message_to_user,
 from wallet import WalletManage
 import ranking
 from ranking import rank_access
+from ticket import TicketManager
 
 wallet_manage = WalletManage('User', 'wallet', 'v2ray', 'chat_id')
 ranking_manage = ranking.RankManage('Rank', 'level', 'rank_name',db_name='v2ray', user_id_identifier='chat_id')
+ticket_manager = TicketManager('v2ray')
 
 def admin_add_update_inbound(update, context):
     chat_id = update.message.chat_id

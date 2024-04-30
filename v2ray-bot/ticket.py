@@ -15,8 +15,10 @@ class Singleton(type):
 class InstanceIsNotAllowed(ABC, type):
     def __call__(cls, *args, **kwargs):
         class_name = cls.__name__
-        error_msg = f"Instances of '{class_name}' are not allowed. Use 'TicketManager' class instead."
-        raise TypeError(error_msg)
+        if class_name == 'TicketKernel':
+            error_msg = f"Instances of '{class_name}' are not allowed. Use 'TicketManager' class instead."
+            raise TypeError(error_msg)
+        return super().__call__(*args, **kwargs)
 
 
 class TicketClosedError(Exception):
@@ -54,9 +56,9 @@ class TicketKernel(ManageDb, PreparationAdapter, metaclass=InstanceIsNotAllowed)
     def create_ticket(self, user_id, title, text, priority, department, photo=None):
         preparation_text = self.text_preparation(text)
         date_now = self.date_now('Asia/Tehran', True)
-        master_ticket_id = self.insert(table=self.table_name, rows={'chat_id': user_id, 'department': department,
+        master_ticket_id = self.insert(table=self.table_name, rows={'user_id': user_id, 'department': department,
                                                                     'priority': priority, 'title': title, 'body_text': preparation_text,
-                                                                    'date': date_now, 'status': 'open', 'photo': photo})
+                                                                    'date': date_now, 'status': 'open', 'image': photo})
         return master_ticket_id
 
 
@@ -64,8 +66,8 @@ class TicketKernel(ManageDb, PreparationAdapter, metaclass=InstanceIsNotAllowed)
     def reply_to_ticket(self, master_ticket_id, user_id, text, photo=None):
         preparation_text = self.text_preparation(text)
         date_now = self.date_now('Asia/Tehran', True)
-        ticket_id = self.insert(table=self.table_name, rows={'master_ticket_id': master_ticket_id, 'chat_id': user_id,
-                                                             'body_text': preparation_text, 'photo': photo, 'date': date_now})
+        ticket_id = self.insert(table=self.table_name, rows={'master_ticket_id': master_ticket_id, 'user_id': user_id,
+                                                             'body_text': preparation_text, 'image': photo, 'date': date_now})
         return ticket_id
 
     def close_ticket(self, ticket_id):
@@ -74,10 +76,10 @@ class TicketKernel(ManageDb, PreparationAdapter, metaclass=InstanceIsNotAllowed)
 
 
     def check_ticket_status(self, master_ticket_id):
-        get_ticket_from_db = self.select(column='status', table=self.table_name, where=f'id={master_ticket_id}')
+        get_ticket_from_db = self.select(column='status,user_id', table=self.table_name, where=f'id={master_ticket_id}')
         if get_ticket_from_db[0][0] == 'open':
-            return True
-        return False
+            return True, get_ticket_from_db[0][1]
+        return False, get_ticket_from_db[0][1]
 
     def update_ticket(self, ticket_id, edit_dict: dict):
         date_now = self.date_now('Asia/Tehran', True)
