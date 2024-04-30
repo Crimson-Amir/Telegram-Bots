@@ -184,6 +184,7 @@ class XuiApiClean(ManageDb):
         return inb
 
 # test = XuiApiClean()
-# a = test.restart_xray()
+# a = test.get_onlines()
+# print(a)
 # print(test.get_ips('kyhm2hhk'))
 # breakpoint()

@@ -2386,6 +2386,8 @@ def service_advanced_option(update, context):
         get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
                                                    where=f'id = {get_data[0][6]}')
 
+
+        online_configs = api_operation.get_onlines(get_server_country[0][1])
         get_server_country = get_server_country[0][0].replace('سرور ', '').replace('pay_per_use_', '')
         auto_renewal, auto_renewal_button, chenge_to = ('فعال ✓', 'غیرفعال کردن تمدید خودکار ✗', False) if get_data[0][
             15] \
@@ -2394,10 +2396,14 @@ def service_advanced_option(update, context):
         tls_encodeing, tls_status, change_to_ = ('✓', 'فعال ✓', False) if get_data[0][7] == TLS_INBOUND else (
             '✗', 'غیرفعال ✗', True)
 
+
+        connection_status = 'آنلاین 🟢' if email in online_configs.get('obj', []) else 'آفلاین 🔴'
+
         text_ = (
             "<b>🟡 با تغییر گزینه‌ها، تنظیمات سرویس تغییر می‌کند و اگر به این سرویس متصل هستید،"
             " ارتباط قطع خواهد شد. لطفاً اطمینان حاصل کنید که قادر به جایگزینی آدرس جدید هستید.</b>"
             f"\n\n🔷 نام سرویس: {email}"
+            f"\n🔌 وضعیت اتصال: {connection_status}"
             f"\n🗺 موقعیت سرور: {get_server_country}"
             f"\n🔗 تمدید خودکار: {auto_renewal}"
             f"\n🛡️ رمزگذاری اطلاعات: {tls_status}"
@@ -2750,23 +2756,20 @@ def upgrade_or_create(traffic, user, context):
             defualt_traffic = get_id[0][1]
             get_id = get_id[0][0]
 
+        get_purchased_id = sqlite_manager.select('id', table='Purchased', where=f'product_id = {get_id} AND chat_id = {user["id"]}')
 
-        get_purchased_id = sqlite_manager.select('id', table='Purchased',
-                                                 where=f'product_id = {get_id} AND chat_id = {user["id"]}')
         if get_purchased_id:
-
             context.bot.send_message(text=f'🔵 کانفیگ شماره {get_purchased_id[0][0]} ارتقا یافت!', chat_id=chat_id)
             task.upgrade_service(context, get_purchased_id[0][0], [(0, 0, 0, 0, 0, traffic, 1),])
-
             return {'msg': 'upgrade service', 'purchased_id': get_purchased_id[0][0], 'defualt_trffic': defualt_traffic}
-
         else:
             id_ = sqlite_manager.insert('Purchased', rows=
             {'active': 1, 'status': 1, 'name': init_name(user["first_name"]), 'user_name': user["username"],
              'chat_id': user['id'], 'product_id': get_id, 'notif_day': 1, 'notif_gb': 0})
 
-            get_res = send_clean_for_customer(1, context, id_)
-            return get_res.update({'defualt_traffic': defualt_traffic})
+            get_res = {'defualt_traffic': defualt_traffic}
+            get_res.update(send_clean_for_customer(1, context, id_))
+            return get_res
 
     except Exception as e:
         ready_report_problem_to_admin(context, text='Daily Gift', error=e, chat_id=chat_id)
@@ -2811,7 +2814,7 @@ def daily_gift(update, context):
             get_final_res = upgrade_or_create(chance, user, context)
             traffic_formated = format_mb_traffic(int(chance))
             if get_final_res.get('defualt_traffic'):
-                traffic_formated = format_mb_traffic(int(get_final_res.get('defualt_traffic')))
+                traffic_formated = f"{get_final_res.get('defualt_traffic')}  مگابایت"
 
             text = (f'🎉 تبریک، شما برنده هدیه {traffic_formated} شدید!'
                     '\nجزئیات از طریق ربات ارسال شد.')
@@ -2871,20 +2874,6 @@ def delete_message(update, context):
     return ConversationHandler.END
 
 
-# @handle_telegram_exceptions
-# def get_ticket_department(update, context):
-#     query = update.callback_query
-#     query.answer('تیکت جدید ایجاد شد!')
-#     text = '<b>• لطفا دپارتمان مربوط را انتخاب کنید:</b>'
-#     keyboard = [
-#         [InlineKeyboardButton(f"بخش فنی", callback_data=f"set_depatment_technical"),
-#          InlineKeyboardButton(f"بخش فروش", callback_data=f"set_depatment_sales")],
-#         [InlineKeyboardButton(f"بخش ارتباطات", callback_data=f"set_depatment_communications")],
-#         [InlineKeyboardButton(f"منصرف شدم", callback_data=f"delete_message")]
-#     ]
-#     context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
-
-
 @handle_telegram_exceptions
 def get_ticket_priority(update, context):
     query = update.callback_query
@@ -2929,13 +2918,13 @@ def send_ticket_to_admin(update, context):
 
     keyboard = [
         [InlineKeyboardButton("پیام جدید 🆕", callback_data=f"reply_ticket_{ticket_id}"),
-         InlineKeyboardButton("بستن تیکت 🔒", callback_data=f"close_ticket_{ticket_id}")],
+         InlineKeyboardButton("بستن تیکت 🔒", callback_data=f"change_ticket_status_{ticket_id}")],
         [InlineKeyboardButton("صفحه اصلی", callback_data="main_menu_in_new_message")]
     ]
 
     admin_keyboard = [
         [InlineKeyboardButton("Anwser 🎯", callback_data=f"reply_ticket_{ticket_id}"),
-         InlineKeyboardButton("Close Ticket 🔒", callback_data=f"close_ticket_{ticket_id}")]
+         InlineKeyboardButton("Close Ticket 🔒", callback_data=f"change_ticket_status_{ticket_id}")]
     ]
 
     update.message.reply_text(user_responce_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
@@ -2959,6 +2948,34 @@ tickect_by_user = ConversationHandler(
     per_chat=True,
     allow_reentry=True
 )
+
+@handle_telegram_exceptions
+def change_ticket_status(update, context):
+    query = update.callback_query
+    master_ticket_id = int(query.data.replace('change_ticket_status_', ''))
+    change_to = 'close'
+    keyboard = [[InlineKeyboardButton(f"باز کردن تیکت 🔓", callback_data=f"change_ticket_status_{master_ticket_id}")],
+                [InlineKeyboardButton("همه تیکت ها", callback_data="all_ticket"),
+                 InlineKeyboardButton("صفحه اصلی", callback_data="main_menu_in_new_message")]
+                ]
+    if not ticket_manager.check_ticket_status(master_ticket_id)[0]:
+        change_to = 'open'
+        keyboard = [
+            [InlineKeyboardButton("پیام جدید 🆕", callback_data=f"reply_ticket_{master_ticket_id}"),
+             InlineKeyboardButton("بستن تیکت 🔒", callback_data=f"change_ticket_status_{master_ticket_id}")],
+            [InlineKeyboardButton("همه تیکت ها", callback_data="all_ticket"),
+             InlineKeyboardButton("صفحه اصلی", callback_data="main_menu_in_new_message")]
+        ]
+
+    ticket_manager.change_ticket_status(master_ticket_id, change_to)
+    format_ = {'open': 'باز', 'close': 'بسته'}
+    ticket_status = format_.get(change_to)
+    text = (f'<b>✅ تیکت با موفقیت {ticket_status} شد'
+            f'\n\nآیدی تیکت: {master_ticket_id}'
+            f'\nوضعیت: {ticket_status}'
+            f'</b>')
+    query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+    query.answer('عملیات با موفقیت انجام شد!')
 
 
 @handle_telegram_conversetion_exceptions
@@ -2990,50 +3007,40 @@ def reply_ticket_manager(update, context):
     user_message = update.message.text if update.message.text else update.message.caption or 'Witout Caption!'
 
     ticket_id = ticket_manager.reply_to_ticket(master_ticket_id, chat_id, user_message, file_id)
-    ticket_owner_chat_id = ticket_manager.check_ticket_status(master_ticket_id)[1]
+    ticket_owner_chat_id = int(ticket_manager.check_ticket_status(master_ticket_id)[1])
 
     keyboard = [
         [InlineKeyboardButton("پیام جدید 🆕", callback_data=f"reply_ticket_{master_ticket_id}"),
-         InlineKeyboardButton("بستن تیکت 🔒", callback_data=f"close_ticket_{master_ticket_id}")],
+         InlineKeyboardButton("بستن تیکت 🔒", callback_data=f"change_ticket_status_{master_ticket_id}")],
         [InlineKeyboardButton("صفحه اصلی", callback_data="main_menu_in_new_message")]
     ]
 
+    user_responce_text = ('<b>✅ پاسخ با موفقیت ثبت شد!'
+                          f'\n\nآیدی تیکت: {master_ticket_id}'
+                          f'\nوضعیت: باز'
+                          f'\n\n• پاسخ از طریق ربات به اطلاع شما میرسد.</b>')
+
+    owner_text = ('<b>🎯 تیکت شما پاسخ داده شد!'
+                  f'\n\n {user_message}'
+                  f'\n\nآیدی تیکت: {master_ticket_id}'
+                  f'\nوضعیت: باز'
+                  f'</b>')
+
+    update.message.reply_text(text=user_responce_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
     if ticket_owner_chat_id == chat_id:
-        text = f"New Ticket\nName: {user['name']}\nUserName: @{user['username']}\nUserID: {user['id']}\nUser Message: {user_message}"
-
-        user_responce_text = ('<b>✅ پاسخ با موفقیت ثبت شد!'
-                              f'\n\nآیدی تیکت: {ticket_id}'
-                              f'\nوضعیت: باز'
-                              f'\n\n• پاسخ از طریق ربات به اطلاع شما میرسد.</b>')
-
-        update.reply_message(text=user_responce_text, reply_markup=InlineKeyboardMarkup(keyboard))
-
-
+        chat_id = ADMIN_CHAT_ID
     else:
-        text = f"<b>پاسخ شما با موفقیت ارسال شد!</b>"
-
-        user_responce_text = ('<b>🎯 تیکت شما پاسخ داده شد!'
-                              f'\nسلام {user.firstname} عزیز وقتتون بخیر،'
-                              f'\n\n {user_message}'
-                              f'\n\nدرخدمت شما هستیم \nبا تشکر از همراهی شما.'
-                              f'\n\nآیدی تیکت: {ticket_id}'
-                              f'\nوضعیت: باز')
-
-        if file_id:
-            context.bot.send_photo(chat_id=ticket_owner_chat_id, photo=file_id, caption=user_responce_text, reply_markup=InlineKeyboardMarkup(keyboard))
-        else:
-            context.bot.send_message(chat_id=ticket_owner_chat_id, text=user_responce_text, reply_markup=InlineKeyboardMarkup(keyboard))
+        chat_id = ticket_owner_chat_id
 
     if file_id:
-        context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=file_id, caption=text, reply_markup=InlineKeyboardMarkup(keyboard))
+        context.bot.send_photo(chat_id=chat_id, photo=file_id, caption=owner_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
     else:
-        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+        context.bot.send_message(chat_id=chat_id, text=owner_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+
 
     context.user_data.clear()
     return ConversationHandler.END
-
-
 
 
 reply_ticket = ConversationHandler(

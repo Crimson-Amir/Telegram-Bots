@@ -70,9 +70,9 @@ class TicketKernel(ManageDb, PreparationAdapter, metaclass=InstanceIsNotAllowed)
                                                              'body_text': preparation_text, 'image': photo, 'date': date_now})
         return ticket_id
 
-    def close_ticket(self, ticket_id):
+    def change_ticket_status(self, ticket_id, change_to='close'):
         date_now = self.date_now('Asia/Tehran', True)
-        self.update_ticket(ticket_id, {'status': 'closed', 'update_date': date_now})
+        self.update_ticket(ticket_id, {'status': change_to, 'update_date': date_now})
 
 
     def check_ticket_status(self, master_ticket_id):

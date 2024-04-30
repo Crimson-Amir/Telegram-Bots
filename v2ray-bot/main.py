@@ -15,7 +15,8 @@ from tasks import (show_servers, get_service_of_server, payment_page, get_servic
                    admin_reserve_service, people_ask, pay_per_use, pay_per_use_calculator, change_infiniti_service_status,
                    report_problem_by_user, tickect_by_user, service_advanced_option, rank_page, subcategory,
                    change_service_ownership_conver, hide_buttons, admin_all_config, all_services, admin_server_detail,
-                   service_statistics, daily_gift, daily_gift_message, delete_message, get_ticket_priority, reply_ticket)
+                   service_statistics, daily_gift, daily_gift_message, delete_message, get_ticket_priority, reply_ticket,
+                   change_ticket_status)
 
 from utilities import not_ready_yet, just_for_show, message_to_user, alredy_have_show, not_for_depleted_service
 
@@ -73,6 +74,7 @@ def main():
     # dp.add_handler(CallbackQueryHandler(get_ticket_department, pattern=r'get_ticket_department'))
     dp.add_handler(CallbackQueryHandler(get_ticket_priority, pattern=r'get_ticket_priority'))
     dp.add_handler(CallbackQueryHandler(delete_message, pattern=r'delete_message'))
+    dp.add_handler(CallbackQueryHandler(change_ticket_status, pattern=r'change_ticket_status_'))
 
     dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'active_tls_encoding_(.*)'))
     dp.add_handler(CallbackQueryHandler(service_advanced_option, pattern=r'advanced_option_(.*)'))
