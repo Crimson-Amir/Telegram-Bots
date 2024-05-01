@@ -130,6 +130,9 @@ def handle_telegram_exceptions(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
+        except telegram.error.BadRequest as e:
+            if 'specified new message content and reply markup are exactly the same as a current content and reply markup of the message' in e:
+                pass
         except Exception as e:
             side = 'Telgram Func'
             print(f"[{side}] An error occurred in {func.__name__}: {e}")
@@ -228,27 +231,23 @@ def payment_page(update, context):
     price = ranking_manage.discount_calculation(query.from_user['id'], direct_price=package[0][7], more_detail=True)
 
     if package[0][7]:
-        keyboard = [
-            [InlineKeyboardButton("پرداخت از کیف پول", callback_data=f'payment_by_wallet_{id_}'),
-             InlineKeyboardButton("کارت به کارت", callback_data=f'payment_by_card_{id_}')],
-            [InlineKeyboardButton("برگشت ↰", callback_data=f"{package[0][4]}")]
-        ]
+        keyboard = [[InlineKeyboardButton("پرداخت از کیف پول", callback_data=f'payment_by_wallet_{id_}'),
+                     InlineKeyboardButton("کارت به کارت", callback_data=f'payment_by_card_{id_}')],
+                    [InlineKeyboardButton("برگشت ↰", callback_data=f"{package[0][4]}")]]
     else:
         free_service_is_taken = sqlite_manager.select(column='free_service', table='User', where=f'chat_id = {query.message.chat_id}')[0][0]
+
         if free_service_is_taken:
-            keyboard_free = [
-                [InlineKeyboardButton("🎁 دریافت هدیه از کانال", url='https://t.me/FreeByte_Channel/1380')],
-                [InlineKeyboardButton("برگشت ↰", callback_data=f"main_menu")]
-            ]
+            keyboard_free = [[InlineKeyboardButton("🎁 دریافت هدیه از کانال", url='https://t.me/FreeByte_Channel/1380')],
+                             [InlineKeyboardButton("برگشت ↰", callback_data=f"main_menu")]]
             query.edit_message_text(
                 text='<b>شما یک بار این سرویس رو دریافت کردید!\n\n • با استفاده از گزینه زیر روزانه هدیه دریافت کنید!</b>',
                 parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard_free))
             return
+
         else:
-            keyboard = [
-                [InlineKeyboardButton("دریافت ⤓", callback_data=f'get_free_service')],
-                [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]
-            ]
+            keyboard = [[InlineKeyboardButton("دریافت ⤓", callback_data=f'get_free_service')],
+                        [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]]
 
     check_off = f'\n<b>تخفیف: {price[1]} درصد</b>' if price[1] and price[0] else ''
 
@@ -461,6 +460,7 @@ def apply_card_pay(update, context):
         query.answer('Confirm Pleas!')
         context.bot.send_message(text='Are You Sure?', reply_markup=InlineKeyboardMarkup(keyboard),
                                  chat_id=ADMIN_CHAT_ID)
+
     elif 'ok_card_pay_accept_' in query.data:
         id_ = int(query.data.replace('ok_card_pay_accept_', ''))
         send_clean_for_customer(query, context, id_)
@@ -1685,8 +1685,8 @@ def pay_by_card_for_credit_admin(update, context):
     price = ranking_manage.discount_calculation(user['id'], direct_price=package[0][0], without_off=True)
 
     if not ranking_manage.enough_rank('GET_SERVICE_WITHOUT_CONFIRM', user['id']):
-        keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_credit_{credit_id}")],
-                    [InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_credit_{credit_id}")],
+        keyboard = [[InlineKeyboardButton("Accept ✅", callback_data=f"accept_card_pay_credit_{credit_id}"),
+                    InlineKeyboardButton("Refuse ❌", callback_data=f"refuse_card_pay_credit_{credit_id}")],
                     [InlineKeyboardButton("Hide buttons", callback_data=f"hide_buttons")]]
         text_ = f'<b>درخواست شما با موفقیت ثبت شد✅\nنتیجه از طریق همین ربات بهتون اعلام میشه</b>'
         text = "- Check the new payment to the card [CHARGE CREDIT WALLET]:\n\n"
@@ -1805,8 +1805,7 @@ def pay_from_wallet(update, context):
                     [InlineKeyboardButton("برگشت ⤶", callback_data="my_service")]]
 
         available_or_not = "اطلاعات زیر رو بررسی کنید و در صورت تایید پرداخت رو نهایی کنید:" \
-            if get_wallet[0][
-                   0] >= price else "متاسفانه موجودی کیف پول شما کافی نیست، میتونید با گزینه افزایش موجودی اعتبار خودتون رو افزایش بدید."
+            if get_wallet[0][0] >= price else "متاسفانه موجودی کیف پول شما کافی نیست، میتونید با گزینه افزایش موجودی اعتبار خودتون رو افزایش بدید."
 
         # price = ranking_manage.discount_calculation(user['id'], package[0][5], package[0][6])
 
@@ -2814,7 +2813,8 @@ def daily_gift(update, context):
             get_final_res = upgrade_or_create(chance, user, context)
             traffic_formated = format_mb_traffic(int(chance))
             if get_final_res.get('defualt_traffic'):
-                traffic_formated = f"{get_final_res.get('defualt_traffic')}  مگابایت"
+                traffic_right = get_final_res.get('defualt_traffic') * 1000
+                traffic_formated = f"{traffic_right}  مگابایت"
 
             text = (f'🎉 تبریک، شما برنده هدیه {traffic_formated} شدید!'
                     '\nجزئیات از طریق ربات ارسال شد.')
@@ -3006,7 +3006,7 @@ def reply_ticket_manager(update, context):
     file_id = update.message.photo[-1].file_id if update.message.photo else None
     user_message = update.message.text if update.message.text else update.message.caption or 'Witout Caption!'
 
-    ticket_id = ticket_manager.reply_to_ticket(master_ticket_id, chat_id, user_message, file_id)
+    ticket_manager.reply_to_ticket(master_ticket_id, chat_id, user_message, file_id)
     ticket_owner_chat_id = int(ticket_manager.check_ticket_status(master_ticket_id)[1])
 
     keyboard = [
