@@ -94,7 +94,6 @@ class TicketKernel(ManageDb, PreparationAdapter, metaclass=InstanceIsNotAllowed)
         return ticket_id
 
 
-
 class TicketManager(TicketKernel):  # Decorator
     def reply_to_ticket(self, master_ticket_id, user_id, text, photo=None):
         if self.check_ticket_status(master_ticket_id):

@@ -160,7 +160,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(admin_server_detail, pattern=r'adm_view_service_(.*)'))
     dp.add_handler(CallbackQueryHandler(show_help, pattern=r'(.*)_help'))
 
-    dp.add_handler(CallbackQueryHandler(create_file_and_return, pattern=r'create_txt_file'))
+    dp.add_handler(CallbackQueryHandler(create_file_and_return, pattern=r'create_txt_file_(.*)'))
     dp.add_handler(CallbackQueryHandler(personalization_service_lu, pattern=r'upgrade_service_customize_\d+'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern=r'personalization_service_\d+'))
     dp.add_handler(CallbackQueryHandler(personalization_service, pattern='accept_personalization'))
