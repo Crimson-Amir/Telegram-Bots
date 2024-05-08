@@ -66,7 +66,7 @@ class Task(ManageDb):
             user_db = sqlite_manager.select(table='User', where=f'chat_id = {get_client[0][4]}')
             price = ranking_manage.discount_calculation(user_db[0][3], user_db[0][5], user_db[0][6])
         else:
-            user_db = by_list  # [0, 0, 0, 0, 0, traffic_gb, period_day]
+            user_db = by_list
             price = 0
 
         # client_id = get_client[0][10]
@@ -729,7 +729,7 @@ def remove_service_from_db(update, context):
 def create_file_and_return(update, context):
     query = update.callback_query
     get_id = query.data.replace('create_txt_file_', '')
-    config_ = sqlite_manager.select('detail', 'Purchased', where=f'id = {get_id}')[0][0]
+    config_ = sqlite_manager.select('details', 'Purchased', where=f'id = {get_id}')[0][0]
     random_number = random.randint(0, 5)
 
     with open(f'text_file/create_v2ray_file_with_id_{random_number}.txt', 'w', encoding='utf-8') as f:
@@ -2280,7 +2280,7 @@ def service_advanced_option(update, context):
     email = query.data.replace('advanced_option_', '')
     try:
 
-        status_1 = change_shematic = change_server_notif = ''
+        status_1, change_shematic, change_server_notif = '', '', ''
         keyboard_main = None
 
         if 'change_auto_renewal_status_' in query.data:
@@ -2421,7 +2421,8 @@ def service_advanced_option(update, context):
                     [InlineKeyboardButton(f"رمزگذاری TLS {tls_encodeing}",
                                           callback_data=f"active_tls_encoding_{email}__{change_to_}"),
                      InlineKeyboardButton("• انتقال مالکیت", callback_data=f"change_service_ownership_{email}")],
-                    [InlineKeyboardButton(f"گزارش مصرف ⥮", callback_data=f"statistics_week_{get_data[0][0]}_hide")],
+                    [InlineKeyboardButton(f"گزارش مصرف ⥮", callback_data=f"statistics_week_{get_data[0][0]}_hide"),
+                     InlineKeyboardButton("تازه سازی ↻", callback_data=f"advanced_option_{email}")],
                     [InlineKeyboardButton("برگشت ↰", callback_data=f"view_service_{email}")]]
 
         query.edit_message_text(text_,
@@ -2432,6 +2433,12 @@ def service_advanced_option(update, context):
     except EOFError as eof:
         if 'service_is_depleted' in str(eof):
             query.answer('این ویژگی فقط برای سرویس های فعال است')
+        else:
+            query.answer('مشکلی وجود داشت!')
+
+    except telegram.error.BadRequest as e:
+        if 'Message is not modified' in e:
+            query.answer('اطلاعات تغییر نکرده است')
         else:
             query.answer('مشکلی وجود داشت!')
 
@@ -2762,6 +2769,7 @@ def upgrade_or_create(traffic, user, context):
         if get_purchased_id:
             context.bot.send_message(text=f'🔵 کانفیگ شماره {get_purchased_id[0][0]} ارتقا یافت!', chat_id=chat_id)
             task.upgrade_service(context, get_purchased_id[0][0], [(0, 0, 0, 0, 0, traffic, 1),])
+            sqlite_manager.update({'Purchased': {'notif_day': 0}}, where=f'id = {get_purchased_id[0][0]}')
             return {'msg': 'upgrade service', 'purchased_id': get_purchased_id[0][0], 'defualt_trffic': defualt_traffic}
         else:
             id_ = sqlite_manager.insert('Purchased', rows=
@@ -3001,8 +3009,7 @@ def reply_to_ticket(update, context):
 
 @handle_telegram_conversetion_exceptions
 def reply_ticket_manager(update, context):
-    user = update.message.from_user
-    chat_id = int(user.id)
+    chat_id = update.message.chat_id
     master_ticket_id = context.user_data['master_ticket_id']
 
     file_id = update.message.photo[-1].file_id if update.message.photo else None
