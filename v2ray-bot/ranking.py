@@ -157,7 +157,7 @@ class RankManage(ManageDb):
             return detail
 
         off = (price * off_per_rank[user_rank[0][5]] / 100)
-        final_price = price - off
+        final_price = round((price - off), -2)
         detail = (int(final_price), off_per_rank[user_rank[0][5]], price) if more_detail else int(final_price)
         return detail
 

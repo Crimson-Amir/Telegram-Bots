@@ -71,7 +71,6 @@ def add_service(update, context):
     'country': 'Netherlands',
     'period': 30,
     'traffic': 10,
-    'price': 10000,
     'domain': 'admin.ggkala.shop',
     'server_domain': 'netherlands.ggkala.shop'
     }
@@ -79,10 +78,11 @@ def add_service(update, context):
     if update.message.reply_to_message:
         try:
             user_message = eval(update.message.reply_to_message.text)
+            price = (int(user_message["traffic"]) * utilities.PRICE_PER_GB) + (int(user_message["period"]) * utilities.PRICE_PER_DAY)
             get_data = {'inbound_id': user_message["inbound_id"],'active': user_message["active"],
                         'name': init_name(user_message["name"]),'country': user_message["country"],
                         'period': user_message["period"],'traffic': user_message["traffic"],
-                        'price': user_message["price"],'date': datetime.now(pytz.timezone('Asia/Tehran')),
+                        'price': price, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
                         'domain': user_message['domain'], 'server_domain': user_message['server_domain']}
             if user_message['update']:
                 sqlite_manager.update({'Product': get_data}, where=f'id = {user_message["update"]}')

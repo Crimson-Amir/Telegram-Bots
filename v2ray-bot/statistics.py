@@ -10,6 +10,7 @@ from utilities import format_mb_traffic, make_day_name_farsi
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from plot import get_plot
 from tasks import handle_telegram_exceptions_without_user_side
+from arvanRadar import plot, extraData, arvanApi
 
 
 STATISTICS_TIMER_HORSE = 3
@@ -236,7 +237,7 @@ def report_section(update, context):
     keyboard = [
         arrows,
         [InlineKeyboardButton(f"{detail_emoji} جزئیات گزارش", callback_data=f'statistics_{data[1]}_{data[2]}_{detail_callback}')],
-        [InlineKeyboardButton(f"مشاهده گزارش سرویس ها", callback_data=f'service_statistics_all_10')],
+        [InlineKeyboardButton(f"گزارش سرویس ها", callback_data=f'service_statistics_all_10')],
         [InlineKeyboardButton("برگشت ↰", callback_data='menu_delete_main_message')]
     ]
 
@@ -267,5 +268,29 @@ def report_section(update, context):
                                reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
 
+def radar_section(update, context):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+
+    query.answer('درحال آماده سازی اطلاعات، لطفا صبر کنید.')
+
+    arvan_calss = arvanApi.ArvanRadar()
+    get_arvan_data = arvan_calss.get_data(*list(extraData.datacenter_keys.keys())[:5])
+    get_radar = plot.RadarPlot(get_arvan_data).make_plot()
+
+    text = '<b>گزارش اختلال اینترنت در ساعت گذشته</b>'
+
+    keyboard = [
+        [InlineKeyboardButton("برگشت ↰", callback_data="statistics_statistics_week_all_hide")]
+    ]
+
+    media_photo = InputMediaPhoto(media=get_radar, parse_mode='html')
+    context.bot.edit_message_media(media=media_photo, chat_id=chat_id, message_id=query.message.message_id)
+    context.bot.edit_message_caption(caption=text, parse_mode='html', chat_id=chat_id,
+                                     message_id=query.message.message_id,
+                                     reply_markup=InlineKeyboardMarkup(keyboard))
+
+
 # print(reports_func([81532053, 'month', 'week']))
 # statistics_timer(1)
+

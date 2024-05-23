@@ -10,7 +10,7 @@ from utilities import (human_readable, something_went_wrong,
                        format_mb_traffic, init_name)
 import admin_task
 from private import *
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
 import ranking
 import utilities
@@ -1204,13 +1204,13 @@ def disable_service_in_data_base(context, list_of_notification, user, not_enogh_
          InlineKeyboardButton("تمدید همین سرویس", callback_data=f"upgrade_service_customize_{user[0]}")]
     ]
 
-    if user[1] not in rate_list:
-        keyboard.extend([[InlineKeyboardButton("❤️ تجربه استفاده از فری‌بایت رو به اشتراک بگذارید:", callback_data=f"just_for_show")],
-                        [InlineKeyboardButton("معمولی بود", callback_data=f"rate_ok&{list_of_notification[0][0]}_{user[0]}"),
-                         InlineKeyboardButton("عالی بود", callback_data=f"rate_perfect&{list_of_notification[0][0]}_{user[0]}")],
-                        [InlineKeyboardButton("ناامید شدم", callback_data=f"rate_bad&{list_of_notification[0][0]}_{user[0]}"),
-                         InlineKeyboardButton("نظری ندارم", callback_data=f"rate_haveNotIdea&{list_of_notification[0][0]}_{user[0]}")]])
-        rate_list.append(user[1])
+    # if user[1] not in rate_list:
+    #     keyboard.extend([[InlineKeyboardButton("❤️ تجربه استفاده از فری‌بایت رو به اشتراک بگذارید:", callback_data=f"just_for_show")],
+    #                     [InlineKeyboardButton("معمولی بود", callback_data=f"rate_ok&{list_of_notification[0][0]}_{user[0]}"),
+    #                      InlineKeyboardButton("عالی بود", callback_data=f"rate_perfect&{list_of_notification[0][0]}_{user[0]}")],
+    #                     [InlineKeyboardButton("ناامید شدم", callback_data=f"rate_bad&{list_of_notification[0][0]}_{user[0]}"),
+    #                      InlineKeyboardButton("نظری ندارم", callback_data=f"rate_haveNotIdea&{list_of_notification[0][0]}_{user[0]}")]])
+    #     rate_list.append(user[1])
 
     sqlite_manager.update({'Purchased': {'status': 0}}, where=f'id = {user[0]}')
 
@@ -2212,7 +2212,7 @@ def report_problem_by_user(update, context):
 
         problem = query.data.replace('get_ticket_priority', '')
 
-        keyboard = [[InlineKeyboardButton("بله", callback_data=f"ticket_send_{problem}")],
+        keyboard = [[InlineKeyboardButton("بله", callback_data=f"get_ticket_priority")],
                     [InlineKeyboardButton("برگشت", callback_data=f"report_problem_by_user")]]
 
         report_problem_by_user_utilitis(context, problem.replace('_', ' '), query.from_user)
@@ -2436,15 +2436,12 @@ def service_advanced_option(update, context):
         else:
             query.answer('مشکلی وجود داشت!')
 
-    except telegram.error.BadRequest as e:
-        if 'Message is not modified' in e:
-            query.answer('اطلاعات تغییر نکرده است')
-        else:
-            query.answer('مشکلی وجود داشت!')
-
     except Exception as e:
-        ready_report_problem_to_admin(context, text='service_advanced_option', chat_id=query.message.chat_id, error=e)
-        something_went_wrong(update, context)
+        if "specified new message content and reply markup are exactly the same" in str(e):
+            return query.answer('آپدیت نشد، احتمالا اطلاعات تغییری نکرده!')
+        else:
+            ready_report_problem_to_admin(context, text='service_advanced_option', chat_id=query.message.chat_id, error=e)
+            something_went_wrong(update, context)
 
 
 @handle_telegram_conversetion_exceptions
@@ -2813,7 +2810,7 @@ def daily_gift(update, context):
 
 
     if is_this_24_hours:
-        gifts_chance = {'0': 2, '100': 4, '200': 9, '300': 8, '400': 8, '500': 6, '600': 5, '700': 4, '800': 3, '900': 2, '1000': 1}
+        gifts_chance = {'0': 2, '100': 4, '200': 9, '300': 7, '400': 6, '500': 5, '600': 4, '700': 3, '800': 2, '900': 1, '1000': .2}
 
         chance = random.choices(list(gifts_chance.keys()), weights=list(gifts_chance.values()))[0]
 
@@ -3062,3 +3059,4 @@ reply_ticket = ConversationHandler(
     per_chat=True,
     allow_reentry=True
 )
+
