@@ -165,7 +165,7 @@ def reports_func(data):
         avreage_traffic = final_traffic / index if final_traffic and index else 0
 
     period_info = {
-        'month': {'timedelta': timedelta(days=3), 'date_format': '%Y-%m-%d', 'plot_format': '%d', 'first_date': '%b'},
+        'month': {'timedelta': timedelta(days=1), 'date_format': '%Y-%m-%d', 'plot_format': '%d', 'first_date': '%b'},
         'year': {'timedelta': timedelta(days=30), 'date_format': '%Y-%m', 'plot_format': '%m', 'first_date': '%Y'}
     }
 
@@ -182,11 +182,13 @@ def reports_func(data):
                             get_traff += usage_traffic
                             get_usage[usage_name] = get_usage.get(usage_name, 0) + usage_traffic
 
-                usage_detail = [f'\n- سرویس شماره {get_name} = {format_mb_traffic(get_traffic)}' for get_name, get_traffic
-                                in get_usage.items() if get_traffic]
 
                 detail_text += f'\n\n• در {our_date.strftime("%Y-%m-%d")} = {format_mb_traffic(get_traff)}'
-                detail_text += ''.join(usage_detail[:5]) if get_purchased[0] == 'all' else ''
+
+                if period_key != 'month':
+                    usage_detail = [f'\n- سرویس شماره {get_name} = {format_mb_traffic(get_traffic)}' for get_name, get_traffic
+                                    in get_usage.items() if get_traffic]
+                    detail_text += ''.join(usage_detail[:5]) if get_purchased[0] == 'all' else ''
 
                 final_traffic += get_traff
                 if not index:
@@ -251,7 +253,7 @@ def report_section(update, context):
     if query.message.photo:
         media_photo = InputMediaPhoto(media=get_plot_image, parse_mode='html')
         context.bot.edit_message_media(media=media_photo, chat_id=chat_id, message_id=query.message.message_id)
-        context.bot.edit_message_caption(caption=text, parse_mode='html', chat_id=chat_id,
+        context.bot.edit_message_caption(caption=text[:1024], parse_mode='html', chat_id=chat_id,
                                          message_id=query.message.message_id,
                                          reply_markup=InlineKeyboardMarkup(keyboard))
 
@@ -264,7 +266,7 @@ def report_section(update, context):
             else:
                 raise e
 
-        context.bot.send_photo(photo=get_plot_image, chat_id=chat_id, caption=text,
+        context.bot.send_photo(photo=get_plot_image, chat_id=chat_id, caption=text[:1024],
                                reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
 
