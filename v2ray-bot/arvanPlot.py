@@ -22,17 +22,22 @@ class RadarPlot:
     def __init__(self, data, start_time=None):
         self._start_time = start_time
         if not self._start_time:
-            self._start_time = datetime.now(tz=pytz.timezone('Asia/Tehran')) - relativedelta.relativedelta(minutes=30)
+            self._start_time = datetime.now(tz=pytz.timezone('Asia/Tehran')) - relativedelta.relativedelta(hours=6)
 
         self.datacenter_names = []
         self.site_values = []
         for site in data:
-            self.datacenter_names.append(site[0])
-            self.site_values.extend([list(site[1].values())[:63]])
+            self.datacenter_names.append(site[0].replace('_', ' '))
+            self.site_values.extend([list(site[1].values())])
 
         self.site_names = [[values for values in data[0][1].keys()]] * len(self.datacenter_names)
 
-    def make_plot(self):
+
+
+    def make_plot_1(self):
+        """
+        heavy and detailful plot
+        """
         num_plots = len(self.site_names)
 
         with plt.style.context('dark_background'):
@@ -77,6 +82,56 @@ class RadarPlot:
             fig.savefig(byte, format='png')
             plt.close(fig)
             byte.seek(0)
-            return byte.getvalue()
             # plt.show()
+            return byte.getvalue()
 
+
+    def make_plot_2(self):
+        """light"""
+        ziped_data = [list(zip(*values)) for values in self.site_values]
+        avg_data = [[round(sum(group) / len(group), 2) for group in ziped] for ziped in ziped_data]
+
+        max_length = max(len(data) for data in avg_data)
+        padded_data = [np.pad(data, (0, max_length - len(data)), 'constant', constant_values=np.nan) for data in
+                       avg_data]
+
+
+        x_values = list(range(max_length))
+
+        num_plots = len(padded_data)
+        num_cols = 2
+        num_rows = (num_plots + num_cols - 1) // num_cols
+
+        fig, axs = plt.subplots(num_rows, num_cols, figsize=(12, 2 * num_rows))
+
+        for i, y in enumerate(padded_data):
+            row = i // num_cols
+            col = i % num_cols
+            ax = axs[row, col]
+            ax.plot(x_values, y)
+            ax.set_title(self.datacenter_names[i])
+            ax.set_ylim([0, 1])
+
+            if i == num_plots - 2 or i == num_plots - 1:
+                np_range = np.arange(0, max_length, 20)
+                minute = int(380 / len(np_range))
+                column_date = [self._start_time]
+
+                for state in range(len(np_range) - 1):
+                    column_date.append((column_date[-1] + relativedelta.relativedelta(minutes=minute)))
+
+                ax.set_xticks(np_range)
+                ax.set_xticklabels([column.strftime('%H:%M') for column in column_date], rotation='vertical')
+
+            else:
+                ax.set_xticks([])
+
+        plt.subplots_adjust(hspace=0.5)
+        plt.tight_layout()
+        byte = BytesIO()
+        plt.savefig('o.png')
+        fig.savefig(byte, format='png')
+        plt.close(fig)
+        byte.seek(0)
+        # plt.show()
+        return byte.getvalue()

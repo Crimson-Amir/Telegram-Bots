@@ -10,8 +10,9 @@ from utilities import format_mb_traffic, make_day_name_farsi
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from plot import get_plot
 from tasks import handle_telegram_exceptions_without_user_side
-from arvanRadar import plot, extraData, arvanApi
-
+import extraData
+from arvanPlot import RadarPlot
+import arvanApi
 
 STATISTICS_TIMER_HORSE = 3
 
@@ -239,7 +240,8 @@ def report_section(update, context):
     keyboard = [
         arrows,
         [InlineKeyboardButton(f"{detail_emoji} جزئیات گزارش", callback_data=f'statistics_{data[1]}_{data[2]}_{detail_callback}')],
-        [InlineKeyboardButton(f"گزارش سرویس ها", callback_data=f'service_statistics_all_10')],
+        [InlineKeyboardButton(f"رادار اینترنت", callback_data=f'radar_section'),
+         InlineKeyboardButton(f"گزارش سرویس ها", callback_data=f'service_statistics_all_10')],
         [InlineKeyboardButton("برگشت ↰", callback_data='menu_delete_main_message')]
     ]
 
@@ -277,13 +279,13 @@ def radar_section(update, context):
     query.answer('درحال آماده سازی اطلاعات، لطفا صبر کنید.')
 
     arvan_calss = arvanApi.ArvanRadar()
-    get_arvan_data = arvan_calss.get_data(*list(extraData.datacenter_keys.keys())[:5])
-    get_radar = plot.RadarPlot(get_arvan_data).make_plot()
+    get_arvan_data = arvan_calss.get_data(*list(extraData.datacenter_keys.keys())[:-1])
+    get_radar = RadarPlot(get_arvan_data).make_plot_2()
 
-    text = '<b>گزارش اختلال اینترنت در ساعت گذشته</b>'
+    text = '<b>گزارش اختلال اینترنت در 6 ساعت گذشته</b>'
 
     keyboard = [
-        [InlineKeyboardButton("برگشت ↰", callback_data="statistics_statistics_week_all_hide")]
+        [InlineKeyboardButton("برگشت ↰", callback_data="statistics_week_all_hide")]
     ]
 
     media_photo = InputMediaPhoto(media=get_radar, parse_mode='html')

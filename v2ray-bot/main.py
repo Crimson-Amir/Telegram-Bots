@@ -100,7 +100,7 @@ def main():
     dp.add_handler(CallbackQueryHandler(pay_from_wallet, pattern=r'payment_by_wallet_upgrade_service_\d+'))
 
     dp.add_handler(CallbackQueryHandler(report_section, pattern=r'statistics_(.*)'))
-    dp.add_handler(CallbackQueryHandler(radar_section, pattern=r'internet_radar_section'))
+    dp.add_handler(CallbackQueryHandler(radar_section, pattern=r'radar_section'))
     dp.add_handler(CallbackQueryHandler(remove_service, pattern=r'remove_service_(.*)'))
     dp.add_handler(CallbackQueryHandler(remove_service, pattern=r'accept_rm_ser_(.*)'))
     dp.add_handler(CallbackQueryHandler(report_problem_by_user, pattern=r'say_to_admin_(.*)'))

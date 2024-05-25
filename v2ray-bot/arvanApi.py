@@ -1,7 +1,7 @@
 import asyncio
 import aiohttp
 from extraData import url_format, datacenter_keys
-import plot
+from arvanPlot import RadarPlot
 
 
 class SessionError(Exception):
@@ -67,7 +67,6 @@ class ArvanRadar:
 
 
 a = ArvanRadar()
-b = a.get_data('hamrah_aval')
-p = plot.RadarPlot(b)
-a = p.make_plot()
-print(a)
+b = a.get_data('Hamrah_aval', 'Mobin_net', 'Irancell', 'Afranet', 'Pars_online', 'Host_iran', 'Tehran_1', 'Tehran_2')
+p = RadarPlot(b)
+a = p.make_plot_2()
