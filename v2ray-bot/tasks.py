@@ -26,6 +26,9 @@ import json
 import traceback
 
 
+GET_EVIDENCE, GET_EVIDENCE_PER, GET_EVIDENCE_CREDIT, GET_TICKET, GET_CONVER, REPLY_TICKET = 0, 0, 0, 0, 0, 0
+
+
 class Task(ManageDb):
     def __init__(self):
         super().__init__('v2ray')
@@ -232,7 +235,8 @@ def payment_page(update, context):
     price = ranking_manage.discount_calculation(query.from_user['id'], direct_price=package[0][7], more_detail=True)
 
     if package[0][7]:
-        keyboard = [[InlineKeyboardButton("پرداخت از کیف پول", callback_data=f'payment_by_wallet_{id_}'),
+        keyboard = [[InlineKeyboardButton("درگاه Cryptomus", callback_data=f"cryptomus_page_{id_}")],
+                    [InlineKeyboardButton("پرداخت از کیف پول", callback_data=f'payment_by_wallet_{id_}'),
                      InlineKeyboardButton("کارت به کارت", callback_data=f'payment_by_card_{id_}')],
                     [InlineKeyboardButton("برگشت ↰", callback_data=f"{package[0][4]}")]]
     else:
@@ -2810,7 +2814,7 @@ def daily_gift(update, context):
 
 
     if is_this_24_hours:
-        gifts_chance = {'0': 2, '100': 4, '200': 9, '300': 7, '400': 6, '500': 5, '600': 4, '700': 3, '800': 2, '900': 1, '1000': .2}
+        gifts_chance = {'0': 5, '100': 4, '200': 5, '300': 0.5, '400': 0.2, '500': 0.1, '600': 0.05, '700': 0.01, '800': 0.001, '900': 0.0001, '1000': 0.000001}
 
         chance = random.choices(list(gifts_chance.keys()), weights=list(gifts_chance.values()))[0]
 

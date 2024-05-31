@@ -26,12 +26,12 @@ class RadarPlot:
 
         self.datacenter_names = []
         self.site_values = []
+
         for site in data:
             self.datacenter_names.append(site[0].replace('_', ' '))
-            self.site_values.extend([list(site[1].values())])
+            self.site_values.extend([list(val[:350] for val in site[1].values())])
 
         self.site_names = [[values for values in data[0][1].keys()]] * len(self.datacenter_names)
-
 
 
     def make_plot_1(self):
@@ -92,16 +92,14 @@ class RadarPlot:
         avg_data = [[round(sum(group) / len(group), 2) for group in ziped] for ziped in ziped_data]
 
         max_length = max(len(data) for data in avg_data)
-        padded_data = [np.pad(data, (0, max_length - len(data)), 'constant', constant_values=np.nan) for data in
-                       avg_data]
-
+        # padded_data = [np.pad(data, (0, max_length - len(data)), 'constant', constant_values=np.nan) for data in avg_data]
+        padded_data = avg_data
 
         x_values = list(range(max_length))
 
         num_plots = len(padded_data)
         num_cols = 2
         num_rows = (num_plots + num_cols - 1) // num_cols
-
         fig, axs = plt.subplots(num_rows, num_cols, figsize=(12, 2 * num_rows))
 
         for i, y in enumerate(padded_data):
@@ -126,6 +124,8 @@ class RadarPlot:
             else:
                 ax.set_xticks([])
 
+        # plt.show()
+
         plt.subplots_adjust(hspace=0.5)
         plt.tight_layout()
         byte = BytesIO()
@@ -133,5 +133,5 @@ class RadarPlot:
         fig.savefig(byte, format='png')
         plt.close(fig)
         byte.seek(0)
-        # plt.show()
+        plt.show()
         return byte.getvalue()

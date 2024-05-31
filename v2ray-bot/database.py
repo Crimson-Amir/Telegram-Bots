@@ -47,7 +47,17 @@ def create_database(db_name='test'):
     c.execute('CREATE TABLE IF NOT EXISTS Gift_service(id integer primary key, name text, user_name text,'
               'chat_id integer, traffic integer, date text)')
 
-    # c.execute('ALTER TABLE Purchased ADD COLUMN auto_renewal integer DEFAULT 0')
+    c.execute("""CREATE TABLE IF NOT EXISTS Cryptomus(id integer primary key, status integer default 0,order_id TEXT NOT NULL,
+                 amount VARCHAR(255) NOT NULL, currency VARCHAR(255) NOT NULL, network VARCHAR(255), url_callback VARCHAR(255),
+                 is_payment_multiple BOOLEAN DEFAULT TRUE, lifetime INT DEFAULT 3600,
+                 to_currency VARCHAR(255), subtract INT DEFAULT 0, accuracy_payment_percent FLOAT DEFAULT 0, additional_data TEXT,
+                 currencies TEXT, except_currencies TEXT, course_source VARCHAR(255), from_referral_code VARCHAR(255), discount_percent INT,
+                 is_refresh BOOLEAN DEFAULT FALSE, pay_status TEXT, is_final TEXT, chat_id integer,
+                 FOREIGN KEY (chat_id) REFERENCES User(chat_id))""")
+
+    # c.execute("drop table Cryptomus")
+    # c.execute('ALTER TABLE Cryptomus ADD COLUMN status integer DEFAULT 0')
+
     # c.execute('CREATE TABLE IF NOT EXISTS Ticket(id integer primary key, answered integer, chat_id text, last_traffic_usage integer)')
     # c.execute('CREATE TABLE IF NOT EXISTS Initialization(id integer primary key, answered integer, chat_id text, last_traffic_usage integer)')
 

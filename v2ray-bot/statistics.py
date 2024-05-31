@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta
-
 import telegram.error
-
 from utilities import (ready_report_problem_to_admin)
 import pytz
 from admin_task import (api_operation, sqlite_manager)
@@ -10,9 +8,10 @@ from utilities import format_mb_traffic, make_day_name_farsi
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from plot import get_plot
 from tasks import handle_telegram_exceptions_without_user_side
-import extraData
-from arvanPlot import RadarPlot
-import arvanApi
+from arvanRadar.extraData import url_format, datacenter_keys
+from arvanRadar.arvanPlot import RadarPlot
+from arvanRadar import arvanApi
+
 
 STATISTICS_TIMER_HORSE = 3
 
@@ -240,8 +239,9 @@ def report_section(update, context):
     keyboard = [
         arrows,
         [InlineKeyboardButton(f"{detail_emoji} جزئیات گزارش", callback_data=f'statistics_{data[1]}_{data[2]}_{detail_callback}')],
-        [InlineKeyboardButton(f"رادار اینترنت", callback_data=f'radar_section'),
-         InlineKeyboardButton(f"گزارش سرویس ها", callback_data=f'service_statistics_all_10')],
+        [InlineKeyboardButton(f"گزارش سرویس ها", callback_data=f'service_statistics_all_10'),
+         InlineKeyboardButton("تازه سازی ⟳", callback_data=f"statistics_{data[1]}_{data[2]}_{data_org[3]}")],
+        [InlineKeyboardButton(f"رادار اینترنت", callback_data=f'radar_section')],
         [InlineKeyboardButton("برگشت ↰", callback_data='menu_delete_main_message')]
     ]
 
@@ -278,13 +278,14 @@ def radar_section(update, context):
 
     query.answer('درحال آماده سازی اطلاعات، لطفا صبر کنید.')
 
-    arvan_calss = arvanApi.ArvanRadar()
-    get_arvan_data = arvan_calss.get_data(*list(extraData.datacenter_keys.keys())[:-1])
+    arvan_calss = arvanApi.ArvanRadar(datacenter_keys, url_format)
+    get_arvan_data = arvan_calss.get_data('Hamrah_aval', 'Irancell', 'Mobin_net', 'Afranet', 'Pars_online', 'Host_iran', 'Tehran_1', 'Tehran_2')
     get_radar = RadarPlot(get_arvan_data).make_plot_2()
 
     text = '<b>گزارش اختلال اینترنت در 6 ساعت گذشته</b>'
 
     keyboard = [
+        [InlineKeyboardButton("تازه سازی ⟳", callback_data=f"radar_section")],
         [InlineKeyboardButton("برگشت ↰", callback_data="statistics_week_all_hide")]
     ]
 
