@@ -5,7 +5,7 @@ def create_database(db_name='test'):
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
-    c.execute('CREATE TABLE IF NOT EXISTS User(id integer primary key, name text, c '
+    c.execute('CREATE TABLE IF NOT EXISTS User(id integer primary key, name text, chat_id integer'
               'date text, traffic integer, period i1nteger, free_service integer, notification_gb integer,'
               'notification_day integer, wallet integer, notification_wallet INTEGER DEFAULT 5000,'
               'notif_wallet INTEGER DEFAULT 0, notif_low_wallet INTEGER DEFAULT 0, invited_by integer)')

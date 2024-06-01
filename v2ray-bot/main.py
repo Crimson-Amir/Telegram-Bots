@@ -27,7 +27,8 @@ from admin_task import (admin_add_update_inbound, add_service, all_service, del_
 import logging
 import requests
 from statistics import statistics_timer, STATISTICS_TIMER_HORSE, report_section, radar_section
-from cryptomus.BotcryptoPayment import cryptomus_page, check_cryptomus_payment
+from cryptomus.BotcryptoPayment import (cryptomus_page, check_cryptomus_payment,cryptomus_page_upgrade,
+                                        check_cryptomus_payment_upgrade, cryptomus_page_wallet, check_cryptomus_payment_wallet)
 
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -87,8 +88,13 @@ def main():
 
     dp.add_handler(CallbackQueryHandler(show_servers, pattern='select_server'))
     dp.add_handler(CallbackQueryHandler(daily_gift, pattern='daily_gift'))
-    dp.add_handler(CallbackQueryHandler(cryptomus_page, pattern='cryptomus_page_\d+'))
 
+    dp.add_handler(CallbackQueryHandler(cryptomus_page_upgrade, pattern='cryptomus_page_upgrade_\d+'))
+    dp.add_handler(CallbackQueryHandler(check_cryptomus_payment_upgrade, pattern=r'check_cryptomus_payment_upgrade_(.*)'))
+    dp.add_handler(CallbackQueryHandler(cryptomus_page_wallet, pattern='cryptomus_page_wallet_\d+'))
+    dp.add_handler(CallbackQueryHandler(check_cryptomus_payment_wallet, pattern=r'check_cryptomus_payment_wallet_(.*)'))
+    dp.add_handler(CallbackQueryHandler(cryptomus_page, pattern='cryptomus_page_\d+'))
+    dp.add_handler(CallbackQueryHandler(check_cryptomus_payment, pattern=r'check_cryptomus_payment_(.*)'))
 
     dp.add_handler(CallbackQueryHandler(service_statistics, pattern=r'service_statistics_(.*)'))
     dp.add_handler(CallbackQueryHandler(my_service, pattern=r'my_service(.*)'))

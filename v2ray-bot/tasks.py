@@ -235,7 +235,7 @@ def payment_page(update, context):
     price = ranking_manage.discount_calculation(query.from_user['id'], direct_price=package[0][7], more_detail=True)
 
     if package[0][7]:
-        keyboard = [[InlineKeyboardButton("درگاه Cryptomus", callback_data=f"cryptomus_page_{id_}")],
+        keyboard = [[InlineKeyboardButton("درگاه cryptomus", callback_data=f"cryptomus_page_{id_}")],
                     [InlineKeyboardButton("پرداخت از کیف پول", callback_data=f'payment_by_wallet_{id_}'),
                      InlineKeyboardButton("کارت به کارت", callback_data=f'payment_by_card_{id_}')],
                     [InlineKeyboardButton("برگشت ↰", callback_data=f"{package[0][4]}")]]
@@ -894,13 +894,18 @@ def personalization_service_lu(update, context):
         period = period if period <= 500 else 500
 
     sqlite_manager.update({'User': {'traffic': traffic, 'period': period}}, where=f'chat_id = {chat_id}')
-    price = ranking_manage.discount_calculation(chat_id, traffic, period)
 
-    text = ('*• تو این بخش میتونید سرویس مورد نظر خودتون رو تمدید کنید و یا ارتقا دهید:*'
-            '\n*نکته: اگر سرویس شما به اتمام نرسیده، مشخصات زیر به سرویس اضافه میشن.*'
+    price = ranking_manage.discount_calculation(chat_id, traffic, period, more_detail=True)
+    check_off = f'\n<b>تخفیف: {price[1]} درصد</b>' if price[1] else ''
+
+    text = (f'<b>• تو این بخش میتونید سرویس مورد نظر خودتون رو تمدید کنید و یا ارتقا دهید:</b>'
+            f'\n<b>نکته: اگر سرویس شما به اتمام نرسیده، مشخصات زیر به سرویس اضافه میشن.</b>'
             f'\n\nحجم سرویس: {traffic}GB'
             f'\nدوره زمانی: {period} روز'
-            f'\n*قیمت: {price:,}*')
+            f'\n<b>قیمت: {price[0]:,}</b>'
+            f'\n{check_off}')
+
+
     keyboard = [
         [InlineKeyboardButton("«", callback_data="traffic_low_lu_10"),
          InlineKeyboardButton("‹", callback_data="traffic_low_lu_1"),
@@ -915,7 +920,7 @@ def personalization_service_lu(update, context):
         [InlineKeyboardButton("✓ تایید", callback_data=f"service_upgrade_{id_}")],
         [InlineKeyboardButton("برگشت ↰", callback_data="my_service")]
     ]
-    query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+    query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 @handle_telegram_exceptions
@@ -925,17 +930,21 @@ def payment_page_upgrade(update, context):
     id_ = int(query.data.replace('service_upgrade_', ''))
     package = sqlite_manager.select(table='User', where=f'chat_id = {chat_id}')
     keyboard = [
-        [InlineKeyboardButton("پرداخت از کیف پول", callback_data=f'payment_by_wallet_upgrade_service_{id_}'),
+        [InlineKeyboardButton("درگاه cryptomus", callback_data=f"cryptomus_page_upgrade_{id_}")],
+         [InlineKeyboardButton("پرداخت از کیف پول", callback_data=f'payment_by_wallet_upgrade_service_{id_}'),
          InlineKeyboardButton("کارت به کارت", callback_data=f'upg_ser_by_card{id_}')],
         [InlineKeyboardButton("برگشت ↰", callback_data="my_service")]
     ]
 
-    price = ranking_manage.discount_calculation(chat_id, package[0][5], package[0][6])
+    price = ranking_manage.discount_calculation(chat_id, package[0][5], package[0][6], more_detail=True)
+    check_off = f'\n<b>تخفیف: {price[1]} درصد</b>' if price[1] else ''
+
     text = (f"<b>❋ بسته انتخابی شامل مشخصات زیر میباشد:</b>\n"
             f"\nدوره زمانی: {package[0][6]} روز"
             f"\nترافیک (حجم): {package[0][5]} گیگابایت"
             f"\nحداکثر کاربر مجاز: ♾️"
-            f"\n<b>قیمت: {price:,} تومان</b>"
+            f"\n<b>قیمت: {price[0]:,} تومان</b>"
+            f"\n{check_off}"
             f"\n\nموجودی کیف پول: {int(package[0][10]):,}"
             f"\n\n<b>⤶ برای پرداخت میتونید یکی از روش های زیر رو استفاده کنید:</b>")
     query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -951,13 +960,18 @@ def pay_page_get_evidence_for_upgrade(update, context):
     context.user_data['package'] = package
     context.user_data['purchased_id'] = id_
     keyboard = [[InlineKeyboardButton("صفحه اصلی ⤶", callback_data="send_main_message")]]
-    price = ranking_manage.discount_calculation(chat_id, package[0][5], package[0][6])
+
+    price = ranking_manage.discount_calculation(chat_id, package[0][5], package[0][6], more_detail=True)
+    check_off = f'\n<b>تخفیف: {price[1]} درصد</b>' if price[1] else ''
+
     text = (f"\n\nمدت اعتبار فاکتور: 10 دقیقه"
             f"\nسرویس: {package[0][6]} روز - {package[0][5]} گیگابایت"
-            f"\n*قیمت*: `{price:,}`* تومان *"
+            f"\n*قیمت*: `{price[0]:,}`* تومان *"
+            f"\n{check_off}"
             f"\n\n*• لطفا مبلغ رو به شماره‌حساب زیر واریز کنید و اسکرین‌شات یا شماره‌پیگیری رو بعد از همین پیام ارسال کنید، اطمینان حاصل کنید ربات درخواست رو ثبت کنه.*"
             f"\n\n`6219861938619417` - امیرحسین نجفی"
             f"\n\n*• بعد از تایید شدن پرداخت، سرویس برای شما ارسال میشه، زمان تقریبی 5 دقیقه الی 3 ساعت.*")
+
     context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode='markdown',
                              reply_markup=InlineKeyboardMarkup(keyboard))
     query.answer('فاکتور برای شما ارسال شد.')
@@ -1652,7 +1666,9 @@ def pay_way_for_credit(update, context):
     query = update.callback_query
     id_ = int(query.data.replace('pay_way_for_credit_', ''))
     package = sqlite_manager.select(column='value', table='Credit_History', where=f'id = {id_}')
+
     keyboard = [
+        [InlineKeyboardButton("درگاه cryptomus", callback_data=f"cryptomus_page_wallet_{id_}")],
         [InlineKeyboardButton("کارت به کارت", callback_data=f'pay_by_card_for_credit_{id_}')],
         [InlineKeyboardButton("برگشت ↰", callback_data="buy_credit_volume")]
     ]
