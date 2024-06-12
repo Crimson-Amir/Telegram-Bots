@@ -1028,7 +1028,6 @@ def send_evidence_to_admin_for_upgrade(update, context):
     return ConversationHandler.END
 
 
-
 upgrade_service_by_card_conv = ConversationHandler(
     entry_points=[CallbackQueryHandler(pay_page_get_evidence_for_upgrade, pattern=r'upg_ser_by_card\d+')],
     states={
@@ -2134,12 +2133,11 @@ def pay_per_use_calculator(context):
                             time_price = PRICE_PER_DAY / 24
                             traffic_use = (usage_traffic - last_traffic_usage[0][2]) * PRICE_PER_GB
                             cost = int(time_price + traffic_use)
-                            cost = ranking_manage.discount_calculation(user[1], direct_price=cost)
+                            cost = ranking_manage.discount_calculation(user[1], direct_price=cost, cerful_price=True)
 
                             wallet_manage.less_from_wallet_with_condition_to_make_history(user[1], cost,
                                                                                           user_detail={'name': user_wallet[0][2],
-                                                                                                       'username': user_wallet[0][2]},
-                                                                                          con=100)
+                                                                                                       'username': user_wallet[0][2]}, con=100)
 
                             sqlite_manager.update(table={'Hourly_service': {'last_traffic_usage': usage_traffic}},
                                                   where=f'purchased_id = {user[0]}')
@@ -2188,10 +2186,8 @@ def pay_per_use_calculator(context):
                                 "id": int(user[7]),
                                 "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
                                             "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":0,\"expiryTime\":{2},"
-                                            "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(user[8],
-                                                                                                       user[2],
-                                                                                                       second_to_ms(
-                                                                                                           datetime.now()))}
+                                            "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(user[8], user[2],
+                                                                                                       second_to_ms(datetime.now()))}
 
                             get_server_domain = sqlite_manager.select(column='server_domain', table='Product',
                                                                       where=f'id = {user[9]}')
@@ -2200,11 +2196,9 @@ def pay_per_use_calculator(context):
 
                             sqlite_manager.update({'Purchased': {'status': 0}}, where=f'id = {user[0]}')
 
-                            context.bot.send_message(ADMIN_CHAT_ID,
-                                                     text=f'Service OF {user_wallet[0][2]} Named {user[2]} Has Be Ended')
+                            context.bot.send_message(ADMIN_CHAT_ID, text=f'Service OF {user_wallet[0][2]} Named {user[2]} Has Be Ended')
 
-                            context.bot.send_message(user[1], text=text,
-                                                     reply_markup=InlineKeyboardMarkup(keyboard))
+                            context.bot.send_message(user[1], text=text, reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 @handle_telegram_exceptions

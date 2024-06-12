@@ -140,7 +140,7 @@ class RankManage(ManageDb):
 
         self.update_rank_with_level(rank, user_id)
 
-    def discount_calculation(self, user_id, traffic=None, period=None, direct_price=None, without_off=False, more_detail=False):
+    def discount_calculation(self, user_id, traffic=None, period=None, direct_price=None, without_off=False, more_detail=False, cerful_price=False):
         price_per_gb, price_per_day = PRICE_PER_GB, PRICE_PER_DAY
 
         if user_id in self.list_of_partner:
@@ -157,7 +157,10 @@ class RankManage(ManageDb):
             return detail
 
         off = (price * off_per_rank[user_rank[0][5]] / 100)
-        final_price = round((price - off), -2)
+        if not cerful_price:
+            final_price = round((price - off), -3)
+        else:
+            final_price = price - off
         detail = (int(final_price), off_per_rank[user_rank[0][5]], price) if more_detail else int(final_price)
         return detail
 
