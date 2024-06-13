@@ -393,13 +393,17 @@ def send_clean_for_customer(query, context, id_, max_retries=2):
     if create[0]:
         get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
         try:
-            get_product = sqlite_manager.select(table='Product', where=f'id = {get_client[0][6]}')
+            get_product = sqlite_manager.select(column='price,domain,server_domain,inbound_host,inbound_header_type', table='Product', where=f'id = {get_client[0][6]}')
             get_user_detail = sqlite_manager.select(column='invited_by', table='User', where=f'chat_id={get_client[0][4]}')
 
-            get_domain = get_product[0][10]
-            get_server_domain = get_product[0][11]
+            get_domain = get_product[0][1]
+            get_server_domain = get_product[0][2]
+            inbound_host = get_product[0][3]
+            inbound_header_type = get_product[0][4]
+
             returned = api_operation.get_client_url(client_email=get_client[0][9], inbound_id=get_client[0][7],
-                                                    domain=get_domain, server_domain=get_server_domain)
+                                                    domain=get_domain, server_domain=get_server_domain, host=inbound_host,
+                                                    header_type=inbound_header_type)
             if returned:
                 returned_copy = f'`{returned}`'
                 qr_code = qrcode.make(returned)
@@ -417,7 +421,7 @@ def send_clean_for_customer(query, context, id_, max_retries=2):
                                        chat_id=get_client[0][4], reply_markup=InlineKeyboardMarkup(keyboard),
                                        parse_mode='markdown')
 
-                price = ranking_manage.discount_calculation(direct_price=get_product[0][7], user_id=get_client[0][4])
+                price = ranking_manage.discount_calculation(direct_price=get_product[0][0], user_id=get_client[0][4])
 
                 record_operation_in_file(chat_id=get_client[0][4], price=price,
                                          name_of_operation=f'خرید سرویس {get_client[0][9]}', operation=0,
@@ -1865,8 +1869,7 @@ def pay_from_wallet(update, context):
                                                     more_detail=True)
 
         keyboard = [[InlineKeyboardButton("تایید و پرداخت ✅", callback_data=f"accept_wallet_pay_{id_}")]
-                    if get_wallet[0][0] >= price[0] else [
-            InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")],
+                    if get_wallet[0][0] >= price[0] else [InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")],
                     [InlineKeyboardButton("برگشت ⤶", callback_data="select_server")]]
 
         available_or_not = "اطلاعات زیر رو بررسی کنید و در صورت تایید پرداخت رو نهایی کنید:" \
@@ -2289,6 +2292,7 @@ def subcategory(update, context):
                             disable_web_page_preview=True)
 
 
+@handle_telegram_exceptions
 def service_advanced_option(update, context):
     query = update.callback_query
     email = query.data.replace('advanced_option_', '')
@@ -2299,9 +2303,7 @@ def service_advanced_option(update, context):
 
         if 'change_auto_renewal_status_' in query.data:
             data = query.data.replace('change_auto_renewal_status_', '').split('__')
-            changed_to, status_1 = (
-                1, '\n\n↲ بعد از پایان سرویس، درصورت اعتبار داشتن کیف پول، بسته به صورت خودکار تمدید میشود.') if eval(
-                data[1]) else (0, '')
+            changed_to, status_1 = (1, '\n\n↲ بعد از پایان سرویس، درصورت اعتبار داشتن کیف پول، بسته به صورت خودکار تمدید میشود.') if eval(data[1]) else (0, '')
             email = data[0]
             sqlite_manager.update({'Purchased': {'auto_renewal': changed_to}}, where=f'client_email = "{email}"')
             query.answer('با موفقیت تغییر یافت ✅')
@@ -2361,14 +2363,13 @@ def service_advanced_option(update, context):
 
             plans = sqlite_manager.select(table='Product', where='active = 1')
             unic_plans = {name[3]: name[4] for name in plans}
-
+            print(unic_plans)
             print(get_server_country[0][0].replace('pay_per_use_', ''))
 
             keyboard_main = [[InlineKeyboardButton(
                 f"{key} {'✅' if get_server_country[0][0] == key or get_server_country[0][0].replace('pay_per_use_', '') == value else ''}",
                 callback_data='alredy_have_show' if get_server_country[0][0] == key or get_server_country[0][0].replace(
-                    'pay_per_use_', '') == value else f'changed_server_to_{email}__{value}')] for key, value in
-                unic_plans.items()]
+                    'pay_per_use_', '') == value else f'changed_server_to_{email}__{value}')] for key, value in unic_plans.items()]
 
             keyboard_main.append([InlineKeyboardButton("برگشت ↰", callback_data=f"advanced_option_{email}")])
 
@@ -2378,15 +2379,14 @@ def service_advanced_option(update, context):
             get_data = query.data.replace('changed_server_to_', '').split('__')
             email = get_data[0]
             country = get_data[1]
-
+            print(country)
             get_new_inbound = change_service_server(context, update, email, country)
 
             plans = sqlite_manager.select(table='Product', where='active = 1')
             unic_plans = {name[3]: name[4] for name in plans}
 
             keyboard_main = [[InlineKeyboardButton(f"{key} {'✅' if get_new_inbound[0][2] == key else ''}",
-                                                   callback_data='alredy_have_show' if get_new_inbound[0][
-                                                                                           2] == key else f'changed_server_to_{email}__{value}')]
+                                                   callback_data='alredy_have_show' if get_new_inbound[0][2] == key else f'changed_server_to_{email}__{value}')]
                              for key, value in unic_plans.items()]
 
             keyboard_main.append([InlineKeyboardButton("برگشت ↰", callback_data=f"advanced_option_{email}")])
@@ -2394,24 +2394,19 @@ def service_advanced_option(update, context):
             change_shematic = '\n\n↲ پیکربندی تغییر یافت، سرویس را کپی و جایگزین قبلی کنید.'
             query.answer('عملیات با موفقیت انجام شد ✅')
 
-            report_status_to_admin(context, f'User changed Config Server\nConfig Email: {email}\nNew Server: {country}',
-                                   chat_id=query.message.chat_id)
+            report_status_to_admin(context, f'User changed Config Server\nConfig Email: {email}\nNew Server: {country}', chat_id=query.message.chat_id)
 
         get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
-        get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
-                                                   where=f'id = {get_data[0][6]}')
-
+        get_server_country = sqlite_manager.select(column='name,server_domain', table='Product', where=f'id = {get_data[0][6]}')
 
         online_configs = api_operation.get_onlines(get_server_country[0][1])
+        if not online_configs.get('obj', []):
+            online_configs['obj'] = []
+
         get_server_country = get_server_country[0][0].replace('سرور ', '').replace('pay_per_use_', '')
-        auto_renewal, auto_renewal_button, chenge_to = ('فعال ✓', 'غیرفعال کردن تمدید خودکار ✗', False) if get_data[0][
-            15] \
-            else ('غیرفعال ✗', 'فعال کردن تمدید خودکار ✓', True)
+        auto_renewal, auto_renewal_button, chenge_to = ('فعال ✓', 'غیرفعال کردن تمدید خودکار ✗', False) if get_data[0][15] else ('غیرفعال ✗', 'فعال کردن تمدید خودکار ✓', True)
 
-        tls_encodeing, tls_status, change_to_ = ('✓', 'فعال ✓', False) if get_data[0][7] == TLS_INBOUND else (
-            '✗', 'غیرفعال ✗', True)
-
-
+        tls_encodeing, tls_status, change_to_ = ('✓', 'فعال ✓', False) if get_data[0][7] == TLS_INBOUND else ('✗', 'غیرفعال ✗', True)
         connection_status = 'آنلاین 🟢' if email in online_configs.get('obj', []) else 'آفلاین 🔴'
 
         text_ = (
@@ -2428,27 +2423,23 @@ def service_advanced_option(update, context):
             f"{change_server_notif}"
         )
 
-        keyboard = [[InlineKeyboardButton(f"{auto_renewal_button}",
-                                          callback_data=f"change_auto_renewal_status_{email}__{chenge_to}")],
+        keyboard = [[InlineKeyboardButton(f"{auto_renewal_button}", callback_data=f"change_auto_renewal_status_{email}__{chenge_to}")],
                     [InlineKeyboardButton(f" تعویض کانفیگ ⤰", callback_data=f"change_config_shematic_{email}"),
                      InlineKeyboardButton(f"تغییر لوکیشن ⇈", callback_data=f"change_server_{email}")],
-                    [InlineKeyboardButton(f"رمزگذاری TLS {tls_encodeing}",
-                                          callback_data=f"active_tls_encoding_{email}__{change_to_}"),
+                    [InlineKeyboardButton(f"رمزگذاری TLS {tls_encodeing}", callback_data=f"active_tls_encoding_{email}__{change_to_}"),
                      InlineKeyboardButton("• انتقال مالکیت", callback_data=f"change_service_ownership_{email}")],
                     [InlineKeyboardButton(f"گزارش مصرف ⥮", callback_data=f"statistics_week_{get_data[0][0]}_hide"),
                      InlineKeyboardButton("تازه سازی ↻", callback_data=f"advanced_option_{email}")],
                     [InlineKeyboardButton("برگشت ↰", callback_data=f"view_service_{email}")]]
 
-        query.edit_message_text(text_,
-                                reply_markup=InlineKeyboardMarkup(keyboard if not keyboard_main else keyboard_main),
-                                parse_mode='html')
+        query.edit_message_text(text_, reply_markup=InlineKeyboardMarkup(keyboard if not keyboard_main else keyboard_main), parse_mode='html')
 
 
     except EOFError as eof:
         if 'service_is_depleted' in str(eof):
             query.answer('این ویژگی فقط برای سرویس های فعال است')
         else:
-            query.answer('مشکلی وجود داشت!')
+            raise eof
 
     except Exception as e:
         if "specified new message content and reply markup are exactly the same" in str(e):
@@ -2456,6 +2447,7 @@ def service_advanced_option(update, context):
         else:
             ready_report_problem_to_admin(context, text='service_advanced_option', chat_id=query.message.chat_id, error=e)
             something_went_wrong(update, context)
+            raise e
 
 
 @handle_telegram_conversetion_exceptions

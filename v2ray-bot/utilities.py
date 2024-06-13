@@ -227,18 +227,24 @@ def change_service_server(context, update, email, country):
         get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
                                                    where=f'id = {get_data[0][6]}')
 
-        get_new_inbound = sqlite_manager.select(column='id,server_domain,name,domain', table='Product',
+        get_new_inbound = sqlite_manager.select(column='id,server_domain,name,domain,inbound_host,inbound_header_type', table='Product',
                                                 where=f'country = "{country}"', limit=1)
+
+        print(country)
+        print(get_new_inbound)
 
         get_domain = get_server_country[0][1]
         get_new_domain = get_new_inbound[0][1]
+
+        get_host = get_new_inbound[0][4]
+        get_header_type = get_new_inbound[0][5]
         ret_conf = api_operation.get_client(email, get_domain)
         shematic = None
 
         if get_data[0][7] == TLS_INBOUND:
             shematic = ('vless://{}@{}:{}'
-                        '?path=%2F&host={}&headerType=http&security=tls&'
-                        'fp=&alpn=h2%2Chttp%2F1.1&sni=sni_&type={}#{} {}'.replace('sni_', get_new_domain))
+                        '?path=%2F&host={}&headerType=http_&security=tls&'
+                        'fp=&alpn=h2%2Chttp%2F1.1&sni=sni_&type={}#{} {}'.replace('sni_', get_new_domain).replace('http_', get_header_type))
 
         if not ret_conf['obj']['enable']:
             raise EOFError('service_is_depleted')
@@ -257,20 +263,17 @@ def change_service_server(context, update, email, country):
             "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
                         "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
                         "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(get_data[0][10], get_data[0][9],
-                                                                                   left_traffic,
-                                                                                   ret_conf['obj']['expiryTime'])
-        }
+                                                                                   left_traffic, ret_conf['obj']['expiryTime'])}
 
         api_operation.add_client(data, get_new_domain)
 
         get_cong = api_operation.get_client_url(get_data[0][9], int(get_data[0][7]),
                                                 domain=get_new_inbound[0][3], server_domain=get_new_domain,
-                                                host=get_new_domain,
-                                                default_config_schematic=shematic
-                                                )
+                                                host=get_host,
+                                                header_type=get_header_type,
+                                                default_config_schematic=shematic)
 
-        sqlite_manager.update({'Purchased': {'details': get_cong, 'product_id': get_new_inbound[0][0]}},
-                              where=f'client_email = "{email}"')
+        sqlite_manager.update({'Purchased': {'details': get_cong, 'product_id': get_new_inbound[0][0]}}, where=f'client_email = "{email}"')
 
         api_operation.del_client(get_data[0][7], get_data[0][10], get_domain)
         return get_new_inbound

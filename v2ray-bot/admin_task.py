@@ -72,7 +72,9 @@ def add_service(update, context):
     'period': 30,
     'traffic': 10,
     'domain': 'admin.ggkala.shop',
-    'server_domain': 'netherlands.ggkala.shop'
+    'server_domain': 'netherlands.ggkala.shop',
+    'inbound_header_type': 'http',
+    'inbound_host': 'ponisha.ir'
     }
     """
     if update.message.reply_to_message:
@@ -83,7 +85,9 @@ def add_service(update, context):
                         'name': init_name(user_message["name"]),'country': user_message["country"],
                         'period': user_message["period"],'traffic': user_message["traffic"],
                         'price': price, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
-                        'domain': user_message['domain'], 'server_domain': user_message['server_domain']}
+                        'domain': user_message['domain'], 'server_domain': user_message['server_domain'],
+                        'inbound_header_type': user_message['inbound_header_type'], 'inbound_host': user_message['inbound_host']
+                        }
             if user_message['update']:
                 sqlite_manager.update({'Product': get_data}, where=f'id = {user_message["update"]}')
             else:
@@ -162,45 +166,48 @@ def add_client_bot(purchased_id):
     try:
         random_number = random.randint(0, 10_000_000)
         get_client_db = sqlite_manager.select(table='Purchased', where=f'id = {purchased_id}')
-        get_service_db = sqlite_manager.select(table='Product', where=f'id = {get_client_db[0][6]}')
+        get_service_db = sqlite_manager.select(column='inbound_id,name,period,traffic,domain,server_domain,inbound_host,inbound_header_type', table='Product', where=f'id = {get_client_db[0][6]}')
+
+        inbound_host = get_service_db[0][6]
+        inbound_header_type = get_service_db[0][7]
 
         id_ = f"{get_client_db[0][4]}_{random_number}"
-        name = '_Gift' if 'gift' in get_service_db[0][3] else ''  # f'{get_service_db[0][6]}GB'
+        name = '_Gift' if 'gift' in get_service_db[0][1] else ''  # f'{get_service_db[0][6]}GB'
         email_ = f"{purchased_id}{name}"
 
-        if get_service_db[0][6]:
-            traffic_to_gb_ = traffic_to_gb(get_service_db[0][6], False)
+        if get_service_db[0][3]:
+            traffic_to_gb_ = traffic_to_gb(get_service_db[0][3], False)
         else:
             email_ = f"{purchased_id}{infinity_name}"
             traffic_to_gb_ = 0
 
-        if get_service_db[0][5]:
+        if get_service_db[0][2]:
             now = datetime.now(pytz.timezone('Asia/Tehran'))
-            period = get_service_db[0][5]
+            period = get_service_db[0][2]
             now_data_add_day = now + timedelta(days=period)
             time_to_ms = second_to_ms(now_data_add_day)
         else:
             time_to_ms = 0
 
         data = {
-            "id": int(get_service_db[0][1]),
+            "id": int(get_service_db[0][0]),
             "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,\"start_after_first_use\":true,"
                         "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
                         "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(id_, email_, traffic_to_gb_, time_to_ms)
         }
 
-        create = api_operation.add_client(data, get_service_db[0][11])
+        create = api_operation.add_client(data, get_service_db[0][5])
 
-        check_servise_available = api_operation.get_client(email_, domain=get_service_db[0][11])
+        check_servise_available = api_operation.get_client(email_, domain=get_service_db[0][5])
         if not check_servise_available['obj']: return False, create, 'service do not create'
 
-        get_cong = api_operation.get_client_url(email_, int(get_service_db[0][1]),
-                                                domain=get_service_db[0][10], server_domain=get_service_db[0][11])
+        get_cong = api_operation.get_client_url(email_, int(get_service_db[0][0]),
+                                                domain=get_service_db[0][4], server_domain=get_service_db[0][5],
+                                                host=inbound_host, header_type=inbound_header_type)
 
-        sqlite_manager.update({'Purchased': {'inbound_id': int(get_service_db[0][1]),'client_email': email_,
+        sqlite_manager.update({'Purchased': {'inbound_id': int(get_service_db[0][0]),'client_email': email_,
                                              'client_id': id_, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
-                                             'details': get_cong, 'active': 1, 'status': 1}},
-                              where=f'id = {purchased_id}')
+                                             'details': get_cong, 'active': 1, 'status': 1}}, where=f'id = {purchased_id}')
 
         if create['success']:
             return True, create, 'service create success'
