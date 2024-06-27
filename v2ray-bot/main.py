@@ -38,6 +38,10 @@ telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessag
 requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'🟠 THE BOT STARTED'})
 
 
+# def bot_start(update, context):
+#     update.message.reply_text('ربات به دلیل آپدیت تا 2024-06-15 02:31:18 غیرفعال میباشد.\nآیدی پشتیبانی: @FreeByte_Support')
+
+
 def main():
     updater = Updater(telegram_bot_token)
     dp = updater.dispatcher

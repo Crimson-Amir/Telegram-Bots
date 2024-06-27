@@ -148,7 +148,6 @@ class XuiApiClean(ManageDb):
     def get_client_url(self, client_email, inbound_id, domain=None, header_type="http", host="ponisha.ir", default_config_schematic=None, server_domain=None):
         if not default_config_schematic:
             default_config_schematic = "vless://{}@{}:{}?security=none&host={}&headerType={}&type={}#{} {}"
-        print(default_config_schematic)
         get_in = self.get_inbound(inbound_id, server_domain)
         domain = domain or 'human.ggkala.shop'
         if get_in['success']:
@@ -158,7 +157,7 @@ class XuiApiClean(ManageDb):
             network = json.loads(get_in['obj']['streamSettings'])['network']
             for client in client_list:
                 if client['email'] == client_email:
-                    final_shematic = default_config_schematic.format(client['id'], domain, port, host, header_type, network,remark, client['email'])
+                    final_shematic = default_config_schematic.format(client['id'], domain, port, host, header_type, network, remark, client['email'])
                     print(final_shematic)
                     return final_shematic
 

@@ -700,10 +700,9 @@ def change_infiniti_service_status(update, context):
                                chat_id=get_data[0][4])
 
         query.answer(f'سرویس با موفقیت {status} شد')
-        keyboard = [
-            [InlineKeyboardButton("برگشت ↰", callback_data=f"view_service_{get_data[0][9]}")]]
+        keyboard = [[InlineKeyboardButton("برگشت ↰", callback_data=f"view_service_{get_data[0][9]}")]]
 
-        query.edit_message_text(f'سرویس با موفقیت {status} شد✅', reply_markup=keyboard)
+        query.edit_message_text(text=f'سرویس با موفقیت {status} شد✅', reply_markup=InlineKeyboardMarkup(keyboard))
 
     else:
         get_credit = sqlite_manager.select(column='wallet', table='User', where=f'chat_id = {get_data[0][4]}')[0][0]

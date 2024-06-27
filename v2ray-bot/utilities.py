@@ -300,7 +300,7 @@ def convert_service_to_tls(update, email, convert_to):
         if eval(convert_to):
             shematic = ('vless://{}@{}:{}'
                         '?path=%2F&host={}&headerType=http&security=tls&'
-                        'fp=&alpn=h2%2Chttp%2F1.1&sni=sni_&type={}#{} {}'.replace('sni_', get_domain))
+                        'fp=&alpn=h2%2Chttp%2F1.1&sni=sni_&headerType={}&type={}#{} {}'.replace('sni_', get_domain))
             detected_inbound = TLS_INBOUND
         else:
             shematic = None
