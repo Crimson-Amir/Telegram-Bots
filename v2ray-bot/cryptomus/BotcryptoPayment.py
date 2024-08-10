@@ -166,6 +166,7 @@ def check_cryptomus_payment(update, context):
     if check[0]:
         send_clean_for_customer(query, context, purchased_id)
         report_status_to_admin(context, f'User Buy Service By Crypto.\nOrder id: {order_id}', user.id)
+        query.delete_message()
     else:
 
         if check[1] == 'request_limited':
@@ -217,6 +218,7 @@ def check_cryptomus_payment_upgrade(update, context):
     if check[0]:
         task.upgrade_service(context, purchased_id)
         report_status_to_admin(context, f'User Upgrade Service By Crypto.\nOrder id: {order_id}', user.id)
+        query.delete_message()
     else:
 
         if check[1] == 'request_limited':
@@ -273,6 +275,8 @@ def check_cryptomus_payment_wallet(update, context):
     if check[0]:
         add_credit_to_wallet(context, credit_id)
         report_status_to_admin(context, f'User charge wallet By Crypto.\nOrder id: {order_id}', user.id)
+        query.delete_message()
+
     else:
 
         if check[1] == 'request_limited':

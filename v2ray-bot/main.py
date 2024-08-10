@@ -16,7 +16,7 @@ from tasks import (show_servers, get_service_of_server, payment_page, get_servic
                    report_problem_by_user, tickect_by_user, service_advanced_option, rank_page, subcategory,
                    change_service_ownership_conver, hide_buttons, admin_all_config, all_services, admin_server_detail,
                    service_statistics, daily_gift, daily_gift_message, delete_message, get_ticket_priority, reply_ticket,
-                   change_ticket_status)
+                   change_ticket_status, refresh_login)
 
 from utilities import not_ready_yet, just_for_show, message_to_user, alredy_have_show, not_for_depleted_service
 
@@ -213,6 +213,7 @@ def main():
 
     job = updater.job_queue
     job.run_repeating(check_all_configs, interval=100)
+    job.run_repeating(refresh_login, interval=1800)
     job.run_repeating(pay_per_use_calculator, interval=3600)
     job.run_repeating(statistics_timer, interval=STATISTICS_TIMER_HORSE * 3600)
 
