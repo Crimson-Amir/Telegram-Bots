@@ -26,9 +26,10 @@ import json
 import traceback
 from api_clean import XuiApiClean
 
-
 GET_EVIDENCE, GET_EVIDENCE_PER, GET_EVIDENCE_CREDIT, GET_TICKET, GET_CONVER, REPLY_TICKET = 0, 0, 0, 0, 0, 0
-
+INBOUND_IDs_LIST = [13, 14]
+allow_user_in_server = 270
+service_ends_user = set()
 
 class Task(ManageDb):
     def __init__(self):
@@ -42,7 +43,7 @@ class Task(ManageDb):
                 return func(*args, **kwargs)
             except Exception as e:
                 side = 'Task Func'
-                print(f"[{side}] An error occurred in {func.__name__}: {e}")
+                print   (f"[{side}] An error occurred in {func.__name__}: {e}")
                 report_problem(func.__name__, e, side, extra_message=traceback.format_exc())
 
         return wrapper
@@ -52,8 +53,12 @@ class Task(ManageDb):
         return text[:2]
 
     @handle_exceptions
-    def return_server_countries(self):
-        plans = self.custom(order="""
+    def return_server_countries(self, chat_id):
+
+        allow_users_in_server_new = f'HAVING sum(active_count) < {allow_user_in_server}'
+        if chat_id in service_ends_user and chat_id != 81532053: allow_users_in_server_new = ''
+
+        plans = self.custom(order=f"""
             SELECT DISTINCT name, country
             FROM Product pr
             JOIN (
@@ -63,8 +68,8 @@ class Task(ManageDb):
                 GROUP BY product_id
             ) pu ON pu.product_id = pr.id
             WHERE pr.status = 1
-            GROUP BY UPPER(country)
-            HAVING sum(active_count) < 250""")
+            GROUP BY UPPER(country) 
+            {allow_users_in_server_new}""")
         unic_plans = {name[0]: name[1].capitalize() for name in plans}
 
         return unic_plans
@@ -183,8 +188,9 @@ def handle_telegram_conversetion_exceptions(func):
 @handle_telegram_exceptions
 def show_servers(update, context):
     query = update.callback_query
+    chat_id = query.message.chat_id
 
-    get_all_country = task.return_server_countries()
+    get_all_country = task.return_server_countries(chat_id)
 
     if get_all_country:
         keyboard = [[InlineKeyboardButton(key, callback_data=value)] for key, value in get_all_country.items()]
@@ -255,6 +261,7 @@ def payment_page(update, context):
                     [InlineKeyboardButton("پرداخت از کیف پول", callback_data=f'payment_by_wallet_{id_}'),
                      InlineKeyboardButton("کارت به کارت", callback_data=f'payment_by_card_{id_}')],
                     [InlineKeyboardButton("برگشت ↰", callback_data=f"{package[0][4]}")]]
+
     else:
         free_service_is_taken = sqlite_manager.select(column='free_service', table='User', where=f'chat_id = {query.message.chat_id}')[0][0]
 
@@ -1237,16 +1244,18 @@ def disable_service_in_data_base(context, list_of_notification, user, not_enogh_
             f"\nدرود {list_of_notification[0][3]} عزیز، سرویس شما با نام {user[2]} به پایان رسید!"
             f"\nدر صورتی که تمایل دارید نسبت به بررسی و یا تمدید سرویس اقدام کنید.")
 
+    service_ends_user.add(list_of_notification[0][0])
+
     if not_enogh_credit:
         text = ("🔴 اطلاع رسانی اتمام سرویس و تمدید خودکار ناموفق"
                 f"\nدرود {list_of_notification[0][3]} عزیز، سرویس شما با نام {user[2]} به پایان رسید!"
                 f"\nاعتبار شما برای تمدید خودکار سرویس کافی نبود!")
 
     keyboard = [
-        [InlineKeyboardButton("خرید سرویس جدید", callback_data=f"select_server"),
-         InlineKeyboardButton("تمدید همین سرویس", callback_data=f"upgrade_service_customize_{user[0]}")]
+        [InlineKeyboardButton("خرید سرویس جدید", callback_data=f"select_server")]
     ]
-
+    if user[9] in INBOUND_IDs_LIST:
+        keyboard.append([InlineKeyboardButton("تمدید همین سرویس", callback_data=f"upgrade_service_customize_{user[0]}")])
     # if user[1] not in rate_list:
     #     keyboard.extend([[InlineKeyboardButton("❤️ تجربه استفاده از فری‌بایت رو به اشتراک بگذارید:", callback_data=f"just_for_show")],
     #                     [InlineKeyboardButton("معمولی بود", callback_data=f"rate_ok&{list_of_notification[0][0]}_{user[0]}"),
@@ -1273,8 +1282,7 @@ def check_all_configs(context, context_2=None):
     get_from_db = sqlite_manager.select(
         column='id,chat_id,client_email,status,date,notif_day,notif_gb,auto_renewal,product_id,inbound_id,client_id',
         table='Purchased', where='active=1')
-    get_users_notif = sqlite_manager.select(
-        column='chat_id,notification_gb,notification_day,name,traffic,period,wallet', table='User')
+    get_users_notif = sqlite_manager.select(column='chat_id,notification_gb,notification_day,name,traffic,period,wallet', table='User')
 
     for server in get_all:
         for config in server['obj']:
@@ -1290,8 +1298,7 @@ def check_all_configs(context, context_2=None):
                                 traffic = client['total'] * 2
                                 expiry_timestamp = client['expiryTime']
                                 expiry_datetime = datetime.fromtimestamp(expiry_timestamp / 1000)
-                                new_expiry_datetime = (expiry_datetime - datetime.strptime(user[4].split('+')[0],
-                                                                                           "%Y-%m-%d %H:%M:%S.%f")).days
+                                new_expiry_datetime = (expiry_datetime - datetime.strptime(user[4].split('+')[0], "%Y-%m-%d %H:%M:%S.%f")).days
                                 period = datetime.now(pytz.timezone('Asia/Tehran')) + timedelta(
                                     days=new_expiry_datetime)
                                 my_data = int(period.timestamp() * 1000)
@@ -1364,9 +1371,12 @@ def check_all_configs(context, context_2=None):
                             traffic_left = round((total_traffic - usage_traffic), 2)
 
                             keyboard = [
-                                [InlineKeyboardButton("مشاهده جزئیات سرویس", callback_data=f"view_service_{user[2]}"),
-                                 InlineKeyboardButton("تمدید یا ارتقا سرویس",
-                                                      callback_data=f"upgrade_service_customize_{user[0]}")]]
+                                [InlineKeyboardButton("مشاهده جزئیات سرویس", callback_data=f"view_service_{user[2]}")]
+                            ]
+
+                            if user[9] in INBOUND_IDs_LIST:
+                                keyboard.append([InlineKeyboardButton("تمدید یا ارتقا سرویس", callback_data=f"upgrade_service_customize_{user[0]}")])
+
 
                             if not user[5] and time_left <= list_of_notification[0][2]:
                                 text = ("🔵 اطلاع رسانی تاریخ انقضا سرویس"
@@ -1695,8 +1705,12 @@ def pay_way_for_credit(update, context):
     keyboard = [
         [InlineKeyboardButton("درگاه پرداخت کریپتو", callback_data=f"cryptomus_page_wallet_{id_}")],
         [InlineKeyboardButton("کارت به کارت", callback_data=f'pay_by_card_for_credit_{id_}')],
-        [InlineKeyboardButton("برگشت ↰", callback_data="buy_credit_volume")]
+        [InlineKeyboardButton("برگشت ↰", callback_data="buy_credit_volume")],
+
     ]
+
+    if query.message.chat_id in [6458732795, 6450325872]:
+        keyboard.append([InlineKeyboardButton("درگاه پرداخت زرین پال", callback_data=f"zarinpall_page_wallet_{id_}")])
 
     text = (f"<b>❋ مبلغ انتخاب شده رو برای اضافه کردن به کیف پول تایید میکنید؟:</b>\n"
             f"\n<b>مبلغ: {package[0][0]:,} تومان</b>"
@@ -2328,6 +2342,7 @@ def service_advanced_option(update, context):
         keyboard_main = None
 
         if 'change_auto_renewal_status_' in query.data:
+            return query.answer('این ویژگی درحال حاضر غیرفعال است')
             data = query.data.replace('change_auto_renewal_status_', '').split('__')
             changed_to, status_1 = (1, '\n\n↲ بعد از پایان سرویس، درصورت اعتبار داشتن کیف پول، بسته به صورت خودکار تمدید میشود.') if eval(data[1]) else (0, '')
             email = data[0]

@@ -24,11 +24,12 @@ from admin_task import (admin_add_update_inbound, add_service, all_service, del_
                         say_to_every_one, clear_depleted_service, say_to_customer_of_server,
                         add_credit_to_server_customer_wallet, add_credit_to_customer, admin_rank_up)
 
-import logging
-import requests
+import logging, requests
 from statistics import statistics_timer, STATISTICS_TIMER_HORSE, report_section, radar_section
 from cryptomus.BotcryptoPayment import (cryptomus_page, check_cryptomus_payment,cryptomus_page_upgrade,
                                         check_cryptomus_payment_upgrade, cryptomus_page_wallet, check_cryptomus_payment_wallet)
+
+from zarinPal.zarinPalBOT import zarinpall_page_buy, zarinpall_page_upgrade, zarinpall_page_wallet
 
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -36,7 +37,6 @@ logger = logging.getLogger(__name__)
 
 telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
 requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text':'🟠 THE BOT STARTED'})
-
 
 # def bot_start(update, context):
 #     update.message.reply_text('ربات به دلیل آپدیت تا 2024-06-15 02:31:18 غیرفعال میباشد.\nآیدی پشتیبانی: @FreeByte_Support')
@@ -79,6 +79,11 @@ def main():
     dp.add_handler(change_service_ownership_conver)
 
     # dp.add_handler(CallbackQueryHandler(get_ticket_department, pattern=r'get_ticket_department'))
+
+    dp.add_handler(CallbackQueryHandler(zarinpall_page_wallet, pattern=r'zarinpall_page_wallet_\d+'))
+    dp.add_handler(CallbackQueryHandler(zarinpall_page_buy, pattern=r'zarinpall_page_buy_\d+'))
+    dp.add_handler(CallbackQueryHandler(zarinpall_page_upgrade, pattern=r'zarinpall_page_upgrade_\d+'))
+
     dp.add_handler(CallbackQueryHandler(get_ticket_priority, pattern=r'get_ticket_priority'))
     dp.add_handler(CallbackQueryHandler(delete_message, pattern=r'delete_message'))
     dp.add_handler(CallbackQueryHandler(change_ticket_status, pattern=r'change_ticket_status_'))

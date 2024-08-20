@@ -6,7 +6,7 @@ def create_database(db_name='test'):
     c = conn.cursor()
 
     c.execute('CREATE TABLE IF NOT EXISTS User(id integer primary key, name text, chat_id integer'
-              'date text, traffic integer, period i1nteger, free_service integer, notification_gb integer,'
+              'date text, traffic integer, period integer, free_service integer, notification_gb integer,'
               'notification_day integer, wallet integer, notification_wallet INTEGER DEFAULT 5000,'
               'notif_wallet INTEGER DEFAULT 0, notif_low_wallet INTEGER DEFAULT 0, invited_by integer)')
 
@@ -53,6 +53,12 @@ def create_database(db_name='test'):
                  to_currency VARCHAR(255), subtract INT DEFAULT 0, accuracy_payment_percent FLOAT DEFAULT 0, additional_data TEXT,
                  currencies TEXT, except_currencies TEXT, course_source VARCHAR(255), from_referral_code VARCHAR(255), discount_percent INT,
                  is_refresh BOOLEAN DEFAULT FALSE, pay_status TEXT, is_final TEXT, chat_id integer,
+                 FOREIGN KEY (chat_id) REFERENCES User(chat_id))""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS iraIranPaymentGeway(id integer primary key, action VARCHAR(100),
+                 id_holder integer default null, code integer default 0,
+                 authority VARCHAR(255), amount integer NOT NULL, currency VARCHAR(255) NOT NULL, url_callback VARCHAR(255),
+                 description TEXT, metadata TEXT, pay_status TEXT, is_final TEXT, chat_id integer, fee_type VARCHAR(15), fee INTEGER,
                  FOREIGN KEY (chat_id) REFERENCES User(chat_id))""")
 
     # c.execute("drop table Cryptomus")
