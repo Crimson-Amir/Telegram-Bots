@@ -147,56 +147,47 @@ def add_client_bot(purchased_id):
 
     try:
         random_number = random.randint(0, 10_000_000)
-        get_client_db = sqlite_manager.custom(f'SELECT chat_id,product_id FROM Purchased WHERE id = {purchased_id}]')
+        get_client_db = sqlite_manager.select(table='Purchased', where=f'id = {purchased_id}')
+        get_service_db = sqlite_manager.select(column='inbound_id,name,period,traffic,domain,server_domain,inbound_host,inbound_header_type', table='Product', where=f'id = {get_client_db[0][6]}')
 
-        get_service_db = sqlite_manager.select(
-            column='inbound_id,name,period,traffic,domain,server_domain,inbound_host,inbound_header_type',
-            table='Product', where=f'id = {get_client_db[0][1]}')
-
-        inbound_id = get_service_db[0][0]
-        product_name = get_service_db[0][1]
-        period_db = get_service_db[0][2]
-        traffic_db = get_service_db[0][3]
-        domain_db = get_service_db[0][4]
-        server_domain_db = get_service_db[0][5]
         inbound_host = get_service_db[0][6]
         inbound_header_type = get_service_db[0][7]
 
         id_ = f"{get_client_db[0][4]}_{random_number}"
-        name = '_Gift' if 'gift' in product_name else ''
+        name = '_Gift' if 'gift' in get_service_db[0][1] else ''  # f'{get_service_db[0][6]}GB'
         email_ = f"{purchased_id}{name}"
 
-        if traffic_db:
-            traffic_to_gb_ = traffic_to_gb(traffic_db, False)
+        if get_service_db[0][3]:
+            traffic_to_gb_ = traffic_to_gb(get_service_db[0][3], False)
         else:
             email_ = f"{purchased_id}{infinity_name}"
             traffic_to_gb_ = 0
 
-        if period_db:
+        if get_service_db[0][2]:
             now = datetime.now(pytz.timezone('Asia/Tehran'))
-            period = period_db
+            period = get_service_db[0][2]
             now_data_add_day = now + timedelta(days=period)
             time_to_ms = second_to_ms(now_data_add_day)
         else:
             time_to_ms = 0
 
         data = {
-            "id": int(inbound_id),
+            "id": int(get_service_db[0][0]),
             "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,\"start_after_first_use\":true,"
                         "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
                         "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(id_, email_, traffic_to_gb_, time_to_ms)
         }
 
-        create = api_operation.add_client(data, server_domain_db)
+        create = api_operation.add_client(data, get_service_db[0][5])
 
-        check_servise_available = api_operation.get_client(email_, domain=server_domain_db)
+        check_servise_available = api_operation.get_client(email_, domain=get_service_db[0][5])
         if not check_servise_available['obj']: return False, create, 'service do not create'
 
-        get_cong = api_operation.get_client_url(email_, int(inbound_id),
-                                                domain=domain_db, server_domain=server_domain_db,
+        get_cong = api_operation.get_client_url(email_, int(get_service_db[0][0]),
+                                                domain=get_service_db[0][4], server_domain=get_service_db[0][5],
                                                 host=inbound_host, header_type=inbound_header_type)
 
-        sqlite_manager.update({'Purchased': {'inbound_id': int(inbound_id),'client_email': email_,
+        sqlite_manager.update({'Purchased': {'inbound_id': int(get_service_db[0][0]),'client_email': email_,
                                              'client_id': id_, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
                                              'details': get_cong, 'active': 1, 'status': 1}}, where=f'id = {purchased_id}')
 

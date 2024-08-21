@@ -46,9 +46,8 @@ error_reasons = {
 
 def report_status_to_admin(text, chat_id):
     try:
-        text = (f'🔵 Report Status:'
-                f'\nUser Chat ID: {chat_id}'
-                f'\n{text}')
+        text = (f'{text}'
+                f'\nUser Chat ID: {chat_id}')
 
         telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
         requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text': text})

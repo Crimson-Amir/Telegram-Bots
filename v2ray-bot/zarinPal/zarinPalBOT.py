@@ -126,7 +126,7 @@ def zarinpall_page_wallet(update, context):
     package = sqlite_manager.custom(f'SELECT value FROM Credit_History where id = {credit_id}')
     price = ranking_manage.discount_calculation(query.message.chat_id, direct_price=package[0][0], without_off=True)
 
-    get_data = initialization_payment(user.id, 'churge_wallet', price, credit_id)
+    get_data = initialization_payment(user.id, 'charge_wallet', price, id_holder=credit_id)
     if not get_data: return query.answer('ساخت درگاه موفقیت آمیز نبود!', show_alert=True)
 
     final_text = ("<b>• اطلاعات زیر رو بررسی کنید و در صورت تایید پرداخت رو نهایی کنید:</b>"
