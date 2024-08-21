@@ -3,14 +3,11 @@ from datetime import datetime, timedelta
 import pytz
 import utilities
 from private import ADMIN_CHAT_ID, OTHER_ADMIN
-from utilities import init_name, ready_report_problem_to_admin, message_to_user, sqlite_manager, api_operation, infinity_name, report_status_to_admin
-from wallet import WalletManage
-import ranking
-from ranking import rank_access
+from utilities import (init_name, ready_report_problem_to_admin, message_to_user, sqlite_manager, api_operation,
+                       infinity_name, report_status_to_admin, second_to_ms, traffic_to_gb, ranking_manage, wallet_manage)
+from ranking import rank_access, rank_access_fa
 from ticket import TicketManager
 
-wallet_manage = WalletManage('User', 'wallet', 'v2ray', 'chat_id')
-ranking_manage = ranking.RankManage('Rank', 'level', 'rank_name',db_name='v2ray', user_id_identifier='chat_id')
 ticket_manager = TicketManager('v2ray')
 
 def admin_add_update_inbound(update, context):
@@ -146,66 +143,60 @@ def del_service(update, context):
             update.message.reply_text("Error", e)
 
 
-def traffic_to_gb(traffic, byte_to_gb:bool = True):
-    if byte_to_gb:
-        return traffic / (1024 ** 3)
-    else:
-        return int(traffic * (1024 ** 3))
-
-
-def second_to_ms(date, time_to_ms: bool = True):
-    if time_to_ms:
-        return int(date.timestamp() * 1000)
-    else:
-        seconds = date / 1000
-        return datetime.fromtimestamp(seconds)
-
-
 def add_client_bot(purchased_id):
 
     try:
         random_number = random.randint(0, 10_000_000)
-        get_client_db = sqlite_manager.select(table='Purchased', where=f'id = {purchased_id}')
-        get_service_db = sqlite_manager.select(column='inbound_id,name,period,traffic,domain,server_domain,inbound_host,inbound_header_type', table='Product', where=f'id = {get_client_db[0][6]}')
+        get_client_db = sqlite_manager.custom(f'SELECT chat_id,product_id FROM Purchased WHERE id = {purchased_id}]')
 
+        get_service_db = sqlite_manager.select(
+            column='inbound_id,name,period,traffic,domain,server_domain,inbound_host,inbound_header_type',
+            table='Product', where=f'id = {get_client_db[0][1]}')
+
+        inbound_id = get_service_db[0][0]
+        product_name = get_service_db[0][1]
+        period_db = get_service_db[0][2]
+        traffic_db = get_service_db[0][3]
+        domain_db = get_service_db[0][4]
+        server_domain_db = get_service_db[0][5]
         inbound_host = get_service_db[0][6]
         inbound_header_type = get_service_db[0][7]
 
         id_ = f"{get_client_db[0][4]}_{random_number}"
-        name = '_Gift' if 'gift' in get_service_db[0][1] else ''  # f'{get_service_db[0][6]}GB'
+        name = '_Gift' if 'gift' in product_name else ''
         email_ = f"{purchased_id}{name}"
 
-        if get_service_db[0][3]:
-            traffic_to_gb_ = traffic_to_gb(get_service_db[0][3], False)
+        if traffic_db:
+            traffic_to_gb_ = traffic_to_gb(traffic_db, False)
         else:
             email_ = f"{purchased_id}{infinity_name}"
             traffic_to_gb_ = 0
 
-        if get_service_db[0][2]:
+        if period_db:
             now = datetime.now(pytz.timezone('Asia/Tehran'))
-            period = get_service_db[0][2]
+            period = period_db
             now_data_add_day = now + timedelta(days=period)
             time_to_ms = second_to_ms(now_data_add_day)
         else:
             time_to_ms = 0
 
         data = {
-            "id": int(get_service_db[0][0]),
+            "id": int(inbound_id),
             "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,\"start_after_first_use\":true,"
                         "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
                         "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(id_, email_, traffic_to_gb_, time_to_ms)
         }
 
-        create = api_operation.add_client(data, get_service_db[0][5])
+        create = api_operation.add_client(data, server_domain_db)
 
-        check_servise_available = api_operation.get_client(email_, domain=get_service_db[0][5])
+        check_servise_available = api_operation.get_client(email_, domain=server_domain_db)
         if not check_servise_available['obj']: return False, create, 'service do not create'
 
-        get_cong = api_operation.get_client_url(email_, int(get_service_db[0][0]),
-                                                domain=get_service_db[0][4], server_domain=get_service_db[0][5],
+        get_cong = api_operation.get_client_url(email_, int(inbound_id),
+                                                domain=domain_db, server_domain=server_domain_db,
                                                 host=inbound_host, header_type=inbound_header_type)
 
-        sqlite_manager.update({'Purchased': {'inbound_id': int(get_service_db[0][0]),'client_email': email_,
+        sqlite_manager.update({'Purchased': {'inbound_id': int(inbound_id),'client_email': email_,
                                              'client_id': id_, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
                                              'details': get_cong, 'active': 1, 'status': 1}}, where=f'id = {purchased_id}')
 
@@ -377,7 +368,7 @@ def admin_rank_up(update, context):
     get_user_chat_id = get_admin_order[0]
     try:
         get_rank_name = get_admin_order[1]
-        rank_access_ = '\n'.join(ranking.rank_access_fa[get_rank_name][1:])
+        rank_access_ = '\n'.join(rank_access_fa[get_rank_name][1:])
 
         text = f'رنک شما توسط ادمین ارتقا یافت.\n\nویژگی های این رنک:\n {rank_access_}'
 

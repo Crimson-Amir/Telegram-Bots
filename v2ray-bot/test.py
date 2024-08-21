@@ -1,15 +1,12 @@
-class A:
-    b = 0
-    def __init__(self):
-        self.c = 1
+def a():
+    try:
+        u = 5 / 0
+        return 'a'
+    except Exception as e:
+        raise e
 
-    def run_it(self):
-        print(self.b)
+def b():
+    c = a()
+    print('ok')
 
-
-
-d = A()
-d.run_it()
-b = A()
-b.b = 2
-d.run_it()
+b()

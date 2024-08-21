@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import arrow
 import pytz
 from private import *
@@ -6,10 +6,26 @@ import requests
 from ranking import rank_emojis, rank_title_fa, rank_access
 from sqlite_manager import ManageDb
 from api_clean import XuiApiClean
+from ranking import RankManage
+from wallet import WalletManage
 
 api_operation = XuiApiClean()
 sqlite_manager = ManageDb('v2ray')
-infinity_name = '_Infinite_Service'
+ranking_manage = RankManage('Rank', 'level', 'rank_name',db_name='v2ray', user_id_identifier='chat_id')
+wallet_manage = WalletManage('User', 'wallet', 'v2ray', 'chat_id')
+
+def traffic_to_gb(traffic, byte_to_gb:bool = True):
+    if byte_to_gb:
+        return traffic / (1024 ** 3)
+    else:
+        return int(traffic * (1024 ** 3))
+
+def second_to_ms(date, time_to_ms: bool = True):
+    if time_to_ms:
+        return int(date.timestamp() * 1000)
+    else:
+        seconds = date / 1000
+        return datetime.fromtimestamp(seconds)
 
 
 def human_readable(number):
@@ -51,11 +67,9 @@ def something_went_wrong(update, context):
     else:
         update.message.reply_text(text)
 
-
 def just_for_show(update, context):
     query = update.callback_query
     query.answer(text="این دکمه برای نمایش دادن اطلاعات است!", show_alert=False)
-
 
 def report_problem_to_admin(context, text):
     text = ("🔴 Report Problem in Bot\n\n"
@@ -118,7 +132,7 @@ def record_operation_in_file(chat_id, status_of_pay, price, name_of_operation, c
             status_of_operation = 'پرداخت پول'
 
         status_text = '🟢 تایید شده' if status_of_pay else '🔴 تایید نشده'
-        date = datetime.datetime.now(pytz.timezone('Asia/Tehran')).strftime('%Y/%m/%d - %H:%M:%S')
+        date = datetime.now(pytz.timezone('Asia/Tehran')).strftime('%Y/%m/%d - %H:%M:%S')
 
         text = (f"\n\n{pay_emoji} {status_of_operation} | {status_text}"
                 f"\nمبلغ تراکنش: {price:,} تومان"

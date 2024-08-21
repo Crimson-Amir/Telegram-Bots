@@ -1,17 +1,12 @@
 from datetime import datetime, timedelta
-import telegram.error
-from utilities import (ready_report_problem_to_admin)
-import pytz
-from admin_task import (api_operation, sqlite_manager)
-# from private import *
-from utilities import format_mb_traffic, make_day_name_farsi
+import telegram.error, pytz
+from utilities import ready_report_problem_to_admin, sqlite_manager, format_mb_traffic, make_day_name_farsi, api_operation
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from plot import get_plot
 from tasks import handle_telegram_exceptions_without_user_side
 from arvanRadar.extraData import url_format, datacenter_keys
 from arvanRadar.arvanPlot import RadarPlot
 from arvanRadar import arvanApi
-
 
 STATISTICS_TIMER_HORSE = 3
 

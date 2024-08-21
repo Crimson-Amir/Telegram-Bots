@@ -1,7 +1,18 @@
 from sqlite_manager import ManageDb
 from datetime import datetime
-import pytz
-from utilities import report_problem_to_admin_witout_context
+import pytz, requests
+from private import telegram_bot_token, ADMIN_CHAT_ID
+
+def report_problem_to_admin_witout_context(text, chat_id, error, detail=None):
+    text = ("🔴 Report Problem in Bot\n\n"
+            f"Something Went Wrong In {text} Section."
+            f"\nUser ID: {chat_id}"
+            f"\nError Type: {type(error).__name__}"
+            f"\nError Reason:\n{error}")
+    text += f"\nDetail:\n {detail}" if detail else ''
+    telegram_bot_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
+    requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text': text})
+    print(f'* REPORT TO ADMIN SUCCESS: ERR: {error}')
 
 class WalletManage(ManageDb):
     def __init__(self, wallet_table, wallet_column, db_name, user_id_identifier):

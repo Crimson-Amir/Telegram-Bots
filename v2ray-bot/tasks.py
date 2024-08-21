@@ -1,35 +1,23 @@
-import random
-import uuid
 from datetime import datetime, timedelta
-import telegram.error
-import private
+import telegram.error, private, admin_task
 from utilities import (human_readable, something_went_wrong,
                        ready_report_problem_to_admin, format_traffic, record_operation_in_file,
                        send_service_to_customer_report, report_status_to_admin, find_next_rank,
                        change_service_server, get_rank_and_emoji, report_problem_by_user_utilitis, report_problem,
-                       format_mb_traffic, init_name)
-import admin_task
+                       format_mb_traffic, init_name, ranking_manage, wallet_manage)
 from private import *
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
-import ranking
-import utilities
-from admin_task import (add_client_bot, api_operation, second_to_ms, message_to_user, wallet_manage, sqlite_manager,
-                        ticket_manager, ranking_manage)
-import qrcode
+import ranking, utilities
+from admin_task import (add_client_bot, api_operation, second_to_ms, message_to_user, sqlite_manager,
+                        ticket_manager)
+
 from io import BytesIO
-import pytz
-import re
-import functools
+import pytz, re, functools, qrcode, json, traceback, uuid, random
 from sqlite_manager import ManageDb
-import json
-import traceback
-from api_clean import XuiApiClean
 
 GET_EVIDENCE, GET_EVIDENCE_PER, GET_EVIDENCE_CREDIT, GET_TICKET, GET_CONVER, REPLY_TICKET = 0, 0, 0, 0, 0, 0
-INBOUND_IDs_LIST = [13, 14]
 allow_user_in_server = 270
-service_ends_user = set()
 
 class Task(ManageDb):
     def __init__(self):
@@ -55,9 +43,6 @@ class Task(ManageDb):
     @handle_exceptions
     def return_server_countries(self, chat_id):
 
-        allow_users_in_server_new = f'HAVING sum(active_count) < {allow_user_in_server}'
-        if chat_id in service_ends_user and chat_id != 81532053: allow_users_in_server_new = ''
-
         plans = self.custom(order=f"""
             SELECT DISTINCT name, country
             FROM Product pr
@@ -69,27 +54,28 @@ class Task(ManageDb):
             ) pu ON pu.product_id = pr.id
             WHERE pr.status = 1
             GROUP BY UPPER(country) 
-            {allow_users_in_server_new}""")
+            HAVING sum(active_count) < {allow_user_in_server}""")
         unic_plans = {name[0]: name[1].capitalize() for name in plans}
 
         return unic_plans
 
     @handle_exceptions
     def upgrade_service(self, context, service_id, by_list=None):
-        get_client = sqlite_manager.select(table='Purchased', where=f'id = {service_id}')
+        get_client = sqlite_manager.custom(f'SELECT chat_id,product_id,inboun_id,client_email FROM Purchased WHERE id = {service_id}]')
 
-        get_server_domain = sqlite_manager.select(column='server_domain', table='Product', where=f'id = {get_client[0][6]}')
+        chat_id = get_client[0][0]
+        product_id = get_client[0][1]
+        inbound_id = get_client[0][2]
+        client_email = get_client[0][3]
+
+        get_server_domain = sqlite_manager.select(column='server_domain', table='Product', where=f'id = {product_id}')
 
         if not by_list:
-            user_db = sqlite_manager.select(table='User', where=f'chat_id = {get_client[0][4]}')
+            user_db = sqlite_manager.select(table='User', where=f'chat_id = {chat_id}')
             price = ranking_manage.discount_calculation(user_db[0][3], user_db[0][5], user_db[0][6])
         else:
             user_db = by_list
             price = 0
-
-        # client_id = get_client[0][10]
-        client_email = get_client[0][9]
-        inbound_id = get_client[0][7]
 
         now = datetime.now(pytz.timezone('Asia/Tehran'))
 
@@ -112,10 +98,10 @@ class Task(ManageDb):
                     traffic = int(user_db[0][5] * (1024 ** 3))
                     my_data = now + timedelta(days=user_db[0][6])
                     my_data = int(my_data.timestamp() * 1000)
-                    print(api_operation.reset_client_traffic(int(get_client[0][7]), client_email, get_server_domain[0][0]))
+                    print(api_operation.reset_client_traffic(int(inbound_id), client_email, get_server_domain[0][0]))
 
                 data = {
-                    "id": int(get_client[0][7]),
+                    "id": int(inbound_id),
                     "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
                                 "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
                                 "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(client_id, client_email,
@@ -125,15 +111,15 @@ class Task(ManageDb):
 
                 sqlite_manager.update({'Purchased': {'status': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
                                                      'notif_day': 0, 'notif_gb': 0, 'client_id': client_id}}
-                                      , where=f'client_email = "{get_client[0][9]}"')
+                                      , where=f'client_email = "{client_email}"')
 
-                record_operation_in_file(chat_id=get_client[0][4], price=price,
-                                         name_of_operation=f'تمدید یا ارتقا سرویس {get_client[0][9]}', operation=0,
+                record_operation_in_file(chat_id=chat_id, price=price,
+                                         name_of_operation=f'تمدید یا ارتقا سرویس {client_email}', operation=0,
                                          status_of_pay=1, context=context)
 
-                report_status_to_admin(context, text=f'User Upgrade Service\nService Name: {get_client[0][9]}'
+                report_status_to_admin(context, text=f'User Upgrade Service\nService Name: {client_email}'
                                                      f'\nTraffic: {user_db[0][5]}GB\nPeriod: {user_db[0][6]}day',
-                                       chat_id=get_client[0][4])
+                                       chat_id=chat_id)
 
                 break
 
@@ -413,20 +399,28 @@ def subcategory_auto(context, invite_chat_id, price):
 
 def send_clean_for_customer(query, context, id_, max_retries=2):
     create = add_client_bot(id_)
+
     if create[0]:
-        get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
+
+        get_client = sqlite_manager.custom(f'SELECT chat_id,product_id,inboun_id,client_email FROM Purchased WHERE id = {id_}]')
+
+        chat_id = get_client[0][0]
+        product_id = get_client[0][1]
+        inbound_id = get_client[0][2]
+        client_email = get_client[0][3]
+
         try:
-            get_product = sqlite_manager.select(column='price,domain,server_domain,inbound_host,inbound_header_type', table='Product', where=f'id = {get_client[0][6]}')
-            get_user_detail = sqlite_manager.select(column='invited_by', table='User', where=f'chat_id={get_client[0][4]}')
+            get_product = sqlite_manager.select(column='price,domain,server_domain,inbound_host,inbound_header_type', table='Product', where=f'id = {product_id}')
+            get_user_detail = sqlite_manager.select(column='invited_by', table='User', where=f'chat_id={chat_id}')
 
             get_domain = get_product[0][1]
             get_server_domain = get_product[0][2]
             inbound_host = get_product[0][3]
             inbound_header_type = get_product[0][4]
 
-            returned = api_operation.get_client_url(client_email=get_client[0][9], inbound_id=get_client[0][7],
-                                                    domain=get_domain, server_domain=get_server_domain, host=inbound_host,
-                                                    header_type=inbound_header_type)
+            returned = api_operation.get_client_url(client_email=client_email, inbound_id=inbound_id,
+                                                    domain=get_domain, server_domain=get_server_domain,
+                                                    host=inbound_host, header_type=inbound_header_type)
             if returned:
                 returned_copy = f'`{returned}`'
                 qr_code = qrcode.make(returned)
@@ -437,40 +431,38 @@ def send_clean_for_customer(query, context, id_, max_retries=2):
                 keyboard = [[InlineKeyboardButton("دریافت فایل سرویس", callback_data=f"create_txt_file_{id_}"),
                              InlineKeyboardButton("🎛 سرویس های من", callback_data=f"my_service")],
                             [InlineKeyboardButton("صفحه اصلی ربات ↵", callback_data=f"main_menu_in_new_message")]]
-                context.user_data['v2ray_client'] = returned
 
+                context.user_data['v2ray_client'] = returned
                 context.bot.send_photo(photo=binary_data,
                                        caption=f' سرویس شما با موفقیت فعال شد✅\n\n*• میتونید جزئیات سرویس رو از بخش "سرویس های من" مشاهده کنید.\n\n✪ لطفا سرویس رو به صورت مستقیم از طریق پیام رسان های ایرانی یا پیامک ارسال نکنید، با کلیک روی گزینه "دریافت فایل" سرویس را به صورت فایل یا کیوآرکد ارسال کنید.* \n\n\nلینک:\n{returned_copy}',
-                                       chat_id=get_client[0][4], reply_markup=InlineKeyboardMarkup(keyboard),
+                                       chat_id=chat_id, reply_markup=InlineKeyboardMarkup(keyboard),
                                        parse_mode='markdown')
 
-                price = ranking_manage.discount_calculation(direct_price=get_product[0][0], user_id=get_client[0][4])
+                price = ranking_manage.discount_calculation(direct_price=get_product[0][0], user_id=chat_id)
 
-                record_operation_in_file(chat_id=get_client[0][4], price=price,
-                                         name_of_operation=f'خرید سرویس {get_client[0][9]}', operation=0,
+                record_operation_in_file(chat_id=chat_id, price=price,
+                                         name_of_operation=f'خرید سرویس {client_email}', operation=0,
                                          status_of_pay=1, context=context)
 
-                send_service_to_customer_report(context, status=1, chat_id=get_client[0][4],
-                                                service_name=get_client[0][9])
+                send_service_to_customer_report(context, status=1, chat_id=chat_id, service_name=client_email)
 
                 invite_chat_id = get_user_detail[0][0]
                 subcategory_auto(context, invite_chat_id, price)
 
                 return {'success': True, 'msg': 'config created successfull', 'purchased_id': id_}
+
             else:
-                send_service_to_customer_report(context, status=0, chat_id=get_client[0][4],
-                                                service_name=get_client[0][9],
-                                                more_detail=create)
+                send_service_to_customer_report(context, status=0, chat_id=chat_id, service_name=client_email, more_detail=create)
                 return {'success': False, 'msg': returned}
 
+
         except Exception as e:
-            send_service_to_customer_report(context, status=0, chat_id=get_client[0][4], service_name=get_client[0][9],
-                                            more_detail='ERROR IN SEND CLEAN FOR CUSTOMER', error=e)
+            send_service_to_customer_report(context, status=0, chat_id=chat_id, service_name=client_email, more_detail='ERROR IN SEND CLEAN FOR CUSTOMER', error=e)
             return {'success': False, 'msg': str(e)}
 
     elif not create[0] and create[2] == 'service do not create':
-        send_service_to_customer_report(context, status=0, chat_id=None, service_name=None,
-                                        more_detail=f'SERVICE DONT CREATED SUCCESSFULL AND TRY ONE MORE TIME (SEND CLEAN FOR CUSTOMER)\n{create}')
+        send_service_to_customer_report(context, status=0, chat_id=None, service_name=None, more_detail=f'SERVICE DONT CREATED SUCCESSFULL AND TRY ONE MORE TIME (SEND CLEAN FOR CUSTOMER)\n{create}')
+
         if max_retries > 0:
             return send_clean_for_customer(query, context, id_, max_retries - 1)
         else:
@@ -479,7 +471,7 @@ def send_clean_for_customer(query, context, id_, max_retries=2):
     else:
         send_service_to_customer_report(context, status=0, chat_id=None, service_name=None,
                                         more_detail=f'EEROR IN ADD CLIENT (SEND CLEAN FOR CUSTOMER)\n{create}')
-        return Exception(f'Error: {create}')
+        raise Exception(f'Error: {create}')
 
 
 @handle_telegram_exceptions
@@ -633,11 +625,6 @@ def server_detail_customer(update, context):
             context.user_data['period_for_upgrade'] = (expiry_date - purchase_date).days
             context.user_data['traffic_for_upgrade'] = total_traffic
             keyboard = [[InlineKeyboardButton("تمدید و ارتقا ↟", callback_data=f"upgrade_service_customize_{get_data[0][0]}")]]
-
-            if inbound_id not in [14, 15]:
-                keyboard = [[InlineKeyboardButton("غیرقابل تمدید یا ارتقا", callback_data="just_for_show")]]
-                extra_text = '🔴 به دلیل تغییرات در سرور، این سرویس قابل ارتقا نمیباشد! لطفا این سرویس را حذف و یک سرویس جدید ایجاد کنید.'
-
 
         elif int(ret_conf['obj']['total']) == 0:
             service_activate_status = 'غیرفعال سازی ⤈' if ret_conf['obj']['enable'] else 'فعال سازی ↟'
@@ -1244,7 +1231,6 @@ def disable_service_in_data_base(context, list_of_notification, user, not_enogh_
             f"\nدرود {list_of_notification[0][3]} عزیز، سرویس شما با نام {user[2]} به پایان رسید!"
             f"\nدر صورتی که تمایل دارید نسبت به بررسی و یا تمدید سرویس اقدام کنید.")
 
-    service_ends_user.add(list_of_notification[0][0])
 
     if not_enogh_credit:
         text = ("🔴 اطلاع رسانی اتمام سرویس و تمدید خودکار ناموفق"
@@ -1252,10 +1238,10 @@ def disable_service_in_data_base(context, list_of_notification, user, not_enogh_
                 f"\nاعتبار شما برای تمدید خودکار سرویس کافی نبود!")
 
     keyboard = [
-        [InlineKeyboardButton("خرید سرویس جدید", callback_data=f"select_server")]
+        [InlineKeyboardButton("خرید سرویس جدید", callback_data=f"select_server"),
+         InlineKeyboardButton("تمدید همین سرویس", callback_data=f"upgrade_service_customize_{user[0]}")]
     ]
-    if user[9] in INBOUND_IDs_LIST:
-        keyboard.append([InlineKeyboardButton("تمدید همین سرویس", callback_data=f"upgrade_service_customize_{user[0]}")])
+
     # if user[1] not in rate_list:
     #     keyboard.extend([[InlineKeyboardButton("❤️ تجربه استفاده از فری‌بایت رو به اشتراک بگذارید:", callback_data=f"just_for_show")],
     #                     [InlineKeyboardButton("معمولی بود", callback_data=f"rate_ok&{list_of_notification[0][0]}_{user[0]}"),
@@ -1371,12 +1357,9 @@ def check_all_configs(context, context_2=None):
                             traffic_left = round((total_traffic - usage_traffic), 2)
 
                             keyboard = [
-                                [InlineKeyboardButton("مشاهده جزئیات سرویس", callback_data=f"view_service_{user[2]}")]
+                                [InlineKeyboardButton("مشاهده جزئیات سرویس", callback_data=f"view_service_{user[2]}"),
+                                 InlineKeyboardButton("تمدید یا ارتقا سرویس", callback_data=f"upgrade_service_customize_{user[0]}")]
                             ]
-
-                            if user[9] in INBOUND_IDs_LIST:
-                                keyboard.append([InlineKeyboardButton("تمدید یا ارتقا سرویس", callback_data=f"upgrade_service_customize_{user[0]}")])
-
 
                             if not user[5] and time_left <= list_of_notification[0][2]:
                                 text = ("🔵 اطلاع رسانی تاریخ انقضا سرویس"

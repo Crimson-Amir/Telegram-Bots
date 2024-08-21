@@ -142,27 +142,34 @@ class RankManage(ManageDb):
 
     def discount_calculation(self, user_id, traffic=None, period=None, direct_price=None, without_off=False, more_detail=False, cerful_price=False):
         price_per_gb, price_per_day = PRICE_PER_GB, PRICE_PER_DAY
+        try:
+            if user_id in self.list_of_partner:
+                get_detail_of_partner = self.select('traffic_price,period_price', 'Partner', where=f'chat_id = {user_id}')
+                price_per_gb = get_detail_of_partner[0][0]
+                price_per_day = get_detail_of_partner[0][1]
 
-        if user_id in self.list_of_partner:
-            get_detail_of_partner = self.select('traffic_price,period_price', 'Partner', where=f'chat_id = {user_id}')
-            price_per_gb = get_detail_of_partner[0][0]
-            price_per_day = get_detail_of_partner[0][1]
+            user_rank = self.select(table='Rank', where=f'chat_id = {user_id}')
+            price = direct_price if direct_price is not None else (traffic * price_per_gb) + (period * price_per_day)
 
-        user_rank = self.select(table='Rank', where=f'chat_id = {user_id}')
-        price = direct_price if direct_price is not None else (traffic * price_per_gb) + (period * price_per_day)
+            if without_off: return price
+            if not user_rank:
+                detail = (price, 0, price) if more_detail else price
+                return detail
 
-        if without_off: return price
-        if not user_rank:
-            detail = (price, 0, price) if more_detail else price
+            off = (price * off_per_rank[user_rank[0][5]] / 100)
+            if not cerful_price:
+                final_price = round((price - off), -3)
+            else:
+                final_price = price - off
+            detail = (int(final_price), off_per_rank[user_rank[0][5]], price) if more_detail else int(final_price)
             return detail
 
-        off = (price * off_per_rank[user_rank[0][5]] / 100)
-        if not cerful_price:
-            final_price = round((price - off), -3)
-        else:
-            final_price = price - off
-        detail = (int(final_price), off_per_rank[user_rank[0][5]], price) if more_detail else int(final_price)
-        return detail
+        except Exception as e:
+            if direct_price: return direct_price
+            price = (traffic * price_per_gb) + (period * price_per_day)
+            print(f'error in discount: {e}')
+            return (price, 0, price) if more_detail else price
+
 
 
     def enough_rank(self, task, user_id):

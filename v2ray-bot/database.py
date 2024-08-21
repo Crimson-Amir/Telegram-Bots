@@ -5,16 +5,14 @@ def create_database(db_name='test'):
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
-    c.execute('CREATE TABLE IF NOT EXISTS User(id integer primary key, name text, chat_id integer'
+    c.execute('CREATE TABLE IF NOT EXISTS User(id integer primary key, name text, user_name text, chat_id integer'
               'date text, traffic integer, period integer, free_service integer, notification_gb integer,'
               'notification_day integer, wallet integer, notification_wallet INTEGER DEFAULT 5000,'
               'notif_wallet INTEGER DEFAULT 0, notif_low_wallet INTEGER DEFAULT 0, invited_by integer)')
 
-
     c.execute('CREATE TABLE IF NOT EXISTS Product(id integer primary key, inbound_id integer, active integer, name text'
               ',country text, period integer, traffic integer, price integer, date text, is_personalization text,'
               'domain text, server_domain text, status integer,inbound_host, inbound_header_type)')
-
 
     c.execute('CREATE TABLE IF NOT EXISTS Purchased(id integer primary key, active integer, name text, user_name text,'
               'chat_id integer, factor_id text, product_id integer, inbound_id integer, details text, client_email text,'
@@ -43,7 +41,6 @@ def create_database(db_name='test'):
     c.execute('CREATE TABLE IF NOT EXISTS Statistics(id integer primary key, traffic_usage text, date text)')
     c.execute('CREATE TABLE IF NOT EXISTS Last_usage(id integer primary key, last_usage text, date text)')
 
-
     c.execute('CREATE TABLE IF NOT EXISTS Gift_service(id integer primary key, name text, user_name text,'
               'chat_id integer, traffic integer, date text)')
 
@@ -56,8 +53,8 @@ def create_database(db_name='test'):
                  FOREIGN KEY (chat_id) REFERENCES User(chat_id))""")
 
     c.execute("""CREATE TABLE IF NOT EXISTS iraIranPaymentGeway(id integer primary key, action VARCHAR(100),
-                 id_holder integer default null, code integer default 0,
-                 authority VARCHAR(255), amount integer NOT NULL, currency VARCHAR(255) NOT NULL, url_callback VARCHAR(255),
+                 id_holder integer default null, code integer default 0, authority VARCHAR(255),
+                 amount integer NOT NULL, currency VARCHAR(255) NOT NULL, url_callback VARCHAR(255),
                  description TEXT, metadata TEXT, pay_status TEXT, is_final TEXT, chat_id integer, fee_type VARCHAR(15), fee INTEGER,
                  FOREIGN KEY (chat_id) REFERENCES User(chat_id))""")
 
