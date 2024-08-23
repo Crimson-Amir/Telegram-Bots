@@ -58,7 +58,7 @@ def create_user(context, user, invited_by):
     start_text_notif = (f'👤 New Start IN Bot\n\n'
                         f'User Name: {user.first_name} {user.last_name}\n'
                         f'User ID: <a href=\"tg://user?id={user.id}\">{user.id}</a>\n'
-                        f'UserName: {user.username}\n'
+                        f'UserName: @{user.username}\n'
                         f'User Language: {user.language_code}\n'
                         f'Is User Premium: {user.is_premium}\n'
                         f'Is User BOT: {user.is_bot}\n')
@@ -80,7 +80,7 @@ def create_user(context, user, invited_by):
         context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo_file_id, caption=start_text_notif, parse_mode='HTML')
     else:
         context.bot.send_message(chat_id=ADMIN_CHAT_ID,
-                                 text=start_text_notif + '\n\n• Without Profile Picture (Or not public)', parse_mode='HTML')
+                                 text=start_text_notif + '\n\n• Without Profile Picture (or not public)', parse_mode='HTML')
 
 
     user_text = f"<b>درود <a href='tg://user?id={user.id}'>{user.first_name}</a> عزیز، به FreeByte خوش آمدید.\nبرای ادامه بخش مورد نظر خودتون رو انتخاب کنید:\n</b>"
@@ -152,7 +152,7 @@ def send_check_new_user_request_to_admin(update: Update, context):
     text = (f'👤 User Request to join the BOT\n\n'
             f'User Name: {user.first_name} {user.last_name}\n'
             f'User ID: {user.id}\n'
-            f'UserName: {user.username}\n'
+            f'UserName: @{user.username}\n'
             f'User Language: {user.language_code}\n'
             f'Is User Premium: {user.is_premium}\n'
             f'Is User BOT: {user.is_bot}\n')
@@ -169,11 +169,11 @@ def send_check_new_user_request_to_admin(update: Update, context):
         context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo_file_id, caption=text,
                                reply_markup=InlineKeyboardMarkup(admin_keyboard))
     else:
-        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text + '\n\n• Without Profile Picture (Or not public)',
+        context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=text + '\n• Without Profile Picture (or not public)',
                                  reply_markup=InlineKeyboardMarkup(admin_keyboard))
 
     query.answer('درخواست عضویت شما ارسال شد✅')
-    query.edit_message_text(text='• ما درخواست شمارو بررسی مکینیم و نتیجه رو از طریق همین ربات اعلام میکنیم، متشکریم!', reply_markup=InlineKeyboardMarkup([]))
+    query.edit_message_text(text='• ما درخواست شمارو بررسی میکنیم و نتیجه رو از طریق همین ربات اعلام میکنیم، متشکریم!', reply_markup=InlineKeyboardMarkup([]))
 
 
 def check_new_user_request_by_admin(update: Update, context):

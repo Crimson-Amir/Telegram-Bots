@@ -1,11 +1,10 @@
-import sys, os
-import private
+import sys, os, private
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from admin_task import sqlite_manager, ranking_manage
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from utilities import init_name
 from tasks import handle_telegram_exceptions
-from zarinPal.zarinPalAPI import create_invoice
+from zarinPal.zarinPalAPI import create_invoice, InformationData
 
 # buy_service, upgrade_service, charge_wallet
 
@@ -33,7 +32,7 @@ text = ("<b>• اطلاعات زیر رو بررسی کنید و در صورت 
         "\n\n<b>قیمت</b>:"
         "<b> {2} تومان</b>"
         "{3}"
-        "\n\n<b>• برای ورود به درگاه باید vpn خودتون رو خاموش کنید.</b>"
+        "\n\n<b>• برای ورود به درگاه vpn خودتون رو خاموش کنید.</b>"
         "\n<b>• با واردن شدن به درگاه و پرداخت مبلغ، خرید شما به صورت خودکار تایید میشود.</b>"
         "\n\n🟡 در حال حاضر، درگاه پرداخت در تهران، شیراز و چند شهر دیگر با مشکلاتی مواجه است."
         " اگر پس از پرداخت به صفحه بعدی منتقل نشدید و با ارور مواجه شدید،"
@@ -43,7 +42,7 @@ text = ("<b>• اطلاعات زیر رو بررسی کنید و در صورت 
 
 def initialization_payment(chat_id, action, amount, id_holder=None):
     try:
-        send_information = create_invoice(merchent_id=private.merchent_id, amount=amount, currency='IRT',
+        send_information: InformationData = create_invoice(merchent_id=private.merchent_id, amount=amount, currency='IRT',
                                           description=action, callback_url=private.callback_url)
 
         if not send_information: return False
@@ -138,7 +137,7 @@ def zarinpall_page_wallet(update, context):
                   "\n\nمدت اعتبار فاکتور: 60 دقیقه"
                   "\n\n<b>قیمت</b>:"
                   f"<b> {price:,} تومان</b>"
-                  "\n\n<b>• برای ورود به درگاه باید vpn خودتون رو خاموش کنید.</b>"
+                  "\n\n<b>• برای ورود به درگاه vpn خودتون رو خاموش کنید.</b>"
                   "\n<b>با واردن شدن به درگاه و پرداخت مبلغ، خرید شما به صورت خودکار تایید میشود.</b>"
                   "\n\n🟡 در حال حاضر، درگاه پرداخت در تهران، شیراز و چند شهر دیگر با مشکلاتی مواجه است."
                   " اگر پس از پرداخت به صفحه بعدی منتقل نشدید و با ارور مواجه شدید،"
