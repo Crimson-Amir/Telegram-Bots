@@ -4,7 +4,8 @@ from private import telegram_bot_token, ADMIN_CHAT_ID
 from database import create_database
 create_database('./v2ray.db')
 
-from bot_start import bot_start, main_menu, send_main_message, main_menu_delete_main_message
+from bot_start import (bot_start, main_menu, send_main_message, main_menu_delete_main_message,
+                       send_check_new_user_request_to_admin, check_new_user_request_by_admin)
 from tasks import (show_servers, get_service_of_server, payment_page, get_service_con, apply_card_pay,
                    my_service, create_file_and_return, server_detail_customer, personalization_service,
                    personalization_service_lu, apply_card_pay_lu, upgrade_service_by_card_conv, get_free_service, guidance,
@@ -79,6 +80,12 @@ def main():
     dp.add_handler(change_service_ownership_conver)
 
     # dp.add_handler(CallbackQueryHandler(get_ticket_department, pattern=r'get_ticket_department'))
+
+    dp.add_handler(CallbackQueryHandler(send_check_new_user_request_to_admin, pattern='send_joining_request'))
+    dp.add_handler(CallbackQueryHandler(check_new_user_request_by_admin, pattern=r'accept_user_(.*)'))
+    dp.add_handler(CallbackQueryHandler(check_new_user_request_by_admin, pattern=r'deny_user_(.*)'))
+
+
 
     dp.add_handler(CallbackQueryHandler(zarinpall_page_wallet, pattern=r'zarinpall_page_wallet_\d+'))
     dp.add_handler(CallbackQueryHandler(zarinpall_page_buy, pattern=r'zarinpall_page_buy_\d+'))
