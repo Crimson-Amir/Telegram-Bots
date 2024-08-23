@@ -1,9 +1,10 @@
-from datetime import datetime, timedelta
 import pytz, requests, random, json, qrcode
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from private import ADMIN_CHAT_ID, telegram_bot_token, merchent_id, infinity_name
-from utilities import sqlite_manager, api_operation, second_to_ms, traffic_to_gb, ranking_manage, wallet_manage
+from utilities import sqlite_manager, second_to_ms, traffic_to_gb, ranking_manage, wallet_manage
+from api_clean import XuiApiClean
+from datetime import datetime, timedelta
 from io import BytesIO
 
 
@@ -42,7 +43,21 @@ error_reasons = {
     404: "وریفای با موفقیت انجام نشده است"
 }
 
+class ConnectToServer:
+    api_operation = XuiApiClean()
+    last_update = None
 
+    def refresh_token(self):
+        now = datetime.now()
+        if self.last_update:
+            if (self.last_update + timedelta(minutes=5)) < now:
+                self.api_operation.refresh_connecion()
+                self.last_update = now
+        else:
+            self.api_operation.refresh_connecion()
+            self.last_update = now
+
+connect_to_server_instance = ConnectToServer()
 
 def report_status_to_admin(text, chat_id):
     try:
@@ -101,6 +116,7 @@ def subcategory_auto(invite_chat_id, price):
 
 def upgrade_service(service_id):
     get_client = sqlite_manager.custom(f'SELECT chat_id,product_id,inbound_id,client_email FROM Purchased WHERE id = {service_id}')
+    connect_to_server_instance.refresh_token()
 
     chat_id = get_client[0][0]
     product_id = get_client[0][1]
@@ -119,13 +135,13 @@ def upgrade_service(service_id):
 
     now = datetime.now(pytz.timezone('Asia/Tehran'))
 
-    ret_conf = api_operation.get_inbound(inbound_id, get_server_domain[0][0])
+    ret_conf = connect_to_server_instance.api_operation.get_inbound(inbound_id, get_server_domain[0][0])
     client_list = json.loads(ret_conf['obj']['settings'])['clients']
 
     for client in client_list:
         if client['email'] == client_email:
             client_id = client['id']
-            get_client_status = api_operation.get_client(client_email, get_server_domain[0][0])
+            get_client_status = connect_to_server_instance.api_operation.get_client(client_email, get_server_domain[0][0])
 
             if get_client_status['obj']['enable']:
                 tra = client['totalGB']
@@ -138,7 +154,7 @@ def upgrade_service(service_id):
                 traffic = int(traffic_db * (1024 ** 3))
                 my_data = now + timedelta(days=period)
                 my_data = int(my_data.timestamp() * 1000)
-                print(api_operation.reset_client_traffic(inbound_id, client_email, get_server_domain[0][0]))
+                print(connect_to_server_instance.api_operation.reset_client_traffic(inbound_id, client_email, get_server_domain[0][0]))
 
             data = {
                 "id": inbound_id,
@@ -147,7 +163,7 @@ def upgrade_service(service_id):
                             "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(client_id, client_email,
                                                                                        traffic, my_data)}
 
-            update_client = api_operation.update_client(client_id, data, get_server_domain[0][0])
+            update_client = connect_to_server_instance.api_operation.update_client(client_id, data, get_server_domain[0][0])
             print(update_client)
 
             sqlite_manager.update({'Purchased': {'status': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
@@ -169,6 +185,7 @@ def add_client_bot(purchased_id):
     random_number = random.randint(0, 10_000_000)
     get_client_db = sqlite_manager.custom(f'SELECT chat_id,product_id FROM Purchased WHERE id = {purchased_id}')
 
+    connect_to_server_instance.refresh_token()
     get_service_db = sqlite_manager.select(
         column='inbound_id,name,period,traffic,domain,server_domain,inbound_host,inbound_header_type',
         table='Product', where=f'id = {get_client_db[0][1]}')
@@ -207,12 +224,12 @@ def add_client_bot(purchased_id):
                     "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(id_, email_, traffic_to_gb_, time_to_ms)
     }
 
-    create = api_operation.add_client(data, server_domain_db)
+    create = connect_to_server_instance.api_operation.add_client(data, server_domain_db)
 
-    check_servise_available = api_operation.get_client(email_, domain=server_domain_db)
+    check_servise_available = connect_to_server_instance.api_operation.get_client(email_, domain=server_domain_db)
     if not check_servise_available['obj']: return False, create, 'service do not create'
 
-    get_cong = api_operation.get_client_url(email_, int(inbound_id),
+    get_cong = connect_to_server_instance.api_operation.get_client_url(email_, int(inbound_id),
                                             domain=domain_db, server_domain=server_domain_db,
                                             host=inbound_host, header_type=inbound_header_type)
 
@@ -246,7 +263,7 @@ def send_clean_for_customer(id_, max_retries=2):
             inbound_host = get_product[0][3]
             inbound_header_type = get_product[0][4]
 
-            returned = api_operation.get_client_url(client_email=client_email, inbound_id=inbound_id,
+            returned = connect_to_server_instance.api_operation.get_client_url(client_email=client_email, inbound_id=inbound_id,
                                                     domain=get_domain, server_domain=get_server_domain,
                                                     host=inbound_host,
                                                     header_type=inbound_header_type)
@@ -332,11 +349,19 @@ def add_credit_to_wallet(credit_id):
 
 
 def add_to_user_credit(chat_id, value, tell_to_customer=True):
-    sqlite_manager.custom(f'UPDATE User SET wallet = wallet + {value} WHERE chat_id = {chat_id}')
-    if tell_to_customer:
-        report_status_to_user('🟡 هنگام اجرای عملیات خطایی به وجود آمد!'
-                              f'\nمبلغ {value:,} تومان به کیف پول شما اضافه شد.'
-                              ' لطفا عملیات مورد نظر رو از طریق اعتبار کیف پول انجام بدید.', chat_id)
+    try:
+        wallet_manage.add_to_wallet(chat_id, value, user_id={'name': 'null', 'username': 'null'})
+
+    except Exception as e:
+        print('error in refund and pay manualy', e)
+        sqlite_manager.custom(f'UPDATE User SET wallet = wallet + {value} WHERE chat_id = {chat_id}')
+        record_operation_in_file(chat_id, 1, value, 'transaction refund')
+
+    finally:
+        if tell_to_customer:
+            report_status_to_user('🟡 هنگام اجرای عملیات خطایی به وجود آمد!'
+                                  f'\nمبلغ {value:,} تومان به کیف پول شما اضافه شد.'
+                                  ' لطفا عملیات مورد نظر رو از طریق اعتبار کیف پول انجام بدید.', chat_id)
 
 
 # send_clean_for_customer(2)

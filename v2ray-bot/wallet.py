@@ -65,7 +65,7 @@ class WalletManage(ManageDb):
             return get_credit
         except Exception as e:
             report_problem_to_admin_witout_context(chat_id=user_id, text='ADD TO WALLET [wallet script]', error=e)
-            return False
+            raise e
 
     def add_to_wallet_without_history(self, user_id, credit):
         try:

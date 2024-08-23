@@ -2125,7 +2125,8 @@ def pay_per_use(update, context):
     query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
 
-def refresh_login(context): api_operation.refresh_connecion()
+def refresh_login(context):
+    api_operation.refresh_connecion()
 
 
 @handle_telegram_exceptions_without_user_side
