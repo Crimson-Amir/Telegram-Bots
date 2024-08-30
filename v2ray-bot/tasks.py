@@ -252,7 +252,7 @@ def payment_page(update, context):
     price = ranking_manage.discount_calculation(query.from_user['id'], direct_price=package[0][7], more_detail=True)
 
     if package[0][7]:
-        keyboard = [[InlineKeyboardButton("درگاه پرداخت ریالی", callback_data=f"zarinpall_page_buy_{id_}")],
+        keyboard = [[InlineKeyboardButton("پرداخت با کارت بانکی", callback_data=f"zarinpall_page_buy_{id_}")],
                     [InlineKeyboardButton("پرداخت از کیف پول", callback_data=f'payment_by_wallet_{id_}'),
                      InlineKeyboardButton("درگاه پرداخت کریپتو", callback_data=f"cryptomus_page_{id_}")],
                     [InlineKeyboardButton("کارت به کارت", callback_data=f'payment_by_card_{id_}')],
@@ -955,7 +955,7 @@ def payment_page_upgrade(update, context):
     package = sqlite_manager.select(table='User', where=f'chat_id = {chat_id}')
 
     keyboard = [
-        [InlineKeyboardButton("درگاه پرداخت ریالی", callback_data=f"zarinpall_page_upgrade_{id_}")],
+        [InlineKeyboardButton("پرداخت با کارت بانکی", callback_data=f"zarinpall_page_upgrade_{id_}")],
         [InlineKeyboardButton("پرداخت از کیف پول", callback_data=f'payment_by_wallet_upgrade_service_{id_}'),
          InlineKeyboardButton("درگاه پرداخت کریپتو", callback_data=f"cryptomus_page_upgrade_{id_}")],
         [InlineKeyboardButton("کارت به کارت", callback_data=f'upg_ser_by_card{id_}')],
@@ -1309,15 +1309,14 @@ def check_all_configs(context, context_2=None):
                                     keyboard = [[InlineKeyboardButton("مشاهده جزئیات سرویس",
                                                                       callback_data=f"view_service_{user[2]}")]]
 
-                                    # print(api_operation.reset_client_traffic(user[9], user[2], get_server_domain[0][0]))
+                                    print(api_operation.reset_client_traffic(user[9], user[2], get_server_domain[0][0]))
 
                                     data = {
                                         "id": int(user[9]),
                                         "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
                                                     "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
                                                     "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(
-                                            user[10], user[2],
-                                            traffic, my_data)}
+                                            user[10], user[2], traffic, my_data)}
 
 
                                     wallet_manage.less_from_wallet(list_of_notification[0][0], price,
@@ -1693,7 +1692,7 @@ def pay_way_for_credit(update, context):
     package = sqlite_manager.select(column='value', table='Credit_History', where=f'id = {id_}')
 
     keyboard = [
-        [InlineKeyboardButton("درگاه پرداخت ریالی", callback_data=f"zarinpall_page_wallet_{id_}")],
+        [InlineKeyboardButton("پرداخت با کارت بانکی", callback_data=f"zarinpall_page_wallet_{id_}")],
         [InlineKeyboardButton("کارت به کارت", callback_data=f'pay_by_card_for_credit_{id_}'),
          InlineKeyboardButton("درگاه پرداخت کریپتو", callback_data=f"cryptomus_page_wallet_{id_}")],
         [InlineKeyboardButton("برگشت ↰", callback_data="buy_credit_volume")],
@@ -2331,7 +2330,7 @@ def service_advanced_option(update, context):
         keyboard_main = None
 
         if 'change_auto_renewal_status_' in query.data:
-            return query.answer('این ویژگی درحال حاضر غیرفعال است')
+            return query.answer('این ویژگی درحال حاضر غیرفعال میباشد!')
             data = query.data.replace('change_auto_renewal_status_', '').split('__')
             changed_to, status_1 = (1, '\n\n↲ بعد از پایان سرویس، درصورت اعتبار داشتن کیف پول، بسته به صورت خودکار تمدید میشود.') if eval(data[1]) else (0, '')
             email = data[0]
@@ -2369,6 +2368,7 @@ def service_advanced_option(update, context):
                                    chat_id=query.message.chat_id)
 
         elif 'active_tls_encoding_' in query.data:
+            return query.answer('این ویژگی درحال حاضر غیرفعال میباشد!')
             data = query.data.replace('active_tls_encoding_', '').split('__')
             print(data)
             email = data[0]

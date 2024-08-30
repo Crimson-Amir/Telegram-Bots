@@ -349,19 +349,12 @@ def add_credit_to_wallet(credit_id):
 
 
 def add_to_user_credit(chat_id, value, tell_to_customer=True):
-    try:
-        wallet_manage.add_to_wallet(chat_id, value, user_id={'name': 'null', 'username': 'null'})
-
-    except Exception as e:
-        print('error in refund and pay manualy', e)
-        sqlite_manager.custom(f'UPDATE User SET wallet = wallet + {value} WHERE chat_id = {chat_id}')
-        record_operation_in_file(chat_id, 1, value, 'transaction refund')
-
-    finally:
-        if tell_to_customer:
-            report_status_to_user('🟡 هنگام اجرای عملیات خطایی به وجود آمد!'
-                                  f'\nمبلغ {value:,} تومان به کیف پول شما اضافه شد.'
-                                  ' لطفا عملیات مورد نظر رو از طریق اعتبار کیف پول انجام بدید.', chat_id)
+    sqlite_manager.custom(f'UPDATE User SET wallet = wallet + {value} WHERE chat_id = {chat_id}')
+    record_operation_in_file(chat_id, 1, value, 'transaction refund')
+    if tell_to_customer:
+        report_status_to_user('🟡 هنگام اجرای عملیات خطایی به وجود آمد!'
+                              f'\nمبلغ {value:,} تومان به کیف پول شما اضافه شد.'
+                              ' لطفا عملیات مورد نظر رو از طریق اعتبار کیف پول انجام بدید.', chat_id)
 
 
 # send_clean_for_customer(2)

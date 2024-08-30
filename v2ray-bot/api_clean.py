@@ -1,3 +1,4 @@
+import datetime
 import json
 import requests
 from private import PORT, auth, telegram_bot_url, ADMIN_CHAT_ID, DOMAIN, protocol, telegram_bot_token
@@ -170,5 +171,7 @@ class XuiApiClean(ManageDb):
 
 
 # test = XuiApiClean()
-# a = test.get_client(1012)
+# print(datetime.datetime.now()
+# a = test.get_all_inbounds()
+# print(datetime.datetime.now())
 # print(a)

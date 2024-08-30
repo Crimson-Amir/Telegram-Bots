@@ -75,7 +75,7 @@ async def recive_payment_result(Authority: str, Status: str, request: Request):
             except Exception as e:
                 error_message = f'error: {e}'
                 add_to_user_credit(chat_id, amount)
-                status_message = '🔴 SERVICE ACTION FAILED AND CREDIT ADDED TO WALLET [WEB SERVER FINAL STATUS]'
+                status_message = f'🔴 SERVICE ACTION FAILED AND CREDIT ADDED TO WALLET [WEB SERVER FINAL STATUS]\nref id: {ref_id}'
 
                 report_status_to_admin(status_message + f'\n{error_message}', chat_id)
                 return templates.TemplateResponse(request=request, name='error_and_refund_credit_to_walet.html', context={'amount': amount})

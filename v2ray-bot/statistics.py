@@ -160,8 +160,8 @@ def reports_func(data):
         avreage_traffic = final_traffic / index if final_traffic and index else 0
 
     period_info = {
-        'month': {'timedelta': timedelta(days=1), 'date_format': '%Y-%m-%d', 'plot_format': '%d', 'first_date': '%b'},
-        'year': {'timedelta': timedelta(days=30), 'date_format': '%Y-%m', 'plot_format': '%m', 'first_date': '%Y'}
+        'month': {'timedelta': timedelta(days=1), 'date_format': '%Y-%m-%d', 'plot_format': '%d', 'first_date': '%b', 'avg_data_devison': 4},
+        'year': {'timedelta': timedelta(days=30), 'date_format': '%Y-%m', 'plot_format': '%m', 'first_date': '%Y', 'avg_data_devison': 12}
     }
 
     for period_key, period_value in period_info.items():
@@ -191,7 +191,7 @@ def reports_func(data):
                 else:
                     final_dict[f"{our_date.strftime(period_value['plot_format'])}"] = get_traff
 
-            avreage_traffic = final_traffic / index if final_traffic and index else 0
+            avreage_traffic = final_traffic / period_value.get('avg_data_devison', index) if final_traffic and index else 0
             break
 
     return detail_text, final_dict, final_traffic, avreage_traffic
@@ -236,7 +236,6 @@ def report_section(update, context):
         [InlineKeyboardButton(f"{detail_emoji} جزئیات گزارش", callback_data=f'statistics_{data[1]}_{data[2]}_{detail_callback}')],
         [InlineKeyboardButton(f"گزارش سرویس ها", callback_data=f'service_statistics_all_10'),
          InlineKeyboardButton("تازه سازی ⟳", callback_data=f"statistics_{data[1]}_{data[2]}_{data_org[3]}")],
-        [InlineKeyboardButton(f"رادار اینترنت", callback_data=f'radar_section')],
         [InlineKeyboardButton("برگشت ↰", callback_data='menu_delete_main_message')]
     ]
 
