@@ -87,8 +87,7 @@ def check_pay(order_id):
     retry = order_check_pay.get(order_id, 0)
 
     if retry < maximum_try:
-        check_invoic = cryptomusApi.client(cryptomus_api_key, cryptomus_merchant_id, cryptomusApi.InvoiceInfo,
-                                           order_id=order_id, uuid=None)
+        check_invoic = cryptomusApi.client(cryptomus_api_key, cryptomus_merchant_id, cryptomusApi.InvoiceInfo, order_id=order_id, uuid=None)
 
         if check_invoic:
             payment_status = check_invoic[0].get('result', {}).get('payment_status')

@@ -75,7 +75,7 @@ async def recive_payment_result(Authority: str, Status: str, request: Request):
             except Exception as e:
                 error_message = f'error: {e}'
                 add_to_user_credit(chat_id, amount)
-                status_message = f'🔴 SERVICE ACTION FAILED AND CREDIT ADDED TO WALLET [WEB SERVER FINAL STATUS]\nref id: {ref_id}'
+                status_message = f'🔴 SERVICE ACTION FAILED AND CREDIT ADDED TO WALLET [WEB SERVER FINAL STATUS]\nref id: {ref_id}\nAuthority: {Authority}'
 
                 report_status_to_admin(status_message + f'\n{error_message}', chat_id)
                 return templates.TemplateResponse(request=request, name='error_and_refund_credit_to_walet.html', context={'amount': amount})
@@ -88,5 +88,5 @@ async def recive_payment_result(Authority: str, Status: str, request: Request):
             return templates.TemplateResponse(request=request, name='fail_pay.html', context={'error_reason': reason, 'error_code': error_code})
 
     else:
-        return templates.TemplateResponse(request=request, name='fail_pay.html', context={'error_reason': 'رداخت از طرف درگاه پرداخت تایید نشده است', 'error_code': 400})
+        return templates.TemplateResponse(request=request, name='fail_pay.html', context={'error_reason': 'پرداخت از طرف درگاه پرداخت تایید نشده است', 'error_code': 400})
 

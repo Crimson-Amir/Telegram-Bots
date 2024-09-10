@@ -347,7 +347,6 @@ def add_credit_to_wallet(credit_id):
     report_status_to_admin('🟢 WALLET OPERATOIN SUCCESSFULL [WEB SERVER]', get_credit[0][0])
     return get_credit[0][0]
 
-
 def add_to_user_credit(chat_id, value, tell_to_customer=True):
     sqlite_manager.custom(f'UPDATE User SET wallet = wallet + {value} WHERE chat_id = {chat_id}')
     record_operation_in_file(chat_id, 1, value, 'transaction refund')

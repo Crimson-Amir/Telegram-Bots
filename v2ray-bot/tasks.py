@@ -250,12 +250,12 @@ def payment_page(update, context):
     id_ = int(query.data.replace('service_', ''))
     package = sqlite_manager.select(table='Product', where=f'id = {id_}')
     price = ranking_manage.discount_calculation(query.from_user['id'], direct_price=package[0][7], more_detail=True)
+    # [InlineKeyboardButton("کارت به کارت", callback_data=f'payment_by_card_{id_}')],
 
     if package[0][7]:
-        keyboard = [[InlineKeyboardButton("پرداخت با کارت بانکی", callback_data=f"zarinpall_page_buy_{id_}")],
+        keyboard = [[InlineKeyboardButton("درگاه پرداخت بانکی", callback_data=f"zarinpall_page_buy_{id_}")],
                     [InlineKeyboardButton("پرداخت از کیف پول", callback_data=f'payment_by_wallet_{id_}'),
-                     InlineKeyboardButton("درگاه پرداخت کریپتو", callback_data=f"cryptomus_page_{id_}")],
-                    [InlineKeyboardButton("کارت به کارت", callback_data=f'payment_by_card_{id_}')],
+                     InlineKeyboardButton("پرداخت با کریپتو", callback_data=f"cryptomus_page_{id_}")],
                     [InlineKeyboardButton("برگشت ↰", callback_data=f"{package[0][4]}")]]
 
     else:
@@ -955,13 +955,13 @@ def payment_page_upgrade(update, context):
     package = sqlite_manager.select(table='User', where=f'chat_id = {chat_id}')
 
     keyboard = [
-        [InlineKeyboardButton("پرداخت با کارت بانکی", callback_data=f"zarinpall_page_upgrade_{id_}")],
+        [InlineKeyboardButton("درگاه پرداخت بانکی", callback_data=f"zarinpall_page_upgrade_{id_}")],
         [InlineKeyboardButton("پرداخت از کیف پول", callback_data=f'payment_by_wallet_upgrade_service_{id_}'),
-         InlineKeyboardButton("درگاه پرداخت کریپتو", callback_data=f"cryptomus_page_upgrade_{id_}")],
-        [InlineKeyboardButton("کارت به کارت", callback_data=f'upg_ser_by_card{id_}')],
+         InlineKeyboardButton("پرداخت با کریپتو", callback_data=f"cryptomus_page_upgrade_{id_}")],
         [InlineKeyboardButton("برگشت ↰", callback_data="my_service")]
     ]
 
+    # [InlineKeyboardButton("کارت به کارت", callback_data=f'upg_ser_by_card{id_}')],
 
     price = ranking_manage.discount_calculation(chat_id, package[0][5], package[0][6], more_detail=True)
     check_off = f'\n<b>تخفیف: {price[1]} درصد</b>' if price[1] else ''
@@ -1690,11 +1690,11 @@ def pay_way_for_credit(update, context):
     query = update.callback_query
     id_ = int(query.data.replace('pay_way_for_credit_', ''))
     package = sqlite_manager.select(column='value', table='Credit_History', where=f'id = {id_}')
+    # InlineKeyboardButton("کارت به کارت", callback_data=f'pay_by_card_for_credit_{id_}'),
 
     keyboard = [
-        [InlineKeyboardButton("پرداخت با کارت بانکی", callback_data=f"zarinpall_page_wallet_{id_}")],
-        [InlineKeyboardButton("کارت به کارت", callback_data=f'pay_by_card_for_credit_{id_}'),
-         InlineKeyboardButton("درگاه پرداخت کریپتو", callback_data=f"cryptomus_page_wallet_{id_}")],
+        [InlineKeyboardButton("درگاه پرداخت بانکی", callback_data=f"zarinpall_page_wallet_{id_}")],
+        [InlineKeyboardButton("پرداخت با کریپتو", callback_data=f"cryptomus_page_wallet_{id_}")],
         [InlineKeyboardButton("برگشت ↰", callback_data="buy_credit_volume")],
 
     ]
