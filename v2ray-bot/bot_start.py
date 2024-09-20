@@ -1,13 +1,26 @@
 import datetime
 import pytz
-import sqlite3
 from telegram import InlineKeyboardMarkup
 from private import ADMIN_CHAT_ID
-from keyboard import main_key as key
 from ranking import rank_access
 from utilities import message_to_user, init_name, sqlite_manager, ranking_manage
 from telegram import InlineKeyboardButton
 from telegram import Update
+
+key = [
+    [InlineKeyboardButton("🛒 خرید سرویس", callback_data='select_server')],
+
+    [InlineKeyboardButton("👝 کیف پول", callback_data='wallet_page'),
+     InlineKeyboardButton("🎛 سرویس‌های ‌من", callback_data='my_service')],
+
+    [InlineKeyboardButton("⏳ دریافت سرویس تست", callback_data='service_1')],
+
+    [InlineKeyboardButton("⚙️ تنظیمات", callback_data='settings'),
+     InlineKeyboardButton("📊 گزارش ها", callback_data='statistics_week_all_hide')],
+
+    [InlineKeyboardButton("📚 راهنمایی و پشتیبانی", callback_data='guidance')]
+]
+
 
 RANK_PER_INVITE = 50
 class UsersStartData:
