@@ -4,7 +4,8 @@ import pytz
 import utilities
 from private import ADMIN_CHAT_ID, OTHER_ADMIN
 from utilities import (init_name, ready_report_problem_to_admin, message_to_user, sqlite_manager, api_operation,
-                       infinity_name, second_to_ms, traffic_to_gb, wallet_manage)
+                       infinity_name, report_status_to_admin, second_to_ms, traffic_to_gb, ranking_manage, wallet_manage)
+from ranking import rank_access, rank_access_fa
 from ticket import TicketManager
 
 ticket_manager = TicketManager('v2ray')
@@ -140,6 +141,7 @@ def say_to_every_one(update, context):
             context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=f'BLOCKED BY USER {user[1]} | {user[0]}', parse_mode='html')
             print(e)
 
+
 def clear_depleted_service(update, context):
     chat_id = update.message.chat_id
     if chat_id not in OTHER_ADMIN: return
@@ -163,7 +165,6 @@ def clear_depleted_service(update, context):
     except Exception as e:
         ready_report_problem_to_admin(context, 'Clear Depleted Service', update.message.from_user['id'], e)
 
-
 def add_credit_to_customer(update, context):
     chat_id = update.message.chat_id
     if chat_id not in OTHER_ADMIN: return
@@ -172,7 +173,7 @@ def add_credit_to_customer(update, context):
         get_user_chat_id = get_admin_order[0]
         get_credit = int(get_admin_order[1])
 
-        reason = update.message.reply_to_message.text if update.message.reply_to_message else ' '
+        reason = update.message.reply_to_message.text if update.message.reply_to_message else 'برای قطعی اخیر سرور متاسفیم، مبلغ خسارت محاسبه و جبران خسارت انجام شد.'
         text = f'<b>مبلغ {get_credit:,} تومان به کیف پول شما اضافه شد.</b>' + f'\n\n{reason}'
 
         customer_of_service = sqlite_manager.select(column='name,user_name', table='User',
@@ -188,3 +189,33 @@ def add_credit_to_customer(update, context):
     except Exception as e:
         ready_report_problem_to_admin(context, 'add credit to customer', update.message.from_user['id'], e)
 
+def admin_rank_up(update, context):
+    chat_id = update.message.chat_id
+    if chat_id not in OTHER_ADMIN: return
+
+    get_admin_order = update.message.text.replace('/rank_up ', '').split(', ')
+    get_user_chat_id = get_admin_order[0]
+    try:
+        get_rank_name = get_admin_order[1]
+        rank_access_ = '\n'.join(rank_access_fa[get_rank_name][1:])
+
+        text = f'رنک شما توسط ادمین ارتقا یافت.\n\nویژگی های این رنک:\n {rank_access_}'
+
+        sqlite_manager.select(column='name,user_name', table='User',
+                              where=f'chat_id = {get_user_chat_id}')
+
+        ranking_manage.rank_up(get_rank_name, get_user_chat_id)
+        message_to_user(update, context, message=text, chat_id=get_user_chat_id)
+
+        update.message.reply_text('RANKUP SUCCESS')
+
+    except TypeError:
+        rank_name_ = next(iter(rank_access))
+        level = 0
+
+        sqlite_manager.insert(table='Rank', rows={'name': None, 'user_name': None, 'chat_id': get_user_chat_id,
+                                                  'level': level, 'rank_name': rank_name_})
+        report_status_to_admin(context, 'I Create Rank For User. Try Again!', get_user_chat_id)
+
+    except Exception as e:
+        ready_report_problem_to_admin(context, 'admin_rank_up', update.message.from_user['id'], e)

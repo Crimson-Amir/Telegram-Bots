@@ -3,7 +3,7 @@ import arrow
 import pytz
 from private import *
 import requests
-from ranking import rank_emojis, rank_title_fa
+from ranking import rank_emojis, rank_title_fa, rank_access
 from sqlite_manager import ManageDb
 from api_clean import XuiApiClean
 from ranking import RankManage
@@ -70,6 +70,12 @@ def something_went_wrong(update, context):
 def just_for_show(update, context):
     query = update.callback_query
     query.answer(text="این دکمه برای نمایش دادن اطلاعات است!", show_alert=False)
+
+def report_problem_to_admin(context, text):
+    text = ("🔴 Report Problem in Bot\n\n"
+            f"{text}")
+    context.bot.send_message(ADMIN_CHAT_ID, text, parse_mode='html')
+
 
 def ready_report_problem_to_admin(context, text, chat_id, error, detail=None):
     text = ("🔴 Report Problem in Bot\n\n"
@@ -179,6 +185,17 @@ def report_problem(func_name, error, side, extra_message=None):
 
     requests.post(telegram_bot_url, data={'chat_id': ADMIN_CHAT_ID, 'text': text})
 
+
+def report_problem_by_user_utilitis(context, problem, user):
+    text = (f'🟠 Report Problem By User'
+            f'\nReport Reason: {problem}'
+            f'\nUser Chat ID: {user["id"]}'
+            f'\nName: {user["name"]}'
+            f'\nUser Name: {user["username"]}')
+
+    context.bot.send_message(ADMIN_CHAT_ID, text, parse_mode='html')
+
+
 def report_status_to_admin(context, text, chat_id):
     text = (f'🔵 Report Status:'
             f'\nUser Chat ID: {chat_id}'
@@ -191,6 +208,15 @@ def get_rank_and_emoji(rank):
     rank_fa = rank_title_fa.get(rank)
     rank_emoji = rank_emojis.get(rank)
     return f"{rank_fa} {rank_emoji}"
+
+
+def find_next_rank(rank, level_now):
+    check = 0
+    for key, value in rank_access.items():
+        if check == 1:
+            return get_rank_and_emoji(key), value['level'][0] - level_now
+        elif key == rank:
+            check = 1
 
 
 def message_to_user(update, context, message=None, chat_id=None):
@@ -273,6 +299,78 @@ def change_service_server(context, update, email, country):
             chat_id = 1
         report_problem_to_admin_witout_context(text='change_service_server', chat_id=chat_id, error=e)
         raise e
+
+
+
+def convert_service_to_tls(update, email, convert_to):
+    try:
+        get_data = sqlite_manager.select(table='Purchased', where=f'client_email = "{email}"')
+        get_server_country = sqlite_manager.select(column='name,server_domain,domain,inbound_id', table='Product',
+                                                   where=f'id = {get_data[0][6]}')
+
+        get_domain = get_server_country[0][1]
+        ret_conf = api_operation.get_client(email, get_domain)
+
+        if eval(convert_to):
+            shematic = ('vless://{}@{}:{}'
+                        '?path=%2F&host={}&headerType=http&security=tls&'
+                        'fp=&alpn=h2%2Chttp%2F1.1&sni=sni_&headerType={}&type={}#{} {}'.replace('sni_', get_domain))
+            detected_inbound = TLS_INBOUND
+        else:
+            shematic = None
+            detected_inbound = get_server_country[0][3]
+
+        if not ret_conf['obj']['enable']:
+            raise EOFError('service_is_depleted')
+
+        if int(ret_conf['obj']['total']):
+            upload_gb = ret_conf['obj']['up']
+            download_gb = ret_conf['obj']['down']
+            usage_traffic = upload_gb + download_gb
+            total_traffic = ret_conf['obj']['total']
+            left_traffic = total_traffic - usage_traffic
+        else:
+            left_traffic = 0
+
+        data = {
+            "id": detected_inbound,
+            "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,"
+                        "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
+                        "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(get_data[0][10], get_data[0][9],
+                                                                                   left_traffic,
+                                                                                   ret_conf['obj']['expiryTime'])}
+
+        api_operation.del_client(get_data[0][7], get_data[0][10], get_domain)
+
+        api_operation.add_client(data, get_domain)
+
+        get_cong = api_operation.get_client_url(get_data[0][9], detected_inbound,
+                                                domain=get_server_country[0][2], server_domain=get_domain, host=get_domain,
+                                                default_config_schematic=shematic)
+
+        sqlite_manager.update({'Purchased': {'inbound_id': detected_inbound, 'details': get_cong}},
+                              where=f'client_email = "{email}"')
+
+        return get_server_country
+
+    except Exception as e:
+        if update:
+            chat_id = update.callback_query.message.chat_id
+        else:
+            chat_id = 1
+        report_problem_to_admin_witout_context(text='change_service_server', chat_id=chat_id, error=e)
+        raise e
+
+
+def moving_all_service_to_server_with_database_change(server_country):
+    get_all = api_operation.get_all_inbounds_except(server_country)
+
+    for server in get_all:
+        for config in server['obj']:
+            for client in config['clientStats']:
+                if client['enable']:
+                    change_service_server(None, None, client['email'], server_country)
+
 
 def init_name(name):
     if isinstance(name, str):

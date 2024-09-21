@@ -36,7 +36,7 @@ class Task(ManageDb):
             except Exception as e:
                 side = 'Task Func'
                 print   (f"[{side}] An error occurred in {func.__name__}: {e}")
-                report_problem(func.__name__, e, side, extra_message=traceback.format_exc())
+                report_problem(func.__name__, e, side, extra_message='')
 
         return wrapper
 
@@ -208,9 +208,7 @@ def get_service_of_server(update, context):
                 f"سرویس {pattern[5]} روزه - {pattern[6]} گیگابایت - {ranking_manage.discount_calculation(query.from_user['id'], direct_price=pattern[7]):,} تومان",
                 callback_data=f"service_{pattern[0]}")] for pattern in service_list]
 
-            keyboard.append(
-                [InlineKeyboardButton("✪ سرویس دلخواه", callback_data=f"personalization_service_{plans[0][0]}"),
-                 InlineKeyboardButton("✪ سرویس ساعتی", callback_data=f"pay_per_use_{plans[0][0]}")])
+            keyboard.append([InlineKeyboardButton("✪ سرویس دلخواه", callback_data=f"personalization_service_{plans[0][0]}")])
 
             keyboard.append([InlineKeyboardButton("برگشت ↰", callback_data="select_server")])
 
@@ -562,7 +560,7 @@ def server_detail_customer(update, context):
         get_server_country = sqlite_manager.select(column='name,server_domain', table='Product',
                                                    where=f'id = {get_data[0][6]}')
         get_server_domain = get_server_country[0][1]
-        get_server_country = get_server_country[0][0].replace('سرور ', '').replace('pay_per_use_', '')
+        get_server_country = get_server_country[0][0].replace('سرور ', '')
         extra_text, inbound_id = '', get_data[0][7]
 
 
@@ -1849,7 +1847,7 @@ def service_advanced_option(update, context):
         if not online_configs.get('obj', []):
             online_configs['obj'] = []
 
-        get_server_country = get_server_country[0][0].replace('سرور ', '').replace('pay_per_use_', '')
+        get_server_country = get_server_country[0][0].replace('سرور ', '')
         auto_renewal, auto_renewal_button, chenge_to = ('فعال ✓', 'غیرفعال کردن تمدید خودکار ✗', False) if get_data[0][15] else ('غیرفعال ✗', 'فعال کردن تمدید خودکار ✓', True)
 
         connection_status = 'آنلاین 🟢' if email in online_configs.get('obj', []) else 'آفلاین 🔴'
