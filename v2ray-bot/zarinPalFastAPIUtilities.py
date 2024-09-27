@@ -105,7 +105,7 @@ def subcategory_auto(invite_chat_id, price):
         if invite_chat_id and price:
             calculate_price = int(price * 10 / 100)
 
-            wallet_manage.add_to_wallet(invite_chat_id, calculate_price, user_detail={'name': invite_chat_id, 'username': invite_chat_id})
+            wallet_manage.add_to_wallet(invite_chat_id, calculate_price)
             text = (f"{calculate_price:,} تومان به کیف پول شما اضافه شد."
                     "\n\nاز طریق ارسال لینک دعوت توسط شما، کاربر جدیدی به ربات ما اضافه شده و خرید انجام داده است. به عنوان تشکر، 10 درصد از مبلغ خرید او به کیف پول شما اضافه شد."
                     "\nمتشکریم!")
@@ -335,7 +335,7 @@ def send_clean_for_customer(id_, max_retries=2):
 
 def add_credit_to_wallet(credit_id):
     get_credit = sqlite_manager.select(column='chat_id,value', table='Credit_History', where=f'id = {credit_id}')
-    wallet_manage.add_to_wallet_without_history(get_credit[0][0], get_credit[0][1])
+    wallet_manage.add_to_wallet(get_credit[0][0], get_credit[0][1])
 
     sqlite_manager.update({'Credit_History': {'active': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}}
                           , where=f'id = "{credit_id}"')

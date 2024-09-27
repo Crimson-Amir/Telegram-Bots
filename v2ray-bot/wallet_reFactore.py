@@ -1,10 +1,27 @@
-from sqlite_manager import ManageDb
-from datetime import datetime
-import pytz, requests
-from private import telegram_bot_token, ADMIN_CHAT_IDs
+import crud, arrow, logging
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from database_sqlalchemy import SessionLocal
+from utilities_reFactore import FindText
+
+def human_readable(date, user_language):
+    get_date = arrow.get(date)
+    if user_language == 'en':
+        return get_date.humanize()
+
+    try:
+        return get_date.humanize(locale="fa-ir")
+    except ValueError as e:
+        if 'week' in str(e):
+            return str(get_date.humanize()).replace('weeks ago', 'هفته پیش').replace('a week ago', 'هفته پیش')
+        else:
+            return get_date.humanize()
+
+    except Exception as e:
+        logging.error(f'an error in humanize data: {e}')
+        return f'Error In Parse Data'
 
 
-class WalletManage(ManageDb):
+class WalletManage:
     def __init__(self, wallet_table, wallet_column, db_name, user_id_identifier):
         super().__init__(db_name)
         self.database_name = db_name
@@ -13,71 +30,125 @@ class WalletManage(ManageDb):
         self.USER_ID = user_id_identifier
 
     @staticmethod
-    def try_except(method):
-        def warpper(*args, **kwargs):
-            try:
-                return method(*args, **kwargs)
-            except Exception as e:
-                print(e)
-                return e
-        return warpper
+    def add_financial_report(user_id, credit, operation, detail):
+        crud.add_financial_report(user_id, credit, operation, detail)
+
+    @staticmethod
+    def add_to_wallet(user_id, credit, detail):
+        crud.add_credit_to_wallet(user_id, credit, 'spend', detail)
+
+    @staticmethod
+    def less_from_wallet(user_id, credit, detail):
+        crud.less_from_wallet(user_id, credit, 'recive', detail)
+
+async def wallet_page(update, context):
+    query = update.callback_query
+    chat_id = update.effective_chat.id
+    ft_instance = FindText(update, context)
+
+    try:
+        with SessionLocal() as session:
+            get_user = crud.get_user(session, chat_id)
+
+            if get_user.financial_reports:
+                last_transaction = human_readable(f'{get_user.financial_reports[0].register_date}', await ft_instance.find_user_language())
+                lasts_report = await ft_instance.find_text('recent_transactions')
+                for count, report in enumerate(get_user.financial_reports):
+                    lasts_report += f"\n{await ft_instance.find_text('recive_money') if report.operation == 'recive' else
+                    await ft_instance.find_text('spend_money')} {report.value:,} {await ft_instance.find_text('irt')} - {human_readable(report.register_date, await ft_instance.find_user_language())}"
+                    if count == 5: break
+            else:
+                last_transaction = await ft_instance.find_text('no_transaction_yet')
+                lasts_report = ''
+
+            keyboard = [
+                [InlineKeyboardButton(await ft_instance.find_keyboard('refresh'), callback_data='wallet_page'),
+                 InlineKeyboardButton(await ft_instance.find_keyboard('increase_balance'), callback_data='buy_credit_volume')],
+                [InlineKeyboardButton(await ft_instance.find_keyboard('financial_transactions'), callback_data='financial_transactions_wallet')],
+                [InlineKeyboardButton(await ft_instance.find_keyboard('back_button'), callback_data='start')]]
+
+            text = (
+                f"<b>{await ft_instance.find_text('wallet_page_title')}</b>"
+                f"\n\n{await ft_instance.find_text('wallet_balance_key')} {get_user.wallet:,} {await ft_instance.find_text('irt')}"
+                f"\n{await ft_instance.find_text('last_transaction')} {last_transaction}"
+                f"\n\n{lasts_report}"
+            )
+
+            await query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+
+    except Exception as e:
+        logging.error(f'error in wallet page: {e}')
+        if "specified new message content and reply markup are exactly the same" in str(e):
+            return await query.answer()
+        return await query.answer(await ft_instance.find_text('error_message'))
 
 
-    @try_except
-    def get_wallet_credit(self, user_id):
-        get_credit = self.select(column=self.WALLET_COLUMN, table=self.WALLET_TABALE,
-                                 where=f'{self.USER_ID} = {user_id}')
-        return int(get_credit[0][0])
+async def financial_transactions_wallet(update, context):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    ft_instance = FindText(update, context)
+
+    try:
+        with SessionLocal() as session:
+            get_user = crud.get_user(session, chat_id)
+
+            if get_user.financial_reports:
+                lasts_report = await ft_instance.find_text('recent_transactions') + '\n'
+                for report in get_user.financial_reports:
+                    lasts_report += f"\n\n{await ft_instance.find_text('recive_money') if report.operation == 'recive' else
+                    await ft_instance.find_text('spend_money')} {report.value:,} {await ft_instance.find_text('irt')} - {human_readable(report.register_date, await ft_instance.find_user_language())}\n• {report.detail}"
+            else:
+                lasts_report = await ft_instance.find_text('no_transaction_yet')
+
+            keyboard = [
+                [InlineKeyboardButton(await ft_instance.find_keyboard('refresh'), callback_data='financial_transactions_wallet')],
+                [InlineKeyboardButton(await ft_instance.find_keyboard('back_button'), callback_data='wallet_page')]]
+
+            text_ = f"\n\n{lasts_report}"
+            await query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+
+    except Exception as e:
+        logging.error(f'error in wallet page: {e}')
+        if "specified new message content and reply markup are exactly the same" in str(e):
+            return await query.answer()
+        return await query.answer(await ft_instance.find_text('error_message'))
 
 
-    def clear_wallet_notif(self, chat_id):
-        self.update({'User': {'notif_wallet': 0,'notif_low_wallet': 0}}, where=f'chat_id = {chat_id}')
+async def buy_credit_volume(update, context):
+    query = update.callback_query
+    ft_instance = FindText(update, context)
+
+    try:
+        text = '• مشخص کنید چه مقدار اعتبار به کیف پولتون اضافه بشه:'
+
+        keyboard = [
+            [InlineKeyboardButton("250,000 تومن", callback_data="set_credit_250000"),
+             InlineKeyboardButton("100,000 تومن", callback_data="set_credit_100000")],
+            [InlineKeyboardButton("1,000,000 تومن", callback_data="set_credit_1000000"),
+             InlineKeyboardButton("500,000 تومن", callback_data="set_credit_500000")],
+            [InlineKeyboardButton("برگشت ↰", callback_data="wallet_page")]
+        ]
+
+        query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
+    except Exception as e:
+        logging.error(f'error in buy credit volume: {e}')
+        return await query.answer(await ft_instance.find_text('error_message'))
 
 
-    @try_except
-    def add_to_wallet(self, user_id, credit, user_detail):
-        try:
-            credit_all = int(self.get_wallet_credit(user_id) + credit)
-            get_credit = self.update(table={self.WALLET_TABALE: {self.WALLET_COLUMN: credit_all}},
-                                     where=f'{self.USER_ID} = {user_id}')
+def pay_way_for_credit(update, context):
+    query = update.callback_query
+    id_ = int(query.data.replace('pay_way_for_credit_', ''))
+    package = sqlite_manager.select(column='value', table='Credit_History', where=f'id = {id_}')
 
-            self.clear_wallet_notif(user_id)
-            self.insert(table='Credit_History',
-                        rows={'active': 1, 'chat_id': user_id, 'value': credit,
-                              'name': user_detail['name'], 'user_name': user_detail['username'],
-                              'operation': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran'))})
+    keyboard = [
+        [InlineKeyboardButton("درگاه پرداخت بانکی", callback_data=f"zarinpall_page_wallet_{id_}")],
+        [InlineKeyboardButton("پرداخت با کریپتو", callback_data=f"cryptomus_page_wallet_{id_}")],
+        [InlineKeyboardButton("برگشت ↰", callback_data="buy_credit_volume")],
 
-            return get_credit
-        except Exception as e:
-            report_problem_to_admin_witout_context(chat_id=user_id, text='ADD TO WALLET [wallet script]', error=e)
-            raise e
+    ]
 
-    def add_to_wallet_without_history(self, user_id, credit):
-        try:
-            credit = int(self.get_wallet_credit(user_id) + credit)
-            get_credit = self.update(table={self.WALLET_TABALE: {self.WALLET_COLUMN: credit}},
-                                     where=f'{self.USER_ID} = {user_id}')
-
-            self.clear_wallet_notif(user_id)
-
-            return get_credit
-        except Exception as e:
-            report_problem_to_admin_witout_context(chat_id=user_id, text='ADD TO WALLET WITHOUT HISTORY [wallet script]', error=e)
-            return False
-
-    @try_except
-    def less_from_wallet(self, user_id, credit, user_detail):
-        try:
-            credit_all = int(self.get_wallet_credit(user_id) - credit)
-            get_credit = self.update(table={self.WALLET_TABALE: {self.WALLET_COLUMN: credit_all}},
-                                     where=f'{self.USER_ID} = {user_id}')
-
-            self.insert(table='Credit_History',
-                        rows={'active': 1, 'chat_id': user_id, 'value': credit,
-                              'name': user_detail['name'], 'user_name': user_detail['username'],
-                              'operation': 0, 'date': datetime.now(pytz.timezone('Asia/Tehran'))})
-
-            return get_credit
-        except Exception as e:
-            report_problem_to_admin_witout_context(chat_id=user_id, text='LESS FROM WALLET [wallet script]', error=e)
-            return False
+    text = (f"<b>❋ مبلغ انتخاب شده رو برای اضافه کردن به کیف پول تایید میکنید؟:</b>\n"
+            f"\n<b>مبلغ: {package[0][0]:,} تومان</b>"
+            f"\n\n<b>⤶ برای پرداخت میتونید یکی از روش های زیر رو استفاده کنید:</b>")
+    query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))

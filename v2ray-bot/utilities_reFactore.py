@@ -1,5 +1,7 @@
 import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from database_sqlalchemy import SessionLocal
+import private
 from dialogue_texts import text_transaction, keyboard_transaction
 from private import default_language, telegram_bot_url, ADMIN_CHAT_IDs
 import crud, functools, requests
@@ -32,7 +34,8 @@ class FindText:
 
     @staticmethod
     async def get_language_from_database(user_id):
-        language = crud.get_user_language(user_id)
+        with SessionLocal() as session:
+            language = crud.get_user(session, user_id)
         if language:
             return language.language
 
@@ -114,7 +117,7 @@ class HandleErrors:
             try:
                 return await func(update, context, **kwargs)
             except Exception as e:
-                err = f"🔴 An error occurred in {func.__name__}:\n{str(e)}\nerror type: {type(e)}\nuser chat id: {user_detail.id}"
+                err = f"🔴 An error occurred in {func.__name__}:\nerror type: {type(e)}\nuser chat id: {user_detail.id}\nErro: {str(e)}"
                 await self.report_problem_to_admin(err)
                 await self.handle_error_message(update, context)
                 return ConversationHandler.END
@@ -122,7 +125,7 @@ class HandleErrors:
 
     @staticmethod
     async def report_problem_to_admin(msg):
-        requests.post(url=telegram_bot_url, json={'chat_id': ADMIN_CHAT_IDs[0], 'text': msg})
+        requests.post(url=telegram_bot_url, json={'chat_id': ADMIN_CHAT_IDs[0], 'text': msg, 'message_thread_id': private.error_thread_id})
 
     @staticmethod
     async def handle_error_message(update, context, message_text=None):
@@ -167,7 +170,7 @@ class MessageToken:
                     text = await ft_instance.find_text('start_menu')
                     main_keyboard = [
                         [InlineKeyboardButton(await ft_instance.find_keyboard('menu_services'), callback_data='menu_services')],
-                        [InlineKeyboardButton(await ft_instance.find_keyboard('wallet'), callback_data='wallet'),
+                        [InlineKeyboardButton(await ft_instance.find_keyboard('wallet'), callback_data='wallet_page'),
                          InlineKeyboardButton(await ft_instance.find_keyboard('ranking'), callback_data='ranking')],
                         [InlineKeyboardButton(await ft_instance.find_keyboard('setting'), callback_data='setting'),
                          InlineKeyboardButton(await ft_instance.find_keyboard('invite'), callback_data='invite')],

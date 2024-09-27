@@ -179,8 +179,7 @@ def add_credit_to_customer(update, context):
         customer_of_service = sqlite_manager.select(column='name,user_name', table='User',
                                                     where=f'chat_id = {get_user_chat_id}')
 
-        wallet_manage.add_to_wallet(get_user_chat_id, get_credit,
-                                    user_detail={'name': customer_of_service[0][0], 'username': customer_of_service[0][1]})
+        wallet_manage.add_to_wallet(get_user_chat_id, get_credit)
 
         message_to_user(update, context, message=text, chat_id=get_user_chat_id)
 

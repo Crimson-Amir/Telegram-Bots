@@ -1,29 +1,70 @@
 from database_sqlalchemy import SessionLocal
 import models_sqlalchemy as model
+from sqlalchemy import update, func
 import logging
 
-def get_user_language(user_id):
-    session = SessionLocal()
-    try:
-        return session.query(model.UserDetail).where(model.UserDetail.chat_id == user_id).first()
-    finally:
-        session.close()
+def get_user(session, chat_id):
+    return session.query(model.UserDetail).filter_by(chat_id=chat_id).first()
 
 
 def create_user(user_detail, inviter_user_id, selected_language):
-    session = SessionLocal()
-    try:
-        user = model.UserDetail(
-            first_name=user_detail.first_name,
-            last_name=user_detail.last_name,
-            username=user_detail.username,
-            chat_id=user_detail.id,
-            invited_by=inviter_user_id,
-            language = selected_language
-        )
-        session.add(user)
-        session.commit()
-        session.refresh(user)
-        return user
-    finally:
-        session.close()
+    with SessionLocal() as session:
+        with session.begin():
+            user = model.UserDetail(
+                first_name=user_detail.first_name,
+                last_name=user_detail.last_name,
+                username=user_detail.username,
+                chat_id=user_detail.id,
+                invited_by=inviter_user_id,
+                language=selected_language
+            )
+            session.add(user)
+
+
+def clear_wallet_notification(user_id: int):
+    with SessionLocal() as session:
+        with session.begin():
+            stmt = (
+                update(model.UserDetail)
+                .where(model.UserDetail.chat_id == user_id)
+                .values(notif_wallet=0, notif_low_wallet=0)
+            )
+            session.execute(stmt)
+
+def add_financial_report(user_id: int, credit: int, operation:str, detail):
+    with SessionLocal() as session:
+        with session.begin():
+            record = model.FinancialReport(operation=operation, value=credit, chat_id=user_id, detail=detail)
+            session.add(record)
+
+def add_credit_to_wallet(user_id: int, credit: int, operation:str, detail):
+    with SessionLocal() as session:
+        with session.begin():
+            stmt = (
+                update(model.UserDetail)
+                .where(model.UserDetail.chat_id == user_id)
+                .values(
+                    wallet=func.coalesce(model.UserDetail.wallet, 0) + credit,
+                    notif_wallet=0,
+                    notif_low_wallet=0
+                )
+            )
+            record = model.FinancialReport(operation=operation, value=credit, chat_id=user_id, detail=detail)
+            session.add(record)
+            session.execute(stmt)
+
+def less_from_wallet(user_id: int, credit: int, operation:str, detail):
+    with SessionLocal() as session:
+        with session.begin():
+            stmt = (
+                update(model.UserDetail)
+                .where(model.UserDetail.chat_id == user_id)
+                .values(
+                    wallet=func.coalesce(model.UserDetail.wallet, 0) - credit,
+                    notif_wallet=0,
+                    notif_low_wallet=0
+                )
+            )
+            record = model.FinancialReport(operation=operation, value=credit, chat_id=user_id, detail=detail)
+            session.add(record)
+            session.execute(stmt)

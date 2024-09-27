@@ -378,7 +378,7 @@ def subcategory_auto(context, invite_chat_id, price):
 
         calculate_price = int(price * 10 / 100)
 
-        wallet_manage.add_to_wallet(invite_chat_id, calculate_price, user_detail={'name': invite_chat_id, 'username': invite_chat_id})
+        wallet_manage.add_to_wallet(invite_chat_id, calculate_price)
         text = (f"{calculate_price:,} تومان به کیف پول شما اضافه شد."
                 "\n\nاز طریق ارسال لینک دعوت توسط شما، کاربر جدیدی به ربات ما اضافه شده و خرید انجام داده است. به عنوان تشکر، 10 درصد از مبلغ خرید او به کیف پول شما اضافه شد."
                 "\nمتشکریم!")
@@ -1159,9 +1159,7 @@ def check_all_configs(context, context_2=None):
                                             user[10], user[2], traffic, my_data)}
 
 
-                                    wallet_manage.less_from_wallet(list_of_notification[0][0], price,
-                                                                   user_detail={'name': list_of_notification[0][0],
-                                                                                'username': list_of_notification[0][0]})
+                                    wallet_manage.less_from_wallet(list_of_notification[0][0], price)
 
                                     sqlite_manager.update({'Purchased': {'date': datetime.now(
                                         pytz.timezone('Asia/Tehran')), 'notif_day': 0, 'notif_gb': 0}}
@@ -1316,147 +1314,6 @@ def change_notif(update, context):
         else:
             query.answer('مشکلی وجود داشت!')
 
-
-def wallet_page(update, context):
-    query = update.callback_query
-    chat_id = query.message.chat_id
-    try:
-        get_credit = sqlite_manager.select(column='wallet', table='User', where=f'chat_id = {chat_id}')[0][0]
-        lasts_operation = sqlite_manager.select(table='Credit_History', where=f'chat_id = {chat_id} and active = 1',
-                                                order_by='id DESC', limit=5)
-
-        if lasts_operation:
-            last_op = human_readable(f'{lasts_operation[0][7]}')
-            last_5 = "• تراکنش های اخیر:\n"
-            last_5 += "\n".join(
-                [f"{'💰 دریافت' if op[4] else '💸 برداشت'} {int(op[5]):,} تومان - {human_readable(op[7])}" for op in
-                 lasts_operation])
-
-        else:
-            last_op = 'شما تا به حال تراکنشی در کیف پول نداشتید!'
-            last_5 = ''
-
-        keyboard = [
-            [InlineKeyboardButton("تازه سازی ⟳", callback_data=f"wallet_page"),
-             InlineKeyboardButton("افزایش موجودی ↟", callback_data=f"buy_credit_volume")],
-            [InlineKeyboardButton("• تراکنش های مالی", callback_data="financial_transactions_wallet")],
-            [InlineKeyboardButton("برگشت ↰", callback_data="main_menu")]]
-
-        text_ = (
-            f"<b>اطلاعات کیف پول شما:</b>"
-            f"\n\n• موجودی حساب: {int(get_credit):,} تومان"
-            f"\n• آخرین تراکنش: {last_op}"
-            f"\n\n{last_5}"
-        )
-        query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
-    except Exception as e:
-        if "specified new message content and reply markup are exactly the same" in str(e):
-            return query.answer('بروزرسانی نشد، احتمالا اطلاعات تغییری نکرده')
-        query.answer('مشکلی وجود داشت، گزارش به ادمین ارسال شد')
-        ready_report_problem_to_admin(context, chat_id=query.message.chat_id, error=e, text='WALLET PAGE')
-
-
-def financial_transactions_wallet(update, context):
-    query = update.callback_query
-    chat_id = query.message.chat_id
-    try:
-        lasts_operation = sqlite_manager.select(table='Credit_History', where=f'chat_id = {chat_id} and active = 1',
-                                                order_by='id DESC', limit=100)
-
-        if lasts_operation:
-            last_5 = "• تراکنش های کیف پول شما:\n\n"
-            last_5 += "\n".join(
-                [f"{'💰 دریافت' if op[4] else '💸 برداشت'} {op[5]:,} تومان - {human_readable(op[7])}" for op in
-                 lasts_operation])
-        else:
-            last_5 = 'شما تا به حال تراکنشی در کیف پول نداشتید!'
-
-        keyboard = [
-            [InlineKeyboardButton("تازه سازی ⟳", callback_data=f"financial_transactions_wallet")],
-            [InlineKeyboardButton("برگشت ↰", callback_data="wallet_page")]]
-
-        text_ = f"\n\n{last_5}"
-        query.edit_message_text(text=text_, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
-
-    except Exception as e:
-        if 'specified new message content and reply markup are exactly the same' in str(e):
-            query.answer('بروزرسانی نشد، احتمالا اطلاعات تغییری نکرده')
-        else:
-            query.answer('مشکلی وجود داشت')
-
-
-def buy_credit_volume(update, context):
-    query = update.callback_query
-    try:
-        if query.data == "buy_credit_volume":
-            sqlite_manager.insert(table='Credit_History',
-                                  rows={'active': 0, 'chat_id': query.message.chat_id, 'value': 25_000,
-                                        'name': init_name(query.from_user.name), 'user_name': query.from_user.username,
-                                        'operation': 1})
-
-        get_credit = sqlite_manager.select(column='value, id', table='Credit_History',
-                                           where=f'chat_id = {query.message.chat_id}',
-                                           order_by='id DESC', limit=1)
-        credit_id = get_credit[0][1]
-        value = get_credit[0][0]
-
-        if 'value_low_5000' in query.data:
-            value_low = int(query.data.replace('value_low_', ''))
-            value = value - value_low
-            value = value if value >= 1 else 5000
-        elif 'value_high_5000' in query.data:
-            value_high = int(query.data.replace('value_high_', ''))
-            value = value + value_high
-            value = value if value <= 2_000_000 else 2_000_000
-        elif 'set_credit_' in query.data:
-            value = int(query.data.replace('set_credit_', ''))
-
-        sqlite_manager.update({'Credit_History': {'value': value}}, where=f'id = {credit_id}')
-
-        text = ('*• مشخص کنید چه مقدار اعتبار به کیف پولتون اضافه بشه:*'
-                f'*\n\n• مبلغ: {value:,} *تومان'
-                )
-        keyboard = [
-            [InlineKeyboardButton("«", callback_data="value_low_50000"),
-             InlineKeyboardButton("‹", callback_data="value_low_5000"),
-             InlineKeyboardButton(f"{value:,}", callback_data="just_for_show"),
-             InlineKeyboardButton("›", callback_data="value_high_5000"),
-             InlineKeyboardButton("»", callback_data="value_high_50000")],
-            [InlineKeyboardButton("250,000 تومن", callback_data="set_credit_250000"),
-             InlineKeyboardButton("100,000 تومن", callback_data="set_credit_100000")],
-            [InlineKeyboardButton("1,000,000 تومن", callback_data="set_credit_1000000"),
-             InlineKeyboardButton("500,000 تومن", callback_data="set_credit_500000")],
-            [InlineKeyboardButton("✓ تایید و ادامه", callback_data=f"pay_way_for_credit_{credit_id}")],
-            [InlineKeyboardButton("برگشت ↰", callback_data="wallet_page")]
-        ]
-        query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
-    except Exception as e:
-        if 'specified new message content and reply markup are exactly the same' in str(e):
-            query.answer('بروزرسانی نشد، احتمالا اطلاعات تغییری نکرده')
-        else:
-            query.answer('مشکلی وجود داشت')
-
-
-@handle_telegram_exceptions
-def pay_way_for_credit(update, context):
-    query = update.callback_query
-    id_ = int(query.data.replace('pay_way_for_credit_', ''))
-    package = sqlite_manager.select(column='value', table='Credit_History', where=f'id = {id_}')
-    # InlineKeyboardButton("کارت به کارت", callback_data=f'pay_by_card_for_credit_{id_}'),
-
-    keyboard = [
-        [InlineKeyboardButton("درگاه پرداخت بانکی", callback_data=f"zarinpall_page_wallet_{id_}")],
-        [InlineKeyboardButton("پرداخت با کریپتو", callback_data=f"cryptomus_page_wallet_{id_}")],
-        [InlineKeyboardButton("برگشت ↰", callback_data="buy_credit_volume")],
-
-    ]
-
-    text = (f"<b>❋ مبلغ انتخاب شده رو برای اضافه کردن به کیف پول تایید میکنید؟:</b>\n"
-            f"\n<b>مبلغ: {package[0][0]:,} تومان</b>"
-            f"\n\n<b>⤶ برای پرداخت میتونید یکی از روش های زیر رو استفاده کنید:</b>")
-    query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
-
-
 @handle_telegram_conversetion_exceptions
 def pay_by_card_for_credit(update, context):
     query = update.callback_query
@@ -1534,7 +1391,7 @@ credit_charge = ConversationHandler(
 @handle_telegram_exceptions_without_user_side
 def add_credit_to_wallet(context, id_):
     get_credit = sqlite_manager.select(column='chat_id,value', table='Credit_History', where=f'id = {id_}')
-    wallet_manage.add_to_wallet_without_history(get_credit[0][0], get_credit[0][1])
+    wallet_manage.add_to_wallet(get_credit[0][0], get_credit[0][1])
 
     sqlite_manager.update({'Credit_History': {'active': 1, 'date': datetime.now(pytz.timezone('Asia/Tehran'))}}
                           , where=f'id = "{id_}"')
@@ -1624,7 +1481,7 @@ def pay_from_wallet(update, context):
 
             upgrade_serv = task.upgrade_service(context, id_)
 
-            wallet_manage.less_from_wallet(query.from_user['id'], upgrade_serv[1], user_detail=query.from_user)
+            wallet_manage.less_from_wallet(query.from_user['id'], upgrade_serv[1])
 
             keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="my_service")]]
             query.edit_message_text(text='سرویس شما با موفقیت ارتقا یافت.✅', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1687,7 +1544,7 @@ def pay_from_wallet(update, context):
 
             price = ranking_manage.discount_calculation(query.from_user['id'], direct_price=get_db)
 
-            wallet_manage.less_from_wallet(query.from_user['id'], price, query.from_user)
+            wallet_manage.less_from_wallet(query.from_user['id'], price)
 
             keyboard = [[InlineKeyboardButton("برگشت ⤶", callback_data="select_server")]]
             query.edit_message_text(text='پرداخت با موفقیت انجام شد.✅', parse_mode='markdown',
@@ -1759,7 +1616,7 @@ def remove_service(update, context):
             text = '*سرویس با موفقیت حذف شد ✅*'
             sqlite_manager.delete({'Hourly_service': ['purchased_id', get_uuid[0][3]]})
         else:
-            wallet_manage.add_to_wallet(chat_id, price, query.from_user)
+            wallet_manage.add_to_wallet(chat_id, price)
 
             record_operation_in_file(chat_id=chat_id, price=price,
                                      name_of_operation=f'حذف سرویس و بازپرداخت به کیف پول {get_uuid[0][2]}',

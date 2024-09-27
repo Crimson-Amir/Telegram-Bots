@@ -1,17 +1,16 @@
-import datetime
 import logging, sys, crud
 from utilities_reFactore import FindText, UserNotFound, handle_error, message_token
 from models_sqlalchemy import Base
 from database_sqlalchemy import engine, SessionLocal
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, ChatJoinRequestHandler
-from private import telegram_bot_token, ADMIN_CHAT_IDs
-# from
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler
+import private, wallet_reFactore
+
 
 Base.metadata.create_all(bind=engine)
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.ERROR,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)',
     handlers=[
         logging.FileHandler("freebyte.log"),
@@ -24,16 +23,16 @@ def log_uncaught_exceptions(exctype, value, tb):
 
 sys.excepthook = log_uncaught_exceptions
 
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_detail = update.effective_chat
+
     try:
         ft_instance = FindText(update, context, notify_user=False)
         text = await ft_instance.find_text('start_menu')
         main_keyboard = [
             [InlineKeyboardButton(await ft_instance.find_keyboard('menu_services'), callback_data='menu_services')],
 
-            [InlineKeyboardButton(await ft_instance.find_keyboard('wallet'), callback_data='wallet'),
+            [InlineKeyboardButton(await ft_instance.find_keyboard('wallet'), callback_data='wallet_page'),
              InlineKeyboardButton(await ft_instance.find_keyboard('ranking'), callback_data='ranking')],
 
             [InlineKeyboardButton(await ft_instance.find_keyboard('setting'), callback_data='setting'),
@@ -53,12 +52,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                      InlineKeyboardButton('Persian🇮🇷', callback_data='register_user_fa')]]
         new_select = await context.bot.send_message(chat_id=user_detail.id, text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
         message_token.set_message_time(new_select.message_id)
-        print(message_token.message_timer)
 
     except Exception as e:
-        raise e
+        logging.error(f'error in send start message! \n{e}')
+        await context.bot.send_message(chat_id=user_detail.id, text='<b>Sorry, somthing went wrong!</b>', parse_mode='html')
 
-# @handle_error.handle_functions_error
+@handle_error.handle_functions_error
 @message_token.check_token
 async def register_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_detail = update.effective_chat
@@ -78,16 +77,38 @@ async def register_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if photos.total_count > 0:
         photo_file_id = photos.photos[0][-1].file_id
-        context.bot.send_photo(chat_id=ADMIN_CHAT_IDs[0], photo=photo_file_id, caption=start_text_notif, parse_mode='HTML')
+        await context.bot.send_photo(chat_id=private.ADMIN_CHAT_IDs[0], photo=photo_file_id, caption=start_text_notif, parse_mode='HTML')
     else:
-        context.bot.send_message(chat_id=ADMIN_CHAT_IDs[0], text=start_text_notif + '\n\n• Without profile picture (or not public)', parse_mode='HTML')
-    print(message_token.message_timer)
+        await context.bot.send_message(chat_id=private.ADMIN_CHAT_IDs[0], text=start_text_notif + '\n\n• Without profile picture (or not public)', parse_mode='HTML')
 
     return await start(update, context)
 
+async def services(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_detail = update.effective_chat
+    ft_instance = FindText(update, context, notify_user=False)
+
+    try:
+        text = await ft_instance.find_text('select_section')
+        main_keyboard = [
+            [InlineKeyboardButton(await ft_instance.find_keyboard('buy_vpn_service'), callback_data='buy_vpn')],
+            [InlineKeyboardButton(await ft_instance.find_keyboard('back_button'), callback_data='start')],
+        ]
+        return await update.callback_query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(main_keyboard), parse_mode='html')
+
+    except Exception as e:
+        logging.error(f'error in services message! \n{e}')
+        return await update.callback_query.answer(text=await ft_instance.find_text('error_message'))
+
 
 if __name__ == '__main__':
-    application = ApplicationBuilder().token(telegram_bot_token).build()
+    application = ApplicationBuilder().token(private.telegram_bot_token).build()
     application.add_handler(CommandHandler('start', start))
+    application.add_handler(CallbackQueryHandler(start, pattern='start'))
     application.add_handler(CallbackQueryHandler(register_user, pattern='register_user_(.*)'))
+
+    application.add_handler(CallbackQueryHandler(services, pattern='menu_services'))
+
+    application.add_handler(CallbackQueryHandler(wallet_reFactore.wallet_page, pattern='wallet_page'))
+    application.add_handler(CallbackQueryHandler(wallet_reFactore.financial_transactions_wallet, pattern='financial_transactions_wallet'))
+
     application.run_polling()
