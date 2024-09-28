@@ -1,7 +1,10 @@
 import crud, arrow, logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+import private
 from database_sqlalchemy import SessionLocal
-from utilities_reFactore import FindText
+from utilities_reFactore import FindText, message_token, handle_error
+import models_sqlalchemy as model
+from vpn_service import vpn_crud
 
 def human_readable(date, user_language):
     get_date = arrow.get(date)
@@ -30,16 +33,17 @@ class WalletManage:
         self.USER_ID = user_id_identifier
 
     @staticmethod
-    def add_financial_report(user_id, credit, operation, detail):
-        crud.add_financial_report(user_id, credit, operation, detail)
+    def add_financial_report(user_id, credit, operation, action, service_id=None):
+        with SessionLocal() as session:
+            crud.add_financial_report(session, user_id, credit, operation, action, service_id)
 
     @staticmethod
-    def add_to_wallet(user_id, credit, detail):
-        crud.add_credit_to_wallet(user_id, credit, 'spend', detail)
+    def add_to_wallet(user_id, credit, action, service_id=None):
+        crud.add_credit_to_wallet(user_id, credit, 'spend', action, service_id)
 
     @staticmethod
-    def less_from_wallet(user_id, credit, detail):
-        crud.less_from_wallet(user_id, credit, 'recive', detail)
+    def less_from_wallet(user_id, credit, action, service_id=None):
+        crud.less_from_wallet(user_id, credit, 'recive', action, service_id)
 
 async def wallet_page(update, context):
     query = update.callback_query
@@ -119,36 +123,74 @@ async def buy_credit_volume(update, context):
     ft_instance = FindText(update, context)
 
     try:
-        text = '• مشخص کنید چه مقدار اعتبار به کیف پولتون اضافه بشه:'
+        text = await ft_instance.find_text('add_crredit_to_wallet_title')
 
         keyboard = [
-            [InlineKeyboardButton("250,000 تومن", callback_data="set_credit_250000"),
-             InlineKeyboardButton("100,000 تومن", callback_data="set_credit_100000")],
-            [InlineKeyboardButton("1,000,000 تومن", callback_data="set_credit_1000000"),
-             InlineKeyboardButton("500,000 تومن", callback_data="set_credit_500000")],
-            [InlineKeyboardButton("برگشت ↰", callback_data="wallet_page")]
+            [InlineKeyboardButton(f"50,000 {await ft_instance.find_text('irt')}", callback_data="create_invoice__increase_wallet_balance__50000"),
+             InlineKeyboardButton(f"100,000 {await ft_instance.find_text('irt')}", callback_data="create_invoice__increase_wallet_balance__100000")],
+            [InlineKeyboardButton(f"200,000 {await ft_instance.find_text('irt')}", callback_data="create_invoice__increase_wallet_balance__200000"),
+             InlineKeyboardButton(f"500,000 {await ft_instance.find_text('irt')}", callback_data="create_invoice__increase_wallet_balance__500000")],
+            [InlineKeyboardButton(await ft_instance.find_keyboard('back_button'), callback_data='wallet_page')]
         ]
 
-        query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text(text=text, parse_mode='markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
     except Exception as e:
         logging.error(f'error in buy credit volume: {e}')
         return await query.answer(await ft_instance.find_text('error_message'))
 
 
-def pay_way_for_credit(update, context):
+@handle_error.handle_functions_error
+@message_token.check_token
+async def create_invoice(update, context):
     query = update.callback_query
-    id_ = int(query.data.replace('pay_way_for_credit_', ''))
-    package = sqlite_manager.select(column='value', table='Credit_History', where=f'id = {id_}')
+    chat_id = query.message.chat_id
+    ft_instance = FindText(update, context)
+    service_id = None
+    action, *extra_data = query.data.replace('create_invoice__', '').split('__')
 
-    keyboard = [
-        [InlineKeyboardButton("درگاه پرداخت بانکی", callback_data=f"zarinpall_page_wallet_{id_}")],
-        [InlineKeyboardButton("پرداخت با کریپتو", callback_data=f"cryptomus_page_wallet_{id_}")],
-        [InlineKeyboardButton("برگشت ↰", callback_data="buy_credit_volume")],
+    with SessionLocal() as session:
+        with session.begin():
 
-    ]
+            if action == "increase_wallet_balance":
+                credit = int(extra_data[0])
+                callback_data, operation = 'wallet', 'recive'
+                back_button_callback = 'buy_credit_volume'
+                invoice_extra_data = await ft_instance.find_text('charge_wallet')
 
-    text = (f"<b>❋ مبلغ انتخاب شده رو برای اضافه کردن به کیف پول تایید میکنید؟:</b>\n"
-            f"\n<b>مبلغ: {package[0][0]:,} تومان</b>"
-            f"\n\n<b>⤶ برای پرداخت میتونید یکی از روش های زیر رو استفاده کنید:</b>")
-    query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
+            elif action == "buy_vpn_service":
+                period, traffic = extra_data
+                credit = (int(traffic) * private.PRICE_PER_GB) + (int(period) * private.PRICE_PER_DAY)
+                product_id, back_button_callback= 1, 'vpn_set_period_traffic__30_40'
+                callback_data, operation = 'buy_vpn', 'spend'
+                invoice_extra_data = (f"{await ft_instance.find_text('charge_wallet')}"
+                                      f"\n{await ft_instance.find_text('traffic')} {traffic} {await ft_instance.find_keyboard('gb_lable')}"
+                                      f"\n{await ft_instance.find_text('period')} {period} {await ft_instance.find_keyboard('day_lable')}")
+
+                purchased = model.Purchased(
+                    active=False,
+                    product_id=product_id,
+                    chat_id=chat_id,
+                    traffic=int(traffic),
+                    period=int(period)
+                )
+                session.add(purchased)
+                session.flush()
+                service_id = purchased.purchased_id
+
+            package = model.FinancialReport(operation=operation, value=credit, chat_id=chat_id, action=action, service_id=service_id, active=False)
+            session.add(package)
+            session.flush()
+
+            keyboard = [
+                [InlineKeyboardButton(await ft_instance.find_keyboard('iran_payment_getway'), callback_data=f"zarinpall_page_{callback_data}_{service_id or package.financial_id}")],
+                [InlineKeyboardButton(await ft_instance.find_keyboard('cryptomus_payment_getway'), callback_data=f"cryptomus_page_{callback_data}_{service_id or package.financial_id}")],
+                [InlineKeyboardButton(await ft_instance.find_keyboard('back_button'), callback_data=back_button_callback)],
+            ]
+
+            text = (f"<b>{await ft_instance.find_text('invoice_title')}"
+                    f"\n\n{await ft_instance.find_text('price')} {credit:,} {await ft_instance.find_text('irt')}"
+                    f"\n\n{await ft_instance.find_text('invoice_extra_data')}\n{invoice_extra_data}"
+                    f"\n\n{await ft_instance.find_text('payment_option_title')}</b>")
+
+            await query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))

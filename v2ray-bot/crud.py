@@ -1,7 +1,6 @@
 from database_sqlalchemy import SessionLocal
 import models_sqlalchemy as model
 from sqlalchemy import update, func
-import logging
 
 def get_user(session, chat_id):
     return session.query(model.UserDetail).filter_by(chat_id=chat_id).first()
@@ -31,13 +30,13 @@ def clear_wallet_notification(user_id: int):
             )
             session.execute(stmt)
 
-def add_financial_report(user_id: int, credit: int, operation:str, detail):
-    with SessionLocal() as session:
-        with session.begin():
-            record = model.FinancialReport(operation=operation, value=credit, chat_id=user_id, detail=detail)
-            session.add(record)
+def add_financial_report(session, user_id: int, credit, operation, action, active, service_id=None):
+    with session.begin():
+        record = model.FinancialReport(operation=operation, value=credit, chat_id=user_id, action=action, service_id=service_id, active=active)
+        session.add(record)
+    return record
 
-def add_credit_to_wallet(user_id: int, credit: int, operation:str, detail):
+def add_credit_to_wallet(user_id: int, credit, operation, action, service_id=None):
     with SessionLocal() as session:
         with session.begin():
             stmt = (
@@ -49,11 +48,11 @@ def add_credit_to_wallet(user_id: int, credit: int, operation:str, detail):
                     notif_low_wallet=0
                 )
             )
-            record = model.FinancialReport(operation=operation, value=credit, chat_id=user_id, detail=detail)
+            record = model.FinancialReport(operation=operation, value=credit, chat_id=user_id, action=action, service_id=service_id, active=True)
             session.add(record)
             session.execute(stmt)
 
-def less_from_wallet(user_id: int, credit: int, operation:str, detail):
+def less_from_wallet(user_id: int, credit, operation, action, service_id=None):
     with SessionLocal() as session:
         with session.begin():
             stmt = (
@@ -65,6 +64,6 @@ def less_from_wallet(user_id: int, credit: int, operation:str, detail):
                     notif_low_wallet=0
                 )
             )
-            record = model.FinancialReport(operation=operation, value=credit, chat_id=user_id, detail=detail)
+            record = model.FinancialReport(operation=operation, value=credit, chat_id=user_id, action=action, service_id=service_id, active=True)
             session.add(record)
             session.execute(stmt)

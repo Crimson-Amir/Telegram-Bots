@@ -1,9 +1,9 @@
 import pytz, requests, random, json, qrcode
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from private import ADMIN_CHAT_ID, telegram_bot_token, merchent_id, infinity_name
+from private import ADMIN_CHAT_ID, telegram_bot_token, infinity_name
 from utilities import sqlite_manager, second_to_ms, traffic_to_gb, ranking_manage, wallet_manage
-from api_clean import XuiApiClean
+from vpn_service.api_clean import XuiApiClean
 from datetime import datetime, timedelta
 from io import BytesIO
 

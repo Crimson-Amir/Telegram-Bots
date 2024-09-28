@@ -1,5 +1,5 @@
 from database_sqlalchemy import Base
-from sqlalchemy import Integer, String, Column, Boolean, ForeignKey, DateTime, BigInteger
+from sqlalchemy import Integer, String, Column, Boolean, ForeignKey, DateTime, BigInteger, ARRAY, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -7,6 +7,7 @@ class UserDetail(Base):
     __tablename__ = 'UserDetail'
 
     user_id = Column(Integer, primary_key=True)
+    user_level = Column(Integer, default=1)
     status = Column(String, default="active")
     email = Column(String, unique=True, default=None)
     phone_number = Column(BigInteger, unique=True, default=None)
@@ -28,17 +29,64 @@ class UserDetail(Base):
     register_date = Column(DateTime, default=datetime.now())
 
     financial_reports = relationship("FinancialReport", back_populates="owner")
+    services = relationship("Purchased", back_populates="owner")
 
 
 class FinancialReport(Base):
     __tablename__ = 'FinancialReport'
 
     financial_id = Column(Integer, primary_key=True)
+    active = Column(Boolean, default=False)
     operation = Column(String, default='spend')
     value = Column(Integer)
-    detail = Column(String)
+    action = Column(String)
+    service_id = Column(Integer)
     register_date = Column(DateTime, default=datetime.now())
 
     chat_id = Column(BigInteger, ForeignKey('UserDetail.chat_id'))
     owner = relationship("UserDetail", back_populates="financial_reports")
 
+
+class Product(Base):
+    __tablename__ = 'Product'
+
+    product_id = Column(Integer, primary_key=True)
+
+    inbound_id = Column(ARRAY(Integer))
+    active = Column(Boolean)
+    product_name = Column(String)
+
+    vpn_server = Column(JSON) # {1.1.1.1: [human.ggkala.shop, service.freebyte.click], 2.2.2.2: [human.ggkala.shop, service.freebyte.click], 2.2.3.2: [human.ggkala.shop, service.freebyte.click]}
+    web_app_adress = Column(String)
+
+    inbound_host = Column(String)
+    inbound_header_type = Column(String)
+    register_date = Column(DateTime, default=datetime.now())
+    purchaseds = relationship("Purchased", back_populates="product")
+
+
+class Purchased(Base):
+    __tablename__ = 'Purchased'
+
+    purchased_id = Column(Integer, primary_key=True)
+    active = Column(Boolean)
+
+    inbound_id = Column(Integer)
+
+    client_email = Column(String)
+    client_id = Column(String)
+    traffic = Column(Integer)
+    period = Column(Integer)
+
+    notif_day = Column(Boolean, default=False)
+    notif_gb = Column(Boolean, default=False)
+    auto_renewal = Column(Boolean, default=False)
+
+    token = Column(String)
+    vpn_server = Column(ARRAY(String))
+
+    product_id = Column(Integer, ForeignKey('Product.product_id'))
+    product = relationship("Product", back_populates="purchaseds")
+
+    chat_id = Column(BigInteger, ForeignKey('UserDetail.chat_id'))
+    owner = relationship("UserDetail", back_populates="services")

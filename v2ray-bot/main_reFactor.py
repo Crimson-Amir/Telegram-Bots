@@ -5,6 +5,7 @@ from database_sqlalchemy import engine, SessionLocal
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler
 import private, wallet_reFactore
+from vpn_service import start as vpn_start, buy_and_upgrade_service
 
 
 Base.metadata.create_all(bind=engine)
@@ -83,32 +84,52 @@ async def register_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     return await start(update, context)
 
+@message_token.check_token
 async def services(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_detail = update.effective_chat
-    ft_instance = FindText(update, context, notify_user=False)
+    ft_instance = FindText(update, context)
+    with SessionLocal() as session:
+        user = crud.get_user(session, user_detail.id)
 
-    try:
-        text = await ft_instance.find_text('select_section')
-        main_keyboard = [
-            [InlineKeyboardButton(await ft_instance.find_keyboard('buy_vpn_service'), callback_data='buy_vpn')],
-            [InlineKeyboardButton(await ft_instance.find_keyboard('back_button'), callback_data='start')],
-        ]
-        return await update.callback_query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(main_keyboard), parse_mode='html')
+        level_access = {
+            1: [],
+            private.vpn_level: [[InlineKeyboardButton(await ft_instance.find_keyboard('buy_vpn_service'), callback_data='vpn_main_menu')]]
+        }
 
-    except Exception as e:
-        logging.error(f'error in services message! \n{e}')
-        return await update.callback_query.answer(text=await ft_instance.find_text('error_message'))
+        try:
+            text = await ft_instance.find_text('select_section')
+            main_keyboard = []
+            for level in range(1, user.user_level + 1):
+                main_keyboard.extend(level_access.get(level, level_access.get(1)))
+            main_keyboard.append([InlineKeyboardButton(await ft_instance.find_keyboard('back_button'), callback_data='start')])
+            return await update.callback_query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(main_keyboard), parse_mode='html')
+
+        except Exception as e:
+            logging.error(f'error in services message! \n{e}')
+            return await update.callback_query.answer(text=await ft_instance.find_text('error_message'))
 
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(private.telegram_bot_token).build()
+
+    # Commands
     application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('vpn_start', start))
+
+    # Bot Main Menu
     application.add_handler(CallbackQueryHandler(start, pattern='start'))
     application.add_handler(CallbackQueryHandler(register_user, pattern='register_user_(.*)'))
-
     application.add_handler(CallbackQueryHandler(services, pattern='menu_services'))
 
+    # Wallet
     application.add_handler(CallbackQueryHandler(wallet_reFactore.wallet_page, pattern='wallet_page'))
     application.add_handler(CallbackQueryHandler(wallet_reFactore.financial_transactions_wallet, pattern='financial_transactions_wallet'))
+    application.add_handler(CallbackQueryHandler(wallet_reFactore.buy_credit_volume, pattern='buy_credit_volume'))
+    application.add_handler(CallbackQueryHandler(wallet_reFactore.create_invoice, pattern='create_invoice__(.*)'))
+
+    # VPN Section
+    application.add_handler(CallbackQueryHandler(vpn_start.vpn_main_menu, pattern='vpn_main_menu'))
+    application.add_handler(CallbackQueryHandler(buy_and_upgrade_service.buy_custom_service, pattern='vpn_set_period_traffic__(.*)'))
+
 
     application.run_polling()

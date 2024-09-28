@@ -30,7 +30,7 @@ class FindText:
     async def language_transaction(text_key, language_code=default_language, section="text") -> str:
         transaction = text_transaction
         if section == "keyboard": transaction = keyboard_transaction
-        return transaction.get(text_key, 'error_message').get(language_code, 'en')
+        return transaction.get(text_key, transaction.get('error_message')).get(language_code, 'language not found!')
 
     @staticmethod
     async def get_language_from_database(user_id):
@@ -162,7 +162,7 @@ class MessageToken:
                 return await func(update, context, **kwargs)
 
             query = update.callback_query
-            timer_exist_in_message_timer = cls.message_timer.get(message_id, None)
+            timer_exist_in_message_timer = cls.message_timer.get(message_id)
 
             if timer_exist_in_message_timer:
                 if cls.message_expierd(message_id):
