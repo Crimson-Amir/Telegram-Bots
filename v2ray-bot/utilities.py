@@ -362,16 +362,6 @@ def convert_service_to_tls(update, email, convert_to):
         raise e
 
 
-def moving_all_service_to_server_with_database_change(server_country):
-    get_all = api_operation.get_all_inbounds_except(server_country)
-
-    for server in get_all:
-        for config in server['obj']:
-            for client in config['clientStats']:
-                if client['enable']:
-                    change_service_server(None, None, client['email'], server_country)
-
-
 def init_name(name):
     if isinstance(name, str):
         return name.replace("'", "").replace('"', "")

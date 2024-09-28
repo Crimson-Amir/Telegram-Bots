@@ -47,22 +47,49 @@ class FinancialReport(Base):
     owner = relationship("UserDetail", back_populates="financial_reports")
 
 
+class Server(Base):
+    __tablename__ = 'Server'
+    server_id = Column(Integer, primary_key=True)
+    active = Column(Boolean)
+
+    server_ip = Column(String)
+    # server_protocol = Column(String)
+    server_port = Column(Integer)
+    server_user_name = Column(String)
+    server_password = Column(String)
+
+    country = Column(String)
+    flag = Column(String)
+    connected_iran_server_ips = Column(ARRAY(String))
+
+    product_associations = relationship("ServerProductAssociations", back_populates="server", cascade="all, delete-orphan")
+
+class ServerProductAssociations(Base):
+    __tablename__ = 'ServerProductAssociations'
+    server_id = Column(Integer, ForeignKey('Server.server_id'), primary_key=True)
+    product_id = Column(Integer, ForeignKey('Product.product_id', ondelete='CASCADE'), primary_key=True)
+
+    product = relationship("Product", back_populates="server_associations")
+    server = relationship("Server", back_populates="product_associations")
+
 class Product(Base):
     __tablename__ = 'Product'
 
     product_id = Column(Integer, primary_key=True)
-
     inbound_id = Column(ARRAY(Integer))
     active = Column(Boolean)
     product_name = Column(String)
 
     vpn_server = Column(JSON) # {1.1.1.1: [human.ggkala.shop, service.freebyte.click], 2.2.2.2: [human.ggkala.shop, service.freebyte.click], 2.2.3.2: [human.ggkala.shop, service.freebyte.click]}
-    web_app_adress = Column(String)
+    sub_web_app_endpoint = Column(String)
 
     inbound_host = Column(String)
     inbound_header_type = Column(String)
+
     register_date = Column(DateTime, default=datetime.now())
     purchaseds = relationship("Purchased", back_populates="product")
+
+    server_associations = relationship("ServerProductAssociations", back_populates="product", cascade="all, delete-orphan")
 
 
 class Purchased(Base):
@@ -84,9 +111,12 @@ class Purchased(Base):
 
     token = Column(String)
     vpn_server = Column(ARRAY(String))
+    client_addresses = Column(String)
 
     product_id = Column(Integer, ForeignKey('Product.product_id'))
     product = relationship("Product", back_populates="purchaseds")
 
     chat_id = Column(BigInteger, ForeignKey('UserDetail.chat_id'))
     owner = relationship("UserDetail", back_populates="services")
+
+    register_date = Column(DateTime, default=datetime.now())

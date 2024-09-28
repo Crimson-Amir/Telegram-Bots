@@ -1,7 +1,8 @@
-import json
-import requests
+import json, requests, os, sys
 from private import PORT, auth, telegram_bot_url, ADMIN_CHAT_IDs, DOMAIN, protocol, telegram_bot_token
-from sqlite_manager import ManageDb
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from database_sqlalchemy import SessionLocal
+import models_sqlalchemy as model
 
 def report_problem_to_admin_witout_context(text, chat_id, error, detail=None):
     text = ("🔴 Report Problem in Bot\n\n"
@@ -9,26 +10,30 @@ def report_problem_to_admin_witout_context(text, chat_id, error, detail=None):
             f"\nUser ID: {chat_id}"
             f"\nError Type: {type(error).__name__}"
             f"\nError Reason:\n{error}")
+
     text += f"\nDetail:\n {detail}" if detail else ''
     telegram_bot_url_ = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
     requests.post(telegram_bot_url_, data={'chat_id': ADMIN_CHAT_IDs[0], 'text': text})
     print(f'* REPORT TO ADMIN SUCCESS: ERR: {error}')
 
-class XuiApiClean(ManageDb):
+class XuiApiClean:
     coockie_list = {}
 
     def __init__(self):
-        super().__init__('v2ray')
         self.connect = requests.Session()
         self.refresh_connecion()
 
     def refresh_connecion(self):
-        get_domains = self.custom(order="SELECT DISTINCT server_domain FROM Product")
+        with SessionLocal() as session:
+            servers = session.query(model.Server).where(model.Server.active == True)
 
-        for domain in get_domains:
-            login = self.connect.post(f'{protocol}{domain[0]}:{PORT}/login', data=auth)
-            self.coockie_list[domain[0]] = login.cookies
-            if login.status_code != 200: print(f'Connection Problem. {login.status_code}')
+            for server in servers:
+                login = self.connect.post(f'{protocol}{server.server_ip}:{server.server_port}/login', data={'username': server.server_user_name, 'password': server.server_password})
+                response = login.json()
+                if not response.get('success', False):
+                    raise ConnectionError(response.get('msg'))
+                self.coockie_list[server.server_ip] = login.cookies
+                if login.status_code != 200: print(f'Connection Problem. {login.status_code}')
 
     @staticmethod
     def send_telegram_message(message):
@@ -40,9 +45,9 @@ class XuiApiClean(ManageDb):
         try:
 
             cookie = self.coockie_list[domain]
+            print(cookie)
 
             with self.connect.request(method, url, json=json_data, cookies=cookie, timeout=5) as response:
-
                 if response.ok:
                     connection_response = response.json()
 
@@ -63,29 +68,19 @@ class XuiApiClean(ManageDb):
             raise e
 
     def get_all_inbounds(self):
-        get_domains = self.custom(order="SELECT DISTINCT server_domain FROM Product")
-        all_inbound = []
+        with SessionLocal() as session:
+            servers = session.query(model.Server).where(model.Server.active == True)
+            all_inbound = []
 
-        for domain in get_domains:
-            get_inbounds = self.make_request('get', f'{protocol}{domain[0]}:{PORT}/panel/api/inbounds/list', domain=domain[0])
-            all_inbound.append(get_inbounds)
+            for server in servers:
+                get_inbounds = self.make_request('get', f'{protocol}{server.server_ip}:{server.server_port}/panel/api/inbounds/list', domain=server.server_ip)
+                all_inbound.append(get_inbounds)
 
-        return all_inbound
+            return all_inbound
 
     def get_country_inbounds(self, domain=DOMAIN):
         get_inbounds = self.make_request('get', f'{protocol}{domain}:{PORT}/panel/api/inbounds/list')
         return get_inbounds
-
-    def get_all_inbounds_except(self, except_country):
-        get_domains = self.select(column='server_domain,country', table='Product')
-        get_domain_uniq = {dom[0] for dom in get_domains if dom[1] != except_country}
-        all_inbound = []
-
-        for domain in get_domain_uniq:
-            get_inbounds = self.make_request('get', f'{protocol}{domain}:{PORT}/panel/api/inbounds/list', domain=domain)
-            all_inbound.append(get_inbounds)
-
-        return all_inbound
 
     def get_inbound(self, inbound_id, domain=DOMAIN):
         get_inbound = self.make_request('get', f'{protocol}{domain}:{PORT}/panel/api/inbounds/get/{inbound_id}', domain=domain)
@@ -170,7 +165,5 @@ class XuiApiClean(ManageDb):
 
 
 # test = XuiApiClean()
-# print(datetime.datetime.now()
 # a = test.get_all_inbounds()
-# print(datetime.datetime.now())
 # print(a)

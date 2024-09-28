@@ -16,6 +16,10 @@ text_transaction = {
         'en': '• customize your service:',
         'fa': '• مشخصات سرویس خودتان را تنظیم کنید:'
     },
+    'vpn_service_activated': {
+        'en': 'Your VPN service activated successfully✅',
+        'fa': 'سرویس VPN شما با موفقیت فعال شد✅'
+    },
 }
 
 keyboard_transaction = {
@@ -50,5 +54,9 @@ keyboard_transaction = {
     'day_lable': {
         'en': 'Day',
         'fa': 'روز'
-    }
+    },
+    'vpn_my_service': {
+        'en': '🎛 My Services',
+        'fa': '🎛 سرویس های من'
+    },
 }

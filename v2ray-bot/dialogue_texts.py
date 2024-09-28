@@ -127,6 +127,10 @@ keyboard_transaction = {
         'en': 'Back ↰',
         'fa': 'برگشت ↰'
     },
+    'bot_main_menu': {
+        'en': 'Bot main menu ↵',
+        'fa': 'صفحه اصلی ربات ↵'
+    },
     'confirm': {
         'en': 'Confirm ✓',
         'fa': '✓ تایید'

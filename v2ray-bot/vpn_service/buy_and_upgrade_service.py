@@ -1,18 +1,21 @@
-import uuid
 from _datetime import datetime, timedelta
-import pytz
+import pytz, uuid, sys, os, logging, json, hashlib, qrcode
+from io import BytesIO
+from sqlalchemy import update as slalchemy_update
+import models_sqlalchemy as model
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
-import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utilities_reFactore import FindText, message_token, handle_error
 from database_sqlalchemy import SessionLocal
-from vpn_service import vpn_crud
-import private, crud, logging
+from vpn_service import vpn_crud, api_clean
+import private, crud
+
+api_operation = api_clean.XuiApiClean()
 
 @message_token.check_token
 async def buy_custom_service(update, context):
     query = update.callback_query
-    ft_instance = FindText(update, context, notify_user=False)
+    ft_instance = FindText(update, context)
     try:
         period_callback, traffic_callback = query.data.replace('vpn_set_period_traffic__', '').split('_')
 
@@ -44,116 +47,97 @@ async def buy_custom_service(update, context):
         return await query.answer(await ft_instance.find_text('error_message'))
 
 
-async def create_service_in_servers(purchased_id):
+async def create_service_in_servers(session, purchased_id: int):
+    get_purchased = vpn_crud.get_purchased(session, purchased_id)
+    client_id = uuid.uuid4().hex
+    inbound_id = 1
+    token = hashlib.sha256(f'{client_id}.{inbound_id}'.encode()).hexdigest()[:8]
+    client_addresses = ''
+    client_email = client_id
 
-    try:
-        with SessionLocal() as session:
-            get_purchased = vpn_crud.get_purchased(session, purchased_id)
-            client_id = uuid.uuid4().hex
-            client_email = None
+    for server in get_purchased.product.server_associations:
+        server_address = server.server.server_ip
+        print(server_address)
 
-            traffic_to_byte = int(get_purchased.traffic * (1024 ** 3))
+        traffic_to_byte = int(get_purchased.traffic * (1024 ** 3))
+        now = datetime.now(pytz.timezone('Asia/Tehran'))
+        expiration_in_day = now + timedelta(days=get_purchased.period)
+        time_to_ms = int(expiration_in_day.timestamp() * 1000)
 
-            now = datetime.now(pytz.timezone('Asia/Tehran'))
-            expiration_in_day = now + timedelta(days=get_purchased.period)
-            time_to_ms = int(expiration_in_day.timestamp() * 1000)
+        data = {
+            "id": inbound_id,
+            "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,\"start_after_first_use\":true,"
+                        "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
+                        "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(client_id, client_email, traffic_to_byte, time_to_ms)
+        }
 
-            data = {
-                "id": get_purchased.inbound_id,
-                "settings": "{{\"clients\":[{{\"id\":\"{0}\",\"alterId\":0,\"start_after_first_use\":true,"
-                            "\"email\":\"{1}\",\"limitIp\":0,\"totalGB\":{2},\"expiryTime\":{3},"
-                            "\"enable\":true,\"tgId\":\"\",\"subId\":\"\"}}]}}".format(client_id, client_email, traffic_to_byte, time_to_ms)
-            }
+        api_operation.add_client(data, server_address)
+        check_servise_available = api_operation.get_client(client_email, domain=server_address)
 
-            create = api_operation.add_client(data, get_service_db[0][5])
+        if not check_servise_available['obj']:
+            raise ConnectionRefusedError('client was not create in server!')
 
-            check_servise_available = api_operation.get_client(email_, domain=get_service_db[0][5])
-            if not check_servise_available['obj']: return False, create, 'service do not create'
+        for iran_server in server.server.connected_iran_server_ips:
+            get_config = api_operation.get_client_url(client_email, inbound_id, domain=iran_server, server_domain=server_address,
+                                                    host=get_purchased.product.inbound_host, header_type=get_purchased.product.inbound_header_type)
+            client_addresses += f'\n{get_config}'
+            print(get_config)
 
-            get_cong = api_operation.get_client_url(email_, int(get_service_db[0][0]),
-                                                    domain=get_service_db[0][4], server_domain=get_service_db[0][5],
-                                                    host=inbound_host, header_type=inbound_header_type)
+    stmt = (
+        slalchemy_update(model.Purchased)
+        .where(model.Purchased.purchased_id == purchased_id)
+        .values(
+            inbound_id=inbound_id,
+            client_email=client_email,
+            client_id=client_id,
+            register_date=datetime.now(pytz.timezone('Asia/Tehran')),
+            token=token,
+            active=True,
+            client_addresses=client_addresses
+        )
+    )
+    session.execute(stmt)
+    session.refresh(get_purchased)
+    return get_purchased
 
-            sqlite_manager.update({'Purchased': {'inbound_id': int(get_service_db[0][0]),'client_email': email_,
-                                                 'client_id': id_, 'date': datetime.now(pytz.timezone('Asia/Tehran')),
-                                                 'details': get_cong, 'active': 1, 'status': 1}}, where=f'id = {purchased_id}')
 
-            if create['success']:
-                return True, create, 'service create success'
-            else:
-                return False, create, 'create service is failed'
+async def create_service_for_user(context, purchased_id: int):
+    with SessionLocal() as session:
+        with session.begin():
+            get_purchased = await create_service_in_servers(session, purchased_id)
+            class Update:
+                class effective_chat: id = get_purchased.chat_id
 
-        except Exception as e:
-            utilities.report_problem_to_admin_witout_context('ADD CLIENT BOT [ADMIN TASK]', chat_id=None, error=e)
-            return False, None, f'Error: {e}'
+            update = Update()
 
+            ft_instance = FindText(update, context)
 
-def create_service_for_user(query, context, id_, max_retries=2):
-    create = add_client_bot(id_)
-    if create[0]:
-        get_client = sqlite_manager.select(table='Purchased', where=f'id = {id_}')
-        try:
-            get_product = sqlite_manager.select(column='price,domain,server_domain,inbound_host,inbound_header_type', table='Product', where=f'id = {get_client[0][6]}')
-            get_user_detail = sqlite_manager.select(column='invited_by', table='User', where=f'chat_id={get_client[0][4]}')
+            sub_link = get_purchased.product.sub_web_app_endpoint + get_purchased.token
 
-            get_domain = get_product[0][1]
-            get_server_domain = get_product[0][2]
-            inbound_host = get_product[0][3]
-            inbound_header_type = get_product[0][4]
+            qr_code = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr_code.add_data(sub_link)
+            qr_code.make(fit=True)
+            qr_image = qr_code.make_image(fill='black', back_color='white')
+            buffer = BytesIO()
+            qr_image.save(buffer)
+            binary_data = buffer.getvalue()
 
-            returned = api_operation.get_client_url(client_email=get_client[0][9], inbound_id=get_client[0][7],
-                                                    domain=get_domain, server_domain=get_server_domain, host=inbound_host,
-                                                    header_type=inbound_header_type)
-            if returned:
-                returned_copy = f'`{returned}`'
-                qr_code = qrcode.make(returned)
-                qr_image = qr_code.get_image()
-                buffer = BytesIO()
-                qr_image.save(buffer, format='PNG')
-                binary_data = buffer.getvalue()
-                keyboard = [[InlineKeyboardButton("دریافت فایل سرویس", callback_data=f"create_txt_file_{id_}"),
-                             InlineKeyboardButton("🎛 سرویس های من", callback_data=f"my_service")],
-                            [InlineKeyboardButton("صفحه اصلی ربات ↵", callback_data=f"main_menu_in_new_message")]]
-                context.user_data['v2ray_client'] = returned
+            keyboard = [[InlineKeyboardButton(await ft_instance.find_keyboard('vpn_my_service'), callback_data=f"vpn_my_service")],
+                        [InlineKeyboardButton(await ft_instance.find_keyboard('bot_main_menu'), callback_data=f"vpn_main_menu")]]
 
-                context.bot.send_photo(photo=binary_data,
-                                       caption=f' سرویس شما با موفقیت فعال شد✅\n\n*• میتونید جزئیات سرویس رو از بخش "سرویس های من" مشاهده کنید.\n\n✪ لطفا سرویس رو به صورت مستقیم از طریق پیام رسان های ایرانی یا پیامک ارسال نکنید، با کلیک روی گزینه "دریافت فایل" سرویس را به صورت فایل یا کیوآرکد ارسال کنید.* \n\n\nلینک:\n{returned_copy}',
-                                       chat_id=get_client[0][4], reply_markup=InlineKeyboardMarkup(keyboard),
-                                       parse_mode='markdown')
+            await context.bot.send_photo(photo=binary_data,
+                                   caption=await ft_instance.find_text('vpn_service_activated') + f'\n\n{sub_link}',
+                                   chat_id=get_purchased.chat_id, reply_markup=InlineKeyboardMarkup(keyboard),
+                                   parse_mode='html')
 
-                price = ranking_manage.discount_calculation(direct_price=get_product[0][0], user_id=get_client[0][4])
-
-                record_operation_in_file(chat_id=get_client[0][4], price=price,
-                                         name_of_operation=f'خرید سرویس {get_client[0][9]}', operation=0,
-                                         status_of_pay=1, context=context)
-
-                send_service_to_customer_report(context, status=1, chat_id=get_client[0][4],
-                                                service_name=get_client[0][9])
-
-                invite_chat_id = get_user_detail[0][0]
-                subcategory_auto(context, invite_chat_id, price)
-
-                return {'success': True, 'msg': 'config created successfull', 'purchased_id': id_}
-            else:
-                send_service_to_customer_report(context, status=0, chat_id=get_client[0][4],
-                                                service_name=get_client[0][9],
-                                                more_detail=create)
-                return {'success': False, 'msg': returned}
-
-        except Exception as e:
-            send_service_to_customer_report(context, status=0, chat_id=get_client[0][4], service_name=get_client[0][9],
-                                            more_detail='ERROR IN SEND CLEAN FOR CUSTOMER', error=e)
-            return {'success': False, 'msg': str(e)}
-
-    elif not create[0] and create[2] == 'service do not create':
-        send_service_to_customer_report(context, status=0, chat_id=None, service_name=None,
-                                        more_detail=f'SERVICE DONT CREATED SUCCESSFULL AND TRY ONE MORE TIME (SEND CLEAN FOR CUSTOMER)\n{create}')
-        if max_retries > 0:
-            return send_clean_for_customer(query, context, id_, max_retries - 1)
-        else:
-            return {'success': False, 'msg': 'Maximum retries exceeded'}
-
-    else:
-        send_service_to_customer_report(context, status=0, chat_id=None, service_name=None,
-                                        more_detail=f'EEROR IN ADD CLIENT (SEND CLEAN FOR CUSTOMER)\n{create}')
-        return Exception(f'Error: {create}')
+            stmt = (
+                slalchemy_update(model.FinancialReport)
+                .where(model.FinancialReport.service_id == purchased_id)
+                .values(active=True)
+            )
+            session.execute(stmt)

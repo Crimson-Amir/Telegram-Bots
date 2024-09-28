@@ -4,7 +4,7 @@ import private
 from database_sqlalchemy import SessionLocal
 from utilities_reFactore import FindText, message_token, handle_error
 import models_sqlalchemy as model
-from vpn_service import vpn_crud
+from vpn_service import buy_and_upgrade_service
 
 def human_readable(date, user_language):
     get_date = arrow.get(date)
@@ -53,11 +53,12 @@ async def wallet_page(update, context):
     try:
         with SessionLocal() as session:
             get_user = crud.get_user(session, chat_id)
+            get_financial_reports = crud.get_financial_reports(session, chat_id)
 
-            if get_user.financial_reports:
-                last_transaction = human_readable(f'{get_user.financial_reports[0].register_date}', await ft_instance.find_user_language())
+            if get_financial_reports:
+                last_transaction = human_readable(f'{get_financial_reports[0].register_date}', await ft_instance.find_user_language())
                 lasts_report = await ft_instance.find_text('recent_transactions')
-                for count, report in enumerate(get_user.financial_reports):
+                for count, report in enumerate(get_financial_reports):
                     lasts_report += f"\n{await ft_instance.find_text('recive_money') if report.operation == 'recive' else
                     await ft_instance.find_text('spend_money')} {report.value:,} {await ft_instance.find_text('irt')} - {human_readable(report.register_date, await ft_instance.find_user_language())}"
                     if count == 5: break
@@ -94,13 +95,13 @@ async def financial_transactions_wallet(update, context):
 
     try:
         with SessionLocal() as session:
-            get_user = crud.get_user(session, chat_id)
+            get_financial_reports = crud.get_financial_reports(session, chat_id, 20)
 
-            if get_user.financial_reports:
+            if get_financial_reports:
                 lasts_report = await ft_instance.find_text('recent_transactions') + '\n'
-                for report in get_user.financial_reports:
+                for report in get_financial_reports:
                     lasts_report += f"\n\n{await ft_instance.find_text('recive_money') if report.operation == 'recive' else
-                    await ft_instance.find_text('spend_money')} {report.value:,} {await ft_instance.find_text('irt')} - {human_readable(report.register_date, await ft_instance.find_user_language())}\n• {report.detail}"
+                    await ft_instance.find_text('spend_money')} {report.value:,} {await ft_instance.find_text('irt')} - {human_readable(report.register_date, await ft_instance.find_user_language())}"
             else:
                 lasts_report = await ft_instance.find_text('no_transaction_yet')
 
@@ -194,3 +195,4 @@ async def create_invoice(update, context):
                     f"\n\n{await ft_instance.find_text('payment_option_title')}</b>")
 
             await query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
+    await buy_and_upgrade_service.create_service_for_user(context, service_id)

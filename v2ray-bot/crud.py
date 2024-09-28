@@ -1,10 +1,14 @@
 from database_sqlalchemy import SessionLocal
 import models_sqlalchemy as model
-from sqlalchemy import update, func
+from sqlalchemy import update, func, desc
 
 def get_user(session, chat_id):
     return session.query(model.UserDetail).filter_by(chat_id=chat_id).first()
 
+
+def get_financial_reports(session, chat_id, limit=5):
+    return (session.query(model.FinancialReport).where(model.FinancialReport.active == True).
+            filter_by(chat_id=chat_id).order_by(desc(model.FinancialReport.financial_id)).limit(limit).all())
 
 def create_user(user_detail, inviter_user_id, selected_language):
     with SessionLocal() as session:
