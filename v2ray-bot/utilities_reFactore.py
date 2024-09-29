@@ -62,8 +62,6 @@ class FindText:
         user_language = await self.get_language_from_database(user_id)
         return await self.language_transaction(text_key, user_language, section=section)
 
-
-
 class HandleErrors:
     err_msg = "🔴 An error occurred in {}:\n{}\nerror type: {}\nuser chat id: {}"
     def handle_functions_error(self, func):
@@ -75,57 +73,13 @@ class HandleErrors:
             except Exception as e:
                 if 'Message is not modified' in str(e): return await update.callback_query.answer()
                 err = self.err_msg.format(func.__name__, str(e), type(e), user_detail.id)
-                await self.report_problem_to_admin(err)
+                await self.report_to_admin(err)
                 await self.handle_error_message(update, context)
-        return wrapper
-
-    def handle_classes_error(self, func):
-        @functools.wraps(func)
-        async def wrapper(self_probably, update, context, **kwargs):
-            user_detail = update.effective_chat
-            try:
-                return await func(self_probably, update, context, **kwargs)
-            except Exception as e:
-                if 'Message is not modified' in str(e): return await update.callback_query.answer()
-                err = self.err_msg.format(func.__name__, str(e), type(e), user_detail.id)
-                await self.report_problem_to_admin(err)
-                await self.handle_error_message(update, context)
-        return wrapper
-
-    def handle_queue_error(self, func):
-        @functools.wraps(func)
-        async def wrapper(context, **kwargs):
-            try: return await func(context, **kwargs)
-            except Exception as e:
-                err = self.err_msg.format(func.__name__, str(e), type(e), None)
-                await self.report_problem_to_admin(err)
-        return wrapper
-
-    def handle_queue_class_error(self, func):
-        @functools.wraps(func)
-        async def wrapper(self_pobably, context, **kwargs):
-            try: return await func(self_pobably, context, **kwargs)
-            except Exception as e:
-                err = self.err_msg.format(func.__name__, str(e), type(e), None)
-                await self.report_problem_to_admin(err)
-        return wrapper
-
-    def handle_conversetion_error(self, func):
-        @functools.wraps(func)
-        async def wrapper(update, context, **kwargs):
-            user_detail = update.effective_chat
-            try:
-                return await func(update, context, **kwargs)
-            except Exception as e:
-                err = f"🔴 An error occurred in {func.__name__}:\nerror type: {type(e)}\nuser chat id: {user_detail.id}\nErro: {str(e)}"
-                await self.report_problem_to_admin(err)
-                await self.handle_error_message(update, context)
-                return ConversationHandler.END
         return wrapper
 
     @staticmethod
-    async def report_problem_to_admin(msg):
-        requests.post(url=telegram_bot_url, json={'chat_id': ADMIN_CHAT_IDs[0], 'text': msg, 'message_thread_id': private.error_thread_id})
+    async def report_to_admin(msg, message_thread_id=private.error_thread_id):
+        requests.post(url=telegram_bot_url, json={'chat_id': ADMIN_CHAT_IDs[0], 'text': msg, 'message_thread_id': message_thread_id})
 
     @staticmethod
     async def handle_error_message(update, context, message_text=None):
@@ -135,6 +89,42 @@ class HandleErrors:
         if update.callback_query:
             return await update.callback_query.answer(message_text)
         await context.bot.send_message(text=message_text, chat_id=user_id)
+
+async def report_to_admin(level, fun_name, msg, user_table=None):
+    report_level = {
+        'purchase': {'thread_id': private.purchased_thread_id, 'emoji': '🟢'},
+        'info': {'thread_id': private.info_thread_id, 'emoji': '🔵'},
+        'warning': {'thread_id': private.info_thread_id, 'emoji': '🟡'},
+        'error': {'thread_id': private.error_thread_id, 'emoji': '🔴'},
+        'emergecy_error': {'thread_id': private.error_thread_id, 'emoji': '🔴🔴'},
+    }
+    emoji = report_level.get(level, {}).get('emoji', '🔵')
+    thread_id = report_level.get(level, {}).get('thread_id', private.info_thread_id)
+    message = f"{emoji} Report {level.replace('_', ' ')} {fun_name}\n\n{msg}"
+
+    if user_table:
+        message += (
+            "\n\n👤 User Info:"
+            f"\nUser name: {user_table.first_name} {user_table.last_name}"
+            f"\nUser ID: {user_table.chat_id}"
+            f"\nUsername: @{user_table.username}"
+        )
+
+    await HandleErrors.report_to_admin(message, thread_id)
+
+
+async def report_to_user(level, user_id, msg):
+    report_level = {
+        'success': '🟢',
+        'info': '🔵',
+        'warning': '🟡',
+        'error': '🔴',
+    }
+    emoji = report_level.get(level, '🔵')
+    message = emoji + msg
+
+    requests.post(url=telegram_bot_url, json={'chat_id': user_id, 'text': message})
+
 
 class MessageToken:
     message_timer = {}
@@ -178,6 +168,7 @@ class MessageToken:
                     ]
                     new_message = await context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=InlineKeyboardMarkup(main_keyboard), parse_mode='html')
                     await query.answer(await ft_instance.find_keyboard('message_expierd_send_new_message'))
+
                     del cls.message_timer[message_id]
                     cls.set_message_time(new_message.message_id)
                 else:
@@ -188,6 +179,21 @@ class MessageToken:
                 return await func(update, context, **kwargs)
 
         return wrapper
+
+class FakeContext:
+    user_data = {}
+
+    class bot:
+        @staticmethod
+        async def send_message(chat_id, text):
+            url = f"https://api.telegram.org/bot{private.telegram_bot_token}/sendMessage"
+            json_data = {'chat_id': chat_id, 'text': text}
+            requests.post(url=url, json=json_data)
+        @staticmethod
+        async def send_photo(chat_id, text, caption, reply_markup, parse_mode):
+            url = f"https://api.telegram.org/bot{private.telegram_bot_token}/SendPhoto"
+            json_data = {'chat_id': chat_id, 'text': text, 'caption': caption, 'reply_markup':reply_markup, 'parse_mode': parse_mode}
+            requests.post(url=url, json=json_data)
 
 handle_error = HandleErrors()
 message_token = MessageToken()

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>پرداخت ناموفق</title>
+    <title>{{ translation["payment_failed_title"] }}</title>
     <style>
         body {
             font-family: 'IRANSans', sans-serif;
@@ -46,13 +46,13 @@
 </head>
 <body>
     <div class="container">
-        <h1>پرداخت شما ناموفق بود</h1>
-        <p>متاسفانه پرداخت شما با خطا مواجه شد. دلیل خطا:</p>
+        <h1>{{ translation["payment_failed"] }}</h1>
+        <p>{{ translation["payment_failed_body"] }}</p>
         <ul>
-            <li>{{ error_reason }} | کد خطا: {{ error_code }}</li>
+            <li>{{ translation[error_code] }} | {{ translation["error_code_lable"] }}: {{ error_code }}</li>
         </ul>
-        <p>اگر فکر میکنید مشکلی وجود دارد، لطفا از طریق ربات با پشتیبانی در ارتباط باشید.</p>
-        <a href="https://t.me/Fensor_Bot">بازگشت به ربات</a>
+        <p>{{ translation["extra_text"] }}</p>
+        <a href="https://t.me/Fensor_Bot">{{ translation["back_to_bot"] }}</a>
     </div>
 </body>
 </html>

@@ -7,11 +7,11 @@ import private, crud
 
 @handle_error.handle_functions_error
 async def vpn_main_menu(update, context):
-    user = update.effective_chat
+    user_data = update.effective_chat
     ft_instance = FindText(update, context, notify_user=False)
 
     with SessionLocal() as session:
-        user = crud.get_user(session, user.id)
+        user = crud.get_user(session, user_data.id)
 
         keyboard = [
             [InlineKeyboardButton(await ft_instance.find_keyboard('vpn_buy_vpn'), callback_data='vpn_set_period_traffic__30_40')],
@@ -29,7 +29,7 @@ async def vpn_main_menu(update, context):
             text = await ft_instance.find_keyboard('not_enogh_rank')
             keyboard = [[InlineKeyboardButton(await ft_instance.find_keyboard('back_button'), callback_data='menu_services')]]
 
-        if update.callback_query:
+        if update.callback_query and update.callback_query.data != 'vpn_main_menu_new':
             return await update.callback_query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
-        await context.bot.send_message(chat_id=user.id, text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
+        await context.bot.send_message(chat_id=user_data.id, text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 

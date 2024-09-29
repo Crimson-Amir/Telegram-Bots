@@ -1,14 +1,13 @@
 import logging, sys, crud
 from utilities_reFactore import FindText, UserNotFound, handle_error, message_token
-from models_sqlalchemy import Base
-from database_sqlalchemy import engine, SessionLocal
+from database_sqlalchemy import SessionLocal
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler
 import private, wallet_reFactore
 from vpn_service import start as vpn_start, buy_and_upgrade_service
 
 
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 
 logging.basicConfig(
     level=logging.ERROR,
@@ -126,10 +125,12 @@ if __name__ == '__main__':
     application.add_handler(CallbackQueryHandler(wallet_reFactore.financial_transactions_wallet, pattern='financial_transactions_wallet'))
     application.add_handler(CallbackQueryHandler(wallet_reFactore.buy_credit_volume, pattern='buy_credit_volume'))
     application.add_handler(CallbackQueryHandler(wallet_reFactore.create_invoice, pattern='create_invoice__(.*)'))
+    application.add_handler(CallbackQueryHandler(wallet_reFactore.pay_by_zarinpal, pattern='pay_by_zarinpal__(.*)'))
 
     # VPN Section
     application.add_handler(CallbackQueryHandler(vpn_start.vpn_main_menu, pattern='vpn_main_menu'))
     application.add_handler(CallbackQueryHandler(buy_and_upgrade_service.buy_custom_service, pattern='vpn_set_period_traffic__(.*)'))
+
 
 
     application.run_polling()

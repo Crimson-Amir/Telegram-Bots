@@ -127,19 +127,18 @@ class XuiApiClean:
         inb = self.make_request('post', f'{protocol}{domain}:{PORT}/panel/api/inbounds/createbackup', domain=domain)
         return inb
 
-    def get_client_url(self, client_email, inbound_id, domain=None, header_type="http", host="ponisha.ir", default_config_schematic=None, server_domain=None):
+    def get_client_url(self, client_email, inbound_id, domain, header_type="http", host="ponisha.ir", default_config_schematic=None, server_domain=None, remark=None):
         if not default_config_schematic:
-            default_config_schematic = "vless://{}@{}:{}?security=none&host={}&headerType={}&type={}#{} {}"
+            default_config_schematic = "vless://{}@{}:{}?security=none&host={}&headerType={}&type={}#{}"
         get_in = self.get_inbound(inbound_id, server_domain)
-        domain = domain or 'human.ggkala.shop'
         if get_in['success']:
             port = get_in['obj']['port']
-            remark = get_in['obj']['remark']
+            remark = remark or get_in['obj']['remark']
             client_list = json.loads(get_in['obj']['settings'])['clients']
             network = json.loads(get_in['obj']['streamSettings'])['network']
             for client in client_list:
                 if client['email'] == client_email:
-                    final_shematic = default_config_schematic.format(client['id'], domain, port, host, header_type, network, remark, client['email'])
+                    final_shematic = default_config_schematic.format(client['id'], domain, port, host, header_type, network, remark)
                     print(final_shematic)
                     return final_shematic
 

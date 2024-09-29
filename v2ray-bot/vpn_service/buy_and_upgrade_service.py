@@ -1,3 +1,4 @@
+import random
 from _datetime import datetime, timedelta
 import pytz, uuid, sys, os, logging, json, hashlib, qrcode
 from io import BytesIO
@@ -47,21 +48,24 @@ async def buy_custom_service(update, context):
         return await query.answer(await ft_instance.find_text('error_message'))
 
 
-async def create_service_in_servers(session, purchased_id: int):
-    get_purchased = vpn_crud.get_purchased(session, purchased_id)
+async def create_service_in_servers(session, purchase_id: int):
+    get_purchase = vpn_crud.get_purchase(session, purchase_id)
+
+    if not get_purchase:
+        raise ValueError('Purchase is empty!')
+
     client_id = uuid.uuid4().hex
-    inbound_id = 1
+    inbound_id = random.choice(get_purchase.product.inbound_id)
     token = hashlib.sha256(f'{client_id}.{inbound_id}'.encode()).hexdigest()[:8]
+    client_email = f"{get_purchase.purchase_id}_{token}"
     client_addresses = ''
-    client_email = client_id
 
-    for server in get_purchased.product.server_associations:
+    for server in get_purchase.product.server_associations:
         server_address = server.server.server_ip
-        print(server_address)
 
-        traffic_to_byte = int(get_purchased.traffic * (1024 ** 3))
+        traffic_to_byte = int(get_purchase.traffic * (1024 ** 3))
         now = datetime.now(pytz.timezone('Asia/Tehran'))
-        expiration_in_day = now + timedelta(days=get_purchased.period)
+        expiration_in_day = now + timedelta(days=get_purchase.period)
         time_to_ms = int(expiration_in_day.timestamp() * 1000)
 
         data = {
@@ -77,15 +81,29 @@ async def create_service_in_servers(session, purchased_id: int):
         if not check_servise_available['obj']:
             raise ConnectionRefusedError('client was not create in server!')
 
+        add_server_info = model.ClientServerAssociation(
+            server_id=server.server_id,
+            purchase_id=purchase_id,
+            connected_iran_server_ips=server.server.connected_iran_server_ips
+        )
+
+        session.add(add_server_info)
+
         for iran_server in server.server.connected_iran_server_ips:
-            get_config = api_operation.get_client_url(client_email, inbound_id, domain=iran_server, server_domain=server_address,
-                                                    host=get_purchased.product.inbound_host, header_type=get_purchased.product.inbound_header_type)
-            client_addresses += f'\n{get_config}'
-            print(get_config)
+
+            get_config = api_operation.get_client_url(
+                client_email, inbound_id,
+                domain=iran_server,
+                server_domain=server_address,
+                host=get_purchase.product.inbound_host,
+                header_type=get_purchase.product.inbound_header_type,
+                remark=server.server.flag + ' ' + server.server.country_name_short
+            )
+            client_addresses += '\n' + get_config
 
     stmt = (
-        slalchemy_update(model.Purchased)
-        .where(model.Purchased.purchased_id == purchased_id)
+        slalchemy_update(model.Purchase)
+        .where(model.Purchase.purchase_id == purchase_id)
         .values(
             inbound_id=inbound_id,
             client_email=client_email,
@@ -97,47 +115,29 @@ async def create_service_in_servers(session, purchased_id: int):
         )
     )
     session.execute(stmt)
-    session.refresh(get_purchased)
-    return get_purchased
+    session.refresh(get_purchase)
+    return get_purchase
 
 
-async def create_service_for_user(context, purchased_id: int):
-    with SessionLocal() as session:
-        with session.begin():
-            get_purchased = await create_service_in_servers(session, purchased_id)
-            class Update:
-                class effective_chat: id = get_purchased.chat_id
+async def create_service_for_user(update, context, session, purchase_id: int):
+        get_purchase = await create_service_in_servers(session, purchase_id)
 
-            update = Update()
+        ft_instance = FindText(update, context)
+        sub_link = get_purchase.product.sub_web_app_endpoint + get_purchase.token
 
-            ft_instance = FindText(update, context)
+        qr_code = qrcode.QRCode(version=1,error_correction=qrcode.constants.ERROR_CORRECT_L,box_size=10,border=4)
+        qr_code.add_data(sub_link)
+        qr_code.make(fit=True)
+        qr_image = qr_code.make_image(fill='black', back_color='white')
+        buffer = BytesIO()
+        qr_image.save(buffer)
+        binary_data = buffer.getvalue()
 
-            sub_link = get_purchased.product.sub_web_app_endpoint + get_purchased.token
+        keyboard = [[InlineKeyboardButton(await ft_instance.find_keyboard('vpn_my_service'), callback_data=f"vpn_my_service")],
+                    [InlineKeyboardButton(await ft_instance.find_keyboard('bot_main_menu'), callback_data=f"vpn_main_menu")]]
 
-            qr_code = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=10,
-                border=4,
-            )
-            qr_code.add_data(sub_link)
-            qr_code.make(fit=True)
-            qr_image = qr_code.make_image(fill='black', back_color='white')
-            buffer = BytesIO()
-            qr_image.save(buffer)
-            binary_data = buffer.getvalue()
-
-            keyboard = [[InlineKeyboardButton(await ft_instance.find_keyboard('vpn_my_service'), callback_data=f"vpn_my_service")],
-                        [InlineKeyboardButton(await ft_instance.find_keyboard('bot_main_menu'), callback_data=f"vpn_main_menu")]]
-
-            await context.bot.send_photo(photo=binary_data,
-                                   caption=await ft_instance.find_text('vpn_service_activated') + f'\n\n{sub_link}',
-                                   chat_id=get_purchased.chat_id, reply_markup=InlineKeyboardMarkup(keyboard),
-                                   parse_mode='html')
-
-            stmt = (
-                slalchemy_update(model.FinancialReport)
-                .where(model.FinancialReport.service_id == purchased_id)
-                .values(active=True)
-            )
-            session.execute(stmt)
+        await context.bot.send_photo(photo=binary_data,
+                                     caption=await ft_instance.find_text('vpn_service_activated') + f'\n\n{sub_link}',
+                                     chat_id=get_purchase.chat_id, reply_markup=InlineKeyboardMarkup(keyboard),
+                                     parse_mode='html')
+        return get_purchase

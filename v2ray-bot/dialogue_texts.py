@@ -14,14 +14,6 @@ text_transaction = {
         'en': 'Select the section you want to continue:',
         'fa': 'برای ادامه بخش مورد نظر خودتان را انتخاب کنید:'
     },
-    'operation_successfull': {
-        'en': 'The operation successful✅',
-        'fa': 'عملیات با موفقیت انجام شد✅'
-    },
-    'operation_failed': {
-        'en': 'The operation failed❌',
-        'fa': 'عملیات شسکت خورد❌'
-    },
     'message_expierd_send_new_message': {
         'en': 'The message has expired! The new menu has been sent to you.',
         'fa': 'پیام منقضی شده است! منو جدید برای شما ارسال شد'
@@ -94,7 +86,22 @@ text_transaction = {
         'en': 'Period:',
         'fa': '• دوره زمانی:'
     },
-
+    'zarinpal_payment_getway_title': {
+        'en': '• Redirect to payment page',
+        'fa': '• هدایت به صفحه پرداخت'
+    },
+    'zarinpal_payment_getway_body': {
+        'en': 'By clicking the button below, you will be transferred to the payment page. Please be patient until the end of the payment process and the server response and do not close the page.',
+        'fa': 'با کلیک روی دکمه پایین به صفحه پرداخت منتقل میشوید. لطفاً تا پایان فرآیند پرداخت صبور باشید و از بستن صفحه خودداری کنید.'
+    },
+    'zarinpal_payment_getway_tail': {
+        'en': '• After completing the payment, the operation will be done automatically.',
+        'fa': '• پس از تکمیل پرداخت، عملیات به صورت اتوماتیک انجام خواهد شد.'
+    },
+    'amount_added_to_wallet_successfully': {
+        'en': 'The amount of {0} IRT has been successfully added to your wallet✅',
+        'fa': 'مبلغ {0} تومان با موفقیت به کیف پول شما اضافه شد✅'
+    },
 
 }
 
@@ -175,6 +182,15 @@ keyboard_transaction = {
         'en': 'Not enoght rank to view this!',
         'fa': 'رتبه شما برای دیدن این قسمت کافی نیست!'
     },
+    'login_to_payment_getway': {
+        'en': 'Go to pay ↷',
+        'fa': 'ورود به درگاه ↶'
+    },
+    'fail_to_create_payment_getway': {
+        'en': 'Failed to create payment getway!',
+        'fa': 'ساخت درگاه پرداخت موفقیت آمیز نبود!'
+    },
+
 }
 
 text_transaction.update(vpn_service_dialogues.text_transaction)

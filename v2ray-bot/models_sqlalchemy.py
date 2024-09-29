@@ -10,7 +10,7 @@ class UserDetail(Base):
     user_level = Column(Integer, default=1)
     status = Column(String, default="active")
     email = Column(String, unique=True, default=None)
-    phone_number = Column(BigInteger, unique=True, default=None)
+    phone_number = Column(String, unique=True, default=None)
     first_name = Column(String)
     last_name = Column(String)
     username = Column(String, unique=True)
@@ -29,18 +29,27 @@ class UserDetail(Base):
     register_date = Column(DateTime, default=datetime.now())
 
     financial_reports = relationship("FinancialReport", back_populates="owner")
-    services = relationship("Purchased", back_populates="owner")
+    services = relationship("Purchase", back_populates="owner")
 
 
 class FinancialReport(Base):
     __tablename__ = 'FinancialReport'
 
-    financial_id = Column(Integer, primary_key=True)
     active = Column(Boolean, default=False)
+    financial_id = Column(Integer, primary_key=True)
     operation = Column(String, default='spend')
-    value = Column(Integer)
-    action = Column(String)
-    service_id = Column(Integer)
+
+    amount = Column(Integer, nullable=False)
+    action = Column(String, nullable=False)
+    id_holder = Column(Integer, nullable=False)
+
+    payment_getway = Column(String)
+    authority = Column(String)
+    currency = Column(String)
+    url_callback = Column(String)
+    additional_data = Column(String)
+    payment_status = Column(String)
+
     register_date = Column(DateTime, default=datetime.now())
 
     chat_id = Column(BigInteger, ForeignKey('UserDetail.chat_id'))
@@ -53,24 +62,38 @@ class Server(Base):
     active = Column(Boolean)
 
     server_ip = Column(String)
-    # server_protocol = Column(String)
+    server_protocol = Column(String)
     server_port = Column(Integer)
     server_user_name = Column(String)
     server_password = Column(String)
 
-    country = Column(String)
+    country_name = Column(String)
+    country_name_short = Column(String)
     flag = Column(String)
     connected_iran_server_ips = Column(ARRAY(String))
 
-    product_associations = relationship("ServerProductAssociations", back_populates="server", cascade="all, delete-orphan")
+    product_associations = relationship("ProductServerAssociations", back_populates="server", cascade="all, delete-orphan")
+    client_server_association = relationship("ClientServerAssociation", back_populates="server", cascade="all, delete-orphan")
 
-class ServerProductAssociations(Base):
-    __tablename__ = 'ServerProductAssociations'
+class ProductServerAssociations(Base):
+    __tablename__ = 'ProductServerAssociations'
     server_id = Column(Integer, ForeignKey('Server.server_id'), primary_key=True)
     product_id = Column(Integer, ForeignKey('Product.product_id', ondelete='CASCADE'), primary_key=True)
 
     product = relationship("Product", back_populates="server_associations")
     server = relationship("Server", back_populates="product_associations")
+
+
+class ClientServerAssociation(Base):
+    __tablename__ = 'ClientServerAssociation'
+
+    server_id = Column(Integer, ForeignKey('Server.server_id'), primary_key=True)
+    purchase_id = Column(Integer, ForeignKey('Purchase.purchase_id'), primary_key=True)
+    connected_iran_server_ips = Column(ARRAY(String))
+
+    purchase = relationship("Purchase", back_populates="connected_server_associations")
+    server = relationship("Server", back_populates="client_server_association")
+
 
 class Product(Base):
     __tablename__ = 'Product'
@@ -80,43 +103,38 @@ class Product(Base):
     active = Column(Boolean)
     product_name = Column(String)
 
-    vpn_server = Column(JSON) # {1.1.1.1: [human.ggkala.shop, service.freebyte.click], 2.2.2.2: [human.ggkala.shop, service.freebyte.click], 2.2.3.2: [human.ggkala.shop, service.freebyte.click]}
     sub_web_app_endpoint = Column(String)
 
     inbound_host = Column(String)
     inbound_header_type = Column(String)
 
     register_date = Column(DateTime, default=datetime.now())
-    purchaseds = relationship("Purchased", back_populates="product")
+    purchase = relationship("Purchase", back_populates="product")
 
-    server_associations = relationship("ServerProductAssociations", back_populates="product", cascade="all, delete-orphan")
+    server_associations = relationship("ProductServerAssociations", back_populates="product", cascade="all, delete-orphan")
 
 
-class Purchased(Base):
-    __tablename__ = 'Purchased'
+class Purchase(Base):
+    __tablename__ = 'Purchase'
 
-    purchased_id = Column(Integer, primary_key=True)
+    purchase_id = Column(Integer, primary_key=True)
     active = Column(Boolean)
-
     inbound_id = Column(Integer)
-
     client_email = Column(String)
     client_id = Column(String)
     traffic = Column(Integer)
     period = Column(Integer)
-
     notif_day = Column(Boolean, default=False)
     notif_gb = Column(Boolean, default=False)
     auto_renewal = Column(Boolean, default=False)
-
     token = Column(String)
-    vpn_server = Column(ARRAY(String))
+    vpn_server = Column(JSON)
     client_addresses = Column(String)
-
     product_id = Column(Integer, ForeignKey('Product.product_id'))
-    product = relationship("Product", back_populates="purchaseds")
+    product = relationship("Product", back_populates="purchase")
 
     chat_id = Column(BigInteger, ForeignKey('UserDetail.chat_id'))
     owner = relationship("UserDetail", back_populates="services")
 
+    connected_server_associations = relationship("ClientServerAssociation", back_populates="purchase", cascade="all, delete-orphan")
     register_date = Column(DateTime, default=datetime.now())

@@ -5,6 +5,11 @@ from sqlalchemy import update, func, desc
 def get_user(session, chat_id):
     return session.query(model.UserDetail).filter_by(chat_id=chat_id).first()
 
+def get_financial_report_by_id(session, financial_id):
+    return session.query(model.FinancialReport).where(model.FinancialReport.financial_id == financial_id).first()
+
+def get_financial_report_by_authority(session, authority):
+    return session.query(model.FinancialReport).where(model.FinancialReport.authority == authority).first()
 
 def get_financial_reports(session, chat_id, limit=5):
     return (session.query(model.FinancialReport).where(model.FinancialReport.active == True).
@@ -40,21 +45,28 @@ def add_financial_report(session, user_id: int, credit, operation, action, activ
         session.add(record)
     return record
 
-def add_credit_to_wallet(user_id: int, credit, operation, action, service_id=None):
-    with SessionLocal() as session:
-        with session.begin():
-            stmt = (
-                update(model.UserDetail)
-                .where(model.UserDetail.chat_id == user_id)
-                .values(
-                    wallet=func.coalesce(model.UserDetail.wallet, 0) + credit,
-                    notif_wallet=0,
-                    notif_low_wallet=0
-                )
-            )
-            record = model.FinancialReport(operation=operation, value=credit, chat_id=user_id, action=action, service_id=service_id, active=True)
-            session.add(record)
-            session.execute(stmt)
+def add_credit_to_wallet(session, financial_db, payment_status='paid'):
+    user_id: int = financial_db.owner.chat_id
+    financial_id: int = financial_db.financial_id
+
+    stmt = (
+        update(model.UserDetail)
+        .where(model.UserDetail.chat_id == user_id)
+        .values(
+            wallet=func.coalesce(model.UserDetail.wallet, 0) + financial_db.amount,
+            notif_wallet=0,
+            notif_low_wallet=0
+        )
+    )
+    stmt_2 = (
+        update(model.FinancialReport)
+        .where(model.FinancialReport.financial_id == financial_id)
+        .values(
+            payment_status=payment_status
+        )
+    )
+    session.execute(stmt)
+    session.execute(stmt_2)
 
 def less_from_wallet(user_id: int, credit, operation, action, service_id=None):
     with SessionLocal() as session:
@@ -71,3 +83,19 @@ def less_from_wallet(user_id: int, credit, operation, action, service_id=None):
             record = model.FinancialReport(operation=operation, value=credit, chat_id=user_id, action=action, service_id=service_id, active=True)
             session.add(record)
             session.execute(stmt)
+
+
+def update_financial_report(session, financial_id: int, payment_getway, authority, currency, url_callback, additional_data=None):
+    stmt = (
+        update(model.FinancialReport)
+        .where(model.FinancialReport.financial_id == financial_id)
+        .values(
+            payment_getway=payment_getway,
+            authority=authority,
+            currency=currency,
+            url_callback=url_callback,
+            additional_data=additional_data
+        )
+    )
+
+    session.execute(stmt)

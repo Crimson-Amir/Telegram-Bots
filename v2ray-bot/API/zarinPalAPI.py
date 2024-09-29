@@ -1,9 +1,11 @@
 import asyncio
+import json
+
 import aiohttp
 
 class ZarinPal:
-    def __init__(self, merchent_id: str):
-        self._merchent_id = merchent_id
+    def __init__(self, merchant_id: str):
+        self._merchant_id = merchant_id
 
 class SendRequest:
     @staticmethod
@@ -18,7 +20,7 @@ class InformationData:
     amount: int
     currency: str
     description: str
-    callback_url: str
+    url_callback: str
     metadata: str
     code: int
     authority: str
@@ -41,7 +43,7 @@ class SendInformation(ZarinPal):
             information_data_instance.amount = data.get('amount', '')
             information_data_instance.currency = data.get('currency', '')
             information_data_instance.description = data.get('description', '')
-            information_data_instance.callback_url = data.get('callback_url', '')
+            information_data_instance.url_callback = data.get('callback_url', '')
             information_data_instance.metadata = data.get('metadata', '')
 
             return information_data_instance
@@ -49,7 +51,8 @@ class SendInformation(ZarinPal):
     async def execute(self, **kwargs):
         url = 'https://payment.zarinpal.com/pg/v4/payment/request.json'
         make_request = SendRequest()
-        kwargs.setdefault('merchant_id', self._merchent_id)
+
+        kwargs.setdefault('merchant_id', self._merchant_id)
         response = await make_request.send_request('post', url, json=kwargs)
         if response:
             return await self.analysis_information_data(response, kwargs)
