@@ -34,16 +34,6 @@ def create_user(user_detail, inviter_user_id, selected_language):
             session.add(user)
 
 
-def clear_wallet_notification(user_id: int):
-    with SessionLocal() as session:
-        with session.begin():
-            stmt = (
-                update(model.UserDetail)
-                .where(model.UserDetail.chat_id == user_id)
-                .values(notif_wallet=0, notif_low_wallet=0)
-            )
-            session.execute(stmt)
-
 def add_credit_to_wallet(session, financial_db, payment_status='paid'):
     user_id: int = financial_db.owner.chat_id
 
@@ -51,9 +41,7 @@ def add_credit_to_wallet(session, financial_db, payment_status='paid'):
         update(model.UserDetail)
         .where(model.UserDetail.chat_id == user_id)
         .values(
-            wallet=func.coalesce(model.UserDetail.wallet, 0) + financial_db.amount,
-            notif_wallet=0,
-            notif_low_wallet=0
+            wallet=func.coalesce(model.UserDetail.wallet, 0) + financial_db.amount
         )
     )
     session.execute(stmt)
@@ -72,8 +60,6 @@ def add_credit_to_wallet(session, financial_db, payment_status='paid'):
         logging.error(f'error in update financial_report in refund section! {e}')
 
 
-
-
 def less_from_wallet(user_id: int, credit, operation, action, service_id=None):
     with SessionLocal() as session:
         with session.begin():
@@ -81,9 +67,7 @@ def less_from_wallet(user_id: int, credit, operation, action, service_id=None):
                 update(model.UserDetail)
                 .where(model.UserDetail.chat_id == user_id)
                 .values(
-                    wallet=func.coalesce(model.UserDetail.wallet, 0) - credit,
-                    notif_wallet=0,
-                    notif_low_wallet=0
+                    wallet=func.coalesce(model.UserDetail.wallet, 0) - credit
                 )
             )
             record = model.FinancialReport(operation=operation, value=credit, chat_id=user_id, action=action, service_id=service_id)

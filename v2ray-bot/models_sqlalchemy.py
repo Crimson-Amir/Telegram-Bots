@@ -21,11 +21,10 @@ class UserDetail(Base):
     free_service = Column(Boolean, default=False)
     notification_gb = Column(Integer, default=85)
     notification_day = Column(Integer, default=3)
+
     wallet = Column(Integer, default=0)
-    notification_wallet = Column(Integer, default=5000)
-    notif_wallet = Column(Integer, default=0)
-    notif_low_wallet = Column(Integer, default=0)
-    invited_by = Column(Integer, nullable=True, default=None)
+    invited_by = Column(BigInteger, ForeignKey('UserDetail.chat_id'))
+
     register_date = Column(DateTime, default=datetime.now())
 
     financial_reports = relationship("FinancialReport", back_populates="owner")
@@ -55,6 +54,17 @@ class FinancialReport(Base):
     owner = relationship("UserDetail", back_populates="financial_reports")
 
 
+class MainServer(Base):
+    __tablename__ = 'MainServer'
+    server_id = Column(Integer, primary_key=True)
+    active = Column(Boolean)
+    server_ip = Column(String)
+    server_protocol = Column(Integer)
+    server_port = Column(Integer)
+    server_username = Column(String)
+    server_password = Column(String)
+    products = relationship("Product", back_populates="main_server")
+
 class Product(Base):
     __tablename__ = 'Product'
 
@@ -62,16 +72,13 @@ class Product(Base):
     inbound_id = Column(ARRAY(Integer))
     active = Column(Boolean)
     product_name = Column(String)
-
-    sub_web_app_endpoint = Column(String)
-
     inbound_host = Column(String)
     inbound_header_type = Column(String)
-
     register_date = Column(DateTime, default=datetime.now())
     purchase = relationship("Purchase", back_populates="product")
 
-    # server_associations = relationship("ProductServerAssociations", back_populates="product", cascade="all, delete-orphan")
+    main_server_id = Column(Integer, ForeignKey('MainServer.server_id'))
+    main_server = relationship("MainServer", back_populates="products")
 
 
 class Purchase(Base):

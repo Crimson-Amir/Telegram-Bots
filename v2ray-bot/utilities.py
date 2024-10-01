@@ -5,7 +5,7 @@ from private import *
 import requests
 from ranking import rank_emojis, rank_title_fa, rank_access
 from sqlite_manager import ManageDb
-from vpn_service.api_clean import XuiApiClean
+from vpn_service.panel_api import XuiApiClean
 from ranking import RankManage
 from wallet import WalletManage
 
