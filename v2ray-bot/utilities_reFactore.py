@@ -1,14 +1,35 @@
 import datetime
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from database_sqlalchemy import SessionLocal
-import private
+import private, logging, traceback
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from dialogue_texts import text_transaction, keyboard_transaction
-from private import default_language, telegram_bot_url, ADMIN_CHAT_IDs
+from private import default_language, ADMIN_CHAT_IDs, telegram_bot_token
 import crud, functools, requests
-from telegram.ext import ConversationHandler
 
 class UserNotFound(Exception):
     def __init__(self): super().__init__("user was't register in bot!")
+
+
+async def start(update, context):
+    user_detail = update.effective_chat
+
+    try:
+        ft_instance = FindText(update, context, notify_user=False)
+        text = await ft_instance.find_text('start_menu')
+        main_keyboard = [
+            [InlineKeyboardButton(await ft_instance.find_keyboard('menu_services'), callback_data='menu_services')],
+            [InlineKeyboardButton(await ft_instance.find_keyboard('wallet'), callback_data='wallet_page'),
+             InlineKeyboardButton(await ft_instance.find_keyboard('ranking'), callback_data='ranking')],
+            [InlineKeyboardButton(await ft_instance.find_keyboard('setting'), callback_data='setting'),
+             InlineKeyboardButton(await ft_instance.find_keyboard('invite'), callback_data='invite')],
+            [InlineKeyboardButton(await ft_instance.find_keyboard('help_button'), callback_data='help_button')],
+        ]
+        return await context.bot.send_message(chat_id=user_detail.id, text=text, reply_markup=InlineKeyboardMarkup(main_keyboard), parse_mode='html')
+
+    except Exception as e:
+        logging.error(f'error in send utilities start message! \n{e}')
+        await context.bot.send_message(chat_id=user_detail.id, text='<b>Sorry, somthing went wrong!</b>', parse_mode='html')
+
 
 
 class FindText:
@@ -63,7 +84,6 @@ class FindText:
         return await self.language_transaction(text_key, user_language, section=section)
 
 class HandleErrors:
-    err_msg = "🔴 An error occurred in {}:\n{}\nerror type: {}\nuser chat id: {}"
     def handle_functions_error(self, func):
         @functools.wraps(func)
         async def wrapper(update, context, **kwargs):
@@ -72,17 +92,31 @@ class HandleErrors:
                 return await func(update, context, **kwargs)
             except Exception as e:
                 if 'Message is not modified' in str(e): return await update.callback_query.answer()
-                err = self.err_msg.format(func.__name__, str(e), type(e), user_detail.id)
+
+                tb = traceback.format_exc()
+                err = (
+                    f"🔴 An error occurred in {func.__name__}:"
+                    f"\n\nerror type:{type(e)}"
+                    f"\nerror reason: {str(e)}"
+                    f"\n\nUser fullname: {user_detail.first_name} {user_detail.last_name}"
+                    f"\nUsername: @{user_detail.username}"
+                    f"\nUser ID: {user_detail.id}"
+                    f"\n\nTraceback: \n{tb}"
+                )
+
                 await self.report_to_admin(err)
-                await self.handle_error_message(update, context)
+                await self.handle_error_message_for_user(update, context)
         return wrapper
 
     @staticmethod
     async def report_to_admin(msg, message_thread_id=private.error_thread_id):
-        requests.post(url=telegram_bot_url, json={'chat_id': ADMIN_CHAT_IDs[0], 'text': msg, 'message_thread_id': message_thread_id})
+        requests.post(
+            url=f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage",
+            json={'chat_id': ADMIN_CHAT_IDs[0], 'text': msg, 'message_thread_id': message_thread_id}
+        )
 
     @staticmethod
-    async def handle_error_message(update, context, message_text=None):
+    async def handle_error_message_for_user(update, context, message_text=None):
         user_id = update.effective_chat.id
         ft_instance = FindText(update, context)
         message_text = message_text if message_text else await ft_instance.find_text('error_message')
@@ -96,8 +130,9 @@ async def report_to_admin(level, fun_name, msg, user_table=None):
         'info': {'thread_id': private.info_thread_id, 'emoji': '🔵'},
         'warning': {'thread_id': private.info_thread_id, 'emoji': '🟡'},
         'error': {'thread_id': private.error_thread_id, 'emoji': '🔴'},
-        'emergecy_error': {'thread_id': private.error_thread_id, 'emoji': '🔴🔴'},
+        'emergency_error': {'thread_id': private.error_thread_id, 'emoji': '🔴🔴'},
     }
+
     emoji = report_level.get(level, {}).get('emoji', '🔵')
     thread_id = report_level.get(level, {}).get('thread_id', private.info_thread_id)
     message = f"{emoji} Report {level.replace('_', ' ')} {fun_name}\n\n{msg}"
@@ -114,16 +149,23 @@ async def report_to_admin(level, fun_name, msg, user_table=None):
 
 
 async def report_to_user(level, user_id, msg):
-    report_level = {
-        'success': '🟢',
-        'info': '🔵',
-        'warning': '🟡',
-        'error': '🔴',
-    }
-    emoji = report_level.get(level, '🔵')
-    message = emoji + msg
+    try:
+        report_level = {
+            'success': '🟢',
+            'info': '🔵',
+            'warning': '🟡',
+            'error': '🔴',
+        }
+        emoji = report_level.get(level, '🔵')
+        message = emoji + msg
 
-    requests.post(url=telegram_bot_url, json={'chat_id': user_id, 'text': message})
+        requests.post(
+            url=f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage",
+            json={'chat_id': user_id, 'text': message}
+        )
+
+    except Exception as e:
+        logging.error(f'error in send message for user!\n{e}')
 
 
 class MessageToken:
@@ -151,24 +193,11 @@ class MessageToken:
             else:
                 return await func(update, context, **kwargs)
 
-            query = update.callback_query
             timer_exist_in_message_timer = cls.message_timer.get(message_id)
 
             if timer_exist_in_message_timer:
                 if cls.message_expierd(message_id):
-                    ft_instance = FindText(update, context, notify_user=False)
-                    text = await ft_instance.find_text('start_menu')
-                    main_keyboard = [
-                        [InlineKeyboardButton(await ft_instance.find_keyboard('menu_services'), callback_data='menu_services')],
-                        [InlineKeyboardButton(await ft_instance.find_keyboard('wallet'), callback_data='wallet_page'),
-                         InlineKeyboardButton(await ft_instance.find_keyboard('ranking'), callback_data='ranking')],
-                        [InlineKeyboardButton(await ft_instance.find_keyboard('setting'), callback_data='setting'),
-                         InlineKeyboardButton(await ft_instance.find_keyboard('invite'), callback_data='invite')],
-                        [InlineKeyboardButton(await ft_instance.find_keyboard('help_button'), callback_data='help_button')],
-                    ]
-                    new_message = await context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=InlineKeyboardMarkup(main_keyboard), parse_mode='html')
-                    await query.answer(await ft_instance.find_keyboard('message_expierd_send_new_message'))
-
+                    new_message = await start(update, context)
                     del cls.message_timer[message_id]
                     cls.set_message_time(new_message.message_id)
                 else:

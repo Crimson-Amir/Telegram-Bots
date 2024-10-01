@@ -1,8 +1,14 @@
 import json, requests, os, sys
-from private import PORT, auth, telegram_bot_url, ADMIN_CHAT_IDs, DOMAIN, protocol, telegram_bot_token
+from private import ADMIN_CHAT_IDs, telegram_bot_token
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from database_sqlalchemy import SessionLocal
 import models_sqlalchemy as model
+
+PORT = 2053
+auth = ''
+telegram_bot_url =  ''
+DOMAIN = 'f'
+protocol = 'http://'
 
 def report_problem_to_admin_witout_context(text, chat_id, error, detail=None):
     text = ("🔴 Report Problem in Bot\n\n"

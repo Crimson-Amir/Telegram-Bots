@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from admin_task import sqlite_manager, ranking_manage
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from utilities import init_name, report_status_to_admin
-from cryptomus import get_teter_price, cryptomusApi
+from API import convert_irt_to_usd
 from tasks import handle_telegram_exceptions, send_clean_for_customer, task, add_credit_to_wallet
 from private import cryptomus_api_key, cryptomus_merchant_id
 import uuid

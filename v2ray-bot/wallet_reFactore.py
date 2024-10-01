@@ -1,10 +1,12 @@
+import json
+import uuid
+
 import crud, arrow, logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import private
 from database_sqlalchemy import SessionLocal
 from utilities_reFactore import FindText, message_token, handle_error
-import models_sqlalchemy as model
-from API import zarinPalAPI
+from API import zarinPalAPI, cryptomusAPI, convert_irt_to_usd
 
 def human_readable(date, user_language):
     get_date = arrow.get(date)
@@ -32,18 +34,17 @@ async def wallet_page(update, context):
     try:
         with SessionLocal() as session:
             get_user = crud.get_user(session, chat_id)
-            get_financial_reports = crud.get_financial_reports(session, chat_id)
+            get_financial_reports = crud.get_financial_reports(session, chat_id, 5, True)
+
+            last_transaction = await ft_instance.find_text('no_transaction_yet')
+            lasts_report = ''
 
             if get_financial_reports:
                 last_transaction = human_readable(f'{get_financial_reports[0].register_date}', await ft_instance.find_user_language())
                 lasts_report = await ft_instance.find_text('recent_transactions')
-                for count, report in enumerate(get_financial_reports):
+                for report in get_financial_reports:
                     lasts_report += f"\n{await ft_instance.find_text('recive_money') if report.operation == 'recive' else
                     await ft_instance.find_text('spend_money')} {report.amount:,} {await ft_instance.find_text('irt')} - {human_readable(report.register_date, await ft_instance.find_user_language())}"
-                    if count == 5: break
-            else:
-                last_transaction = await ft_instance.find_text('no_transaction_yet')
-                lasts_report = ''
 
             keyboard = [
                 [InlineKeyboardButton(await ft_instance.find_keyboard('refresh'), callback_data='wallet_page'),
@@ -69,7 +70,7 @@ async def wallet_page(update, context):
 
 async def financial_transactions_wallet(update, context):
     query = update.callback_query
-    chat_id = query.message.chat_id
+    chat_id = update.effective_chat.id
     ft_instance = FindText(update, context)
 
     try:
@@ -124,9 +125,9 @@ async def buy_credit_volume(update, context):
 @message_token.check_token
 async def create_invoice(update, context):
     query = update.callback_query
-    chat_id = query.message.chat_id
+    chat_id = update.effective_chat.id
     ft_instance = FindText(update, context)
-    wallet_pay = True
+    pay_by_wallet = True
     service_id = None
     action, *extra_data = query.data.replace('create_invoice__', '').split('__')
 
@@ -134,61 +135,44 @@ async def create_invoice(update, context):
         with session.begin():
 
             if action == "increase_wallet_balance":
-                wallet_pay = False
-                credit = int(extra_data[0])
+                pay_by_wallet = False
+                amount = int(extra_data[0])
                 operation = 'recive'
                 back_button_callback = 'buy_credit_volume'
                 invoice_extra_data = await ft_instance.find_text('charge_wallet')
 
             elif action == "buy_vpn_service":
                 period, traffic = extra_data
-                credit = (int(traffic) * private.PRICE_PER_GB) + (int(period) * private.PRICE_PER_DAY)
+                amount = (int(traffic) * private.PRICE_PER_GB) + (int(period) * private.PRICE_PER_DAY)
                 product_id, back_button_callback= 1, 'vpn_set_period_traffic__30_40'
                 operation = 'spend'
                 invoice_extra_data = (f"{await ft_instance.find_text('charge_wallet')}"
                                       f"\n{await ft_instance.find_text('traffic')} {traffic} {await ft_instance.find_keyboard('gb_lable')}"
                                       f"\n{await ft_instance.find_text('period')} {period} {await ft_instance.find_keyboard('day_lable')}")
 
-                purchase = model.Purchase(
-                    active=False,
-                    product_id=product_id,
-                    chat_id=chat_id,
-                    traffic=int(traffic),
-                    period=int(period)
-                )
-                session.add(purchase)
-                session.flush()
+                purchase = crud.creatcreate_purchase(session, product_id, chat_id, traffic, period)
                 service_id = purchase.purchase_id
 
-            package = model.FinancialReport(
-                operation=operation,
-                amount=credit,
-                chat_id=chat_id,
-                action=action,
-                id_holder=service_id,
-                active=True,
-                payment_status='not paid'
-            )
-
-            session.add(package)
-            session.flush()
+            finacial_report = crud.create_financial_report(session, operation, chat_id, amount, action, service_id, 'not paid')
 
             keyboard = [
-                [InlineKeyboardButton(await ft_instance.find_keyboard('iran_payment_getway'), callback_data=f"pay_by_zarinpal__{action}__{package.financial_id}")],
-                [InlineKeyboardButton(await ft_instance.find_keyboard('pay_with_wallet_balance'), callback_data=f"pay_by_wallet__{action}__{package.financial_id}") if wallet_pay else [],
-                 InlineKeyboardButton(await ft_instance.find_keyboard('cryptomus_payment_getway'), callback_data=f"pay_by_cryptomus__{action}__{package.financial_id}")],
+                [InlineKeyboardButton(await ft_instance.find_keyboard('iran_payment_getway'), callback_data=f"pay_by_zarinpal__{action}__{finacial_report.financial_id}")],
+                [InlineKeyboardButton(await ft_instance.find_keyboard('pay_with_wallet_balance'), callback_data=f"pay_by_wallet__{action}__{finacial_report.financial_id}") if pay_by_wallet else [],
+                 InlineKeyboardButton(await ft_instance.find_keyboard('cryptomus_payment_getway'), callback_data=f"pay_by_cryptomus__{action}__{finacial_report.financial_id}")],
                 [InlineKeyboardButton(await ft_instance.find_keyboard('back_button'), callback_data=back_button_callback)],
             ]
             keyboard = [list(filter(None, row)) for row in keyboard]
 
             text = (f"<b>{await ft_instance.find_text('invoice_title')}"
-                    f"\n\n{await ft_instance.find_text('price')} {credit:,} {await ft_instance.find_text('irt')}"
+                    f"\n\n{await ft_instance.find_text('price')} {amount:,} {await ft_instance.find_text('irt')}"
                     f"\n\n{await ft_instance.find_text('invoice_extra_data')}\n{invoice_extra_data}"
                     f"\n\n{await ft_instance.find_text('payment_option_title')}</b>")
 
             await query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
 
 
+@handle_error.handle_functions_error
+@message_token.check_token
 async def pay_by_zarinpal(update, context):
     query = update.callback_query
     ft_instance = FindText(update, context)
@@ -197,12 +181,11 @@ async def pay_by_zarinpal(update, context):
     with SessionLocal() as session:
         with session.begin():
             get_financial = crud.get_financial_report_by_id(session, financial_id)
-            print(get_financial.owner.phone_number, get_financial.owner.email)
 
-            instance = zarinPalAPI.SendInformation(private.merchant_id)
+            instance = zarinPalAPI.SendInformation(private.zarinpal_merchant_id)
 
             create_zarinpal_invoice = await instance.execute(
-                merchant_id=private.merchant_id,
+                merchant_id=private.zarinpal_merchant_id,
                 amount=get_financial.amount,
                 currency='IRT',
                 description=action.replace('vpn', 'vps'),
@@ -223,17 +206,73 @@ async def pay_by_zarinpal(update, context):
 
             keyboard = [
                 [InlineKeyboardButton(await ft_instance.find_keyboard('login_to_payment_getway'), url=f'https://payment.zarinpal.com/pg/StartPay/{create_zarinpal_invoice.authority}')],
-                [InlineKeyboardButton(await ft_instance.find_keyboard('back_button'), callback_data="start")]
+                [InlineKeyboardButton(await ft_instance.find_keyboard('back_button'), callback_data="start_in_new_message")]
             ]
 
             text = (
-                f"<b>{await ft_instance.find_text('zarinpal_payment_getway_title')}</b>"
+                f"<b>{await ft_instance.find_text('payment_getway_title')}</b>"
                 f"\n{await ft_instance.find_text('zarinpal_payment_getway_body')}"
-                f"\n\n{await ft_instance.find_text('price')} {get_financial.amount:,} {await ft_instance.find_text('irt')}"
-                f"\n\n<b>{await ft_instance.find_text('zarinpal_payment_getway_tail')}</b>"
+                f"\n\n{await ft_instance.find_text('payment_getway_lable')} {await ft_instance.find_text('zarinpal_lable')}"
+                f"\n{await ft_instance.find_text('price')} {get_financial.amount:,} {await ft_instance.find_text('irt')}"
+                f"\n\n<b>{await ft_instance.find_text('payment_getway_tail')}</b>"
             )
 
             await query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+@handle_error.handle_functions_error
+@message_token.check_token
+async def pay_by_cryptomus(update, context):
+    query = update.callback_query
+    ft_instance = FindText(update, context)
+    action, financial_id = query.data.replace('pay_by_cryptomus__', '').split('__')
+    order_id = uuid.uuid4().hex
+
+    with SessionLocal() as session:
+        with session.begin():
+            get_financial = crud.get_financial_report_by_id(session, financial_id)
+            amount = convert_irt_to_usd.convert_irt_to_usd_by_teter(get_financial.amount)
+
+            instance = cryptomusAPI.CreateInvoice(private.cryptomus_api_key, private.cryptomus_merchant_id)
+            create_cryptomus_invoice = await instance.execute(
+                amount=str(amount),
+                order_id=order_id,
+                lifetime=3600,
+                currency='USD',
+                url_callback=private.cryptomus_url_callback
+            )
+
+            if not create_cryptomus_invoice:
+                return await query.answer(await ft_instance.find_text('fail_to_create_payment_getway'), show_alert=True)
+
+            invoice_link = create_cryptomus_invoice.get('result', {}).get('url')
+            if not invoice_link:
+                return await query.answer(await ft_instance.find_text('fail_to_create_payment_getway'), show_alert=True)
+
+            crud.update_financial_report(
+                session, get_financial.financial_id,
+                payment_getway='cryptomus',
+                authority=order_id,
+                currency='USD',
+                url_callback=private.zarinpal_url_callback,
+                additional_data=json.dumps({'amount_in_usd': amount})
+            )
+
+            keyboard = [
+                [InlineKeyboardButton(await ft_instance.find_keyboard('login_to_payment_getway'), url=invoice_link)],
+                [InlineKeyboardButton(await ft_instance.find_keyboard('back_button'), callback_data="start_in_new_message")]
+            ]
+
+            text = (
+                f"<b>{await ft_instance.find_text('payment_getway_title')}</b>"
+                f"\n{await ft_instance.find_text('cryptomus_payment_getway_body')}"
+                f"\n\n{await ft_instance.find_text('payment_getway_lable')} {await ft_instance.find_text('cryptomus_lable')}"
+                f"\n{await ft_instance.find_text('price')} {amount:,} {await ft_instance.find_text('usd')}"
+                f"\n\n<b>{await ft_instance.find_text('payment_getway_tail')}</b>"
+            )
+
+            await query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
+
 
 async def increase_wallet_balance(update, context, session, financial_id: int):
     get_financial = crud.get_financial_report_by_id(session, financial_id)
@@ -242,6 +281,6 @@ async def increase_wallet_balance(update, context, session, financial_id: int):
 
     crud.add_credit_to_wallet(session, get_financial)
     text = await ft_instance.find_text('amount_added_to_wallet_successfully')
-    text = text.format(get_financial.amount)
+    text = text.format(f"{get_financial.amount:,}")
 
     await context.bot.send_message(text=text, chat_id=get_financial.chat_id)

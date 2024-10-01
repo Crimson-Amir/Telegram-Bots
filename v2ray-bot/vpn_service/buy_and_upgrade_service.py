@@ -6,12 +6,11 @@ from sqlalchemy import update as slalchemy_update
 import models_sqlalchemy as model
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from utilities_reFactore import FindText, message_token, handle_error
-from database_sqlalchemy import SessionLocal
-from vpn_service import vpn_crud, api_clean
-import private, crud
+from utilities_reFactore import FindText, message_token
+from vpn_service import vpn_crud
+import private
 
-api_operation = api_clean.XuiApiClean()
+# api_operation = api_clean.XuiApiClean()
 
 @message_token.check_token
 async def buy_custom_service(update, context):

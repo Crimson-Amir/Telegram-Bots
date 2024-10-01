@@ -34,6 +34,10 @@ text_transaction = {
         'en': 'IRT',
         'fa': 'تومان'
     },
+    'usd': {
+        'en': 'USD',
+        'fa': 'دلار'
+    },
     'no_transaction_yet': {
         'en': 'you have no transactions yet!',
         'fa': 'شما تا به حال تراکنشی نداشتید!'
@@ -86,7 +90,7 @@ text_transaction = {
         'en': 'Period:',
         'fa': '• دوره زمانی:'
     },
-    'zarinpal_payment_getway_title': {
+    'payment_getway_title': {
         'en': '• Redirect to payment page',
         'fa': '• هدایت به صفحه پرداخت'
     },
@@ -94,13 +98,29 @@ text_transaction = {
         'en': 'By clicking the button below, you will be transferred to the payment page. Please be patient until the end of the payment process and the server response and do not close the page.',
         'fa': 'با کلیک روی دکمه پایین به صفحه پرداخت منتقل میشوید. لطفاً تا پایان فرآیند پرداخت صبور باشید و از بستن صفحه خودداری کنید.'
     },
-    'zarinpal_payment_getway_tail': {
+    'payment_getway_tail': {
         'en': '• After completing the payment, the operation will be done automatically.',
         'fa': '• پس از تکمیل پرداخت، عملیات به صورت اتوماتیک انجام خواهد شد.'
     },
+    'cryptomus_payment_getway_body': {
+        'en': 'By clicking the button below, you will be transferred to the payment page. Please be careful about currency and network.',
+        'fa': 'با کلیک روی دکمه پایین به صفحه پرداخت منتقل میشوید. لطفا به ارز و شبکه پراخت دقت کنید.'
+    },
     'amount_added_to_wallet_successfully': {
         'en': 'The amount of {0} IRT has been successfully added to your wallet✅',
-        'fa': 'مبلغ {0} تومان با موفقیت به کیف پول شما اضافه شد✅'
+        'fa': 'مبلغ {0} تومان به کیف پول شما اضافه شد✅'
+    },
+    'payment_getway_lable': {
+        'en': 'Payment Getway:',
+        'fa': 'درگاه پرداخت:'
+    },
+    'zarinpal_lable': {
+        'en': 'ZarinPal',
+        'fa': 'زرین پال'
+    },
+    'cryptomus_lable': {
+        'en': 'Cryptomus',
+        'fa': 'cryptomus'
     },
 
 }

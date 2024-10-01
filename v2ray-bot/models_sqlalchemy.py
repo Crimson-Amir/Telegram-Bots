@@ -1,5 +1,5 @@
 from database_sqlalchemy import Base
-from sqlalchemy import Integer, String, Column, Boolean, ForeignKey, DateTime, BigInteger, ARRAY, JSON
+from sqlalchemy import Integer, String, Column, Boolean, ForeignKey, DateTime, BigInteger, ARRAY
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -35,7 +35,6 @@ class UserDetail(Base):
 class FinancialReport(Base):
     __tablename__ = 'FinancialReport'
 
-    active = Column(Boolean, default=False)
     financial_id = Column(Integer, primary_key=True)
     operation = Column(String, default='spend')
 
@@ -56,45 +55,6 @@ class FinancialReport(Base):
     owner = relationship("UserDetail", back_populates="financial_reports")
 
 
-class Server(Base):
-    __tablename__ = 'Server'
-    server_id = Column(Integer, primary_key=True)
-    active = Column(Boolean)
-
-    server_ip = Column(String)
-    server_protocol = Column(String)
-    server_port = Column(Integer)
-    server_user_name = Column(String)
-    server_password = Column(String)
-
-    country_name = Column(String)
-    country_name_short = Column(String)
-    flag = Column(String)
-    connected_iran_server_ips = Column(ARRAY(String))
-
-    product_associations = relationship("ProductServerAssociations", back_populates="server", cascade="all, delete-orphan")
-    client_server_association = relationship("ClientServerAssociation", back_populates="server", cascade="all, delete-orphan")
-
-class ProductServerAssociations(Base):
-    __tablename__ = 'ProductServerAssociations'
-    server_id = Column(Integer, ForeignKey('Server.server_id'), primary_key=True)
-    product_id = Column(Integer, ForeignKey('Product.product_id', ondelete='CASCADE'), primary_key=True)
-
-    product = relationship("Product", back_populates="server_associations")
-    server = relationship("Server", back_populates="product_associations")
-
-
-class ClientServerAssociation(Base):
-    __tablename__ = 'ClientServerAssociation'
-
-    server_id = Column(Integer, ForeignKey('Server.server_id'), primary_key=True)
-    purchase_id = Column(Integer, ForeignKey('Purchase.purchase_id'), primary_key=True)
-    connected_iran_server_ips = Column(ARRAY(String))
-
-    purchase = relationship("Purchase", back_populates="connected_server_associations")
-    server = relationship("Server", back_populates="client_server_association")
-
-
 class Product(Base):
     __tablename__ = 'Product'
 
@@ -111,7 +71,7 @@ class Product(Base):
     register_date = Column(DateTime, default=datetime.now())
     purchase = relationship("Purchase", back_populates="product")
 
-    server_associations = relationship("ProductServerAssociations", back_populates="product", cascade="all, delete-orphan")
+    # server_associations = relationship("ProductServerAssociations", back_populates="product", cascade="all, delete-orphan")
 
 
 class Purchase(Base):
@@ -128,7 +88,7 @@ class Purchase(Base):
     notif_gb = Column(Boolean, default=False)
     auto_renewal = Column(Boolean, default=False)
     token = Column(String)
-    vpn_server = Column(JSON)
+
     client_addresses = Column(String)
     product_id = Column(Integer, ForeignKey('Product.product_id'))
     product = relationship("Product", back_populates="purchase")
@@ -136,5 +96,4 @@ class Purchase(Base):
     chat_id = Column(BigInteger, ForeignKey('UserDetail.chat_id'))
     owner = relationship("UserDetail", back_populates="services")
 
-    connected_server_associations = relationship("ClientServerAssociation", back_populates="purchase", cascade="all, delete-orphan")
     register_date = Column(DateTime, default=datetime.now())
