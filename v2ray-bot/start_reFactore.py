@@ -2,7 +2,7 @@ import logging, crud
 from utilities_reFactore import FindText, UserNotFound, handle_error, message_token
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-import private
+import setting
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE, in_new_message=False):
     user_detail = update.effective_chat
@@ -58,8 +58,14 @@ async def register_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if photos.total_count > 0:
         photo_file_id = photos.photos[0][-1].file_id
-        await context.bot.send_photo(chat_id=private.ADMIN_CHAT_IDs[0], photo=photo_file_id, caption=start_text_notif, parse_mode='HTML')
+        await context.bot.send_photo(chat_id=setting.ADMIN_CHAT_IDs[0], photo=photo_file_id, caption=start_text_notif, parse_mode='HTML')
     else:
-        await context.bot.send_message(chat_id=private.ADMIN_CHAT_IDs[0], text=start_text_notif + '\n\n• Without profile picture (or not public)', parse_mode='HTML')
+        await context.bot.send_message(chat_id=setting.ADMIN_CHAT_IDs[0], text=start_text_notif + '\n\n• Without profile picture (or not public)', parse_mode='HTML')
 
     return await start(update, context)
+
+
+async def just_for_show(update, context):
+    query = update.callback_query
+    ft_instance = FindText(update, context, notify_user=False)
+    await query.answer(text=await ft_instance.find_text('just_for_show'))

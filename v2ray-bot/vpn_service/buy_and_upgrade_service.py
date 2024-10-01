@@ -8,7 +8,7 @@ from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utilities_reFactore import FindText, message_token
 from vpn_service import vpn_crud
-import private
+import setting
 
 # api_operation = api_clean.XuiApiClean()
 
@@ -22,7 +22,7 @@ async def buy_custom_service(update, context):
         traffic = max(min(int(traffic_callback), 150), 5) or 40
         period = max(min(int(period_callback), 60), 5) or 30
 
-        price = (traffic * private.PRICE_PER_GB) + (period * private.PRICE_PER_DAY)
+        price = (traffic * setting.PRICE_PER_GB) + (period * setting.PRICE_PER_DAY)
         text = '\n' + await ft_instance.find_text('buy_service_title') + "\n\n" + await ft_instance.find_text('price') + f' {price:,} ' + await ft_instance.find_text('irt')
 
         keyboard = [

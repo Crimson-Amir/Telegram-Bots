@@ -122,7 +122,10 @@ text_transaction = {
         'en': 'Cryptomus',
         'fa': 'cryptomus'
     },
-
+    'just_for_show': {
+        'en': 'this button jusr showing info.',
+        'fa': 'این دکمه جهت نمایش دادن اطلاعات است.'
+    },
 }
 
 keyboard_transaction = {

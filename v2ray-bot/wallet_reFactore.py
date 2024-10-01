@@ -3,7 +3,7 @@ import uuid
 
 import crud, arrow, logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-import private
+import setting
 from database_sqlalchemy import SessionLocal
 from utilities_reFactore import FindText, message_token, handle_error
 from API import zarinPalAPI, cryptomusAPI, convert_irt_to_usd
@@ -143,7 +143,7 @@ async def create_invoice(update, context):
 
             elif action == "buy_vpn_service":
                 period, traffic = extra_data
-                amount = (int(traffic) * private.PRICE_PER_GB) + (int(period) * private.PRICE_PER_DAY)
+                amount = (int(traffic) * setting.PRICE_PER_GB) + (int(period) * setting.PRICE_PER_DAY)
                 product_id, back_button_callback= 1, 'vpn_set_period_traffic__30_40'
                 operation = 'spend'
                 invoice_extra_data = (f"{await ft_instance.find_text('charge_wallet')}"
@@ -182,14 +182,14 @@ async def pay_by_zarinpal(update, context):
         with session.begin():
             get_financial = crud.get_financial_report_by_id(session, financial_id)
 
-            instance = zarinPalAPI.SendInformation(private.zarinpal_merchant_id)
+            instance = zarinPalAPI.SendInformation(setting.zarinpal_merchant_id)
 
             create_zarinpal_invoice = await instance.execute(
-                merchant_id=private.zarinpal_merchant_id,
+                merchant_id=setting.zarinpal_merchant_id,
                 amount=get_financial.amount,
                 currency='IRT',
                 description=action.replace('vpn', 'vps'),
-                callback_url=private.zarinpal_url_callback,
+                callback_url=setting.zarinpal_url_callback,
                 metadata={"mobile": str(get_financial.owner.phone_number), "email": get_financial.owner.email}
             )
 
@@ -233,13 +233,13 @@ async def pay_by_cryptomus(update, context):
             get_financial = crud.get_financial_report_by_id(session, financial_id)
             amount = convert_irt_to_usd.convert_irt_to_usd_by_teter(get_financial.amount)
 
-            instance = cryptomusAPI.CreateInvoice(private.cryptomus_api_key, private.cryptomus_merchant_id)
+            instance = cryptomusAPI.CreateInvoice(setting.cryptomus_api_key, setting.cryptomus_merchant_id)
             create_cryptomus_invoice = await instance.execute(
                 amount=str(amount),
                 order_id=order_id,
                 lifetime=3600,
                 currency='USD',
-                url_callback=private.cryptomus_url_callback
+                url_callback=setting.cryptomus_url_callback
             )
 
             if not create_cryptomus_invoice:
@@ -254,7 +254,7 @@ async def pay_by_cryptomus(update, context):
                 payment_getway='cryptomus',
                 authority=order_id,
                 currency='USD',
-                url_callback=private.zarinpal_url_callback,
+                url_callback=setting.zarinpal_url_callback,
                 additional_data=json.dumps({'amount_in_usd': amount})
             )
 

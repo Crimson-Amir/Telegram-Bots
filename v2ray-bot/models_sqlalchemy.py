@@ -104,3 +104,22 @@ class Purchase(Base):
     owner = relationship("UserDetail", back_populates="services")
 
     register_date = Column(DateTime, default=datetime.now())
+
+
+class Statistics(Base):
+    __tablename__ = 'Statistics'
+
+    statistics_id = Column(Integer, primary_key=True)
+    traffic_usage = Column(String)
+    data = Column(String)
+
+    register_date = Column(DateTime, default=datetime.now())
+
+class LastUsage(Base):
+    __tablename__ = 'Last_usage'
+
+    last_usage_id = Column(Integer, primary_key=True)
+    last_usage = Column(String)
+    data = Column(String)
+
+    register_date = Column(DateTime, default=datetime.now())

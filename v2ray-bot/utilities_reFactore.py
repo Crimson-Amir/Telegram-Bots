@@ -1,9 +1,9 @@
 import datetime
 from database_sqlalchemy import SessionLocal
-import private, logging, traceback
+import setting, logging, traceback
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from dialogue_texts import text_transaction, keyboard_transaction
-from private import default_language, ADMIN_CHAT_IDs, telegram_bot_token
+from setting import default_language, ADMIN_CHAT_IDs, telegram_bot_token
 import crud, functools, requests
 
 class UserNotFound(Exception):
@@ -109,7 +109,7 @@ class HandleErrors:
         return wrapper
 
     @staticmethod
-    async def report_to_admin(msg, message_thread_id=private.error_thread_id):
+    async def report_to_admin(msg, message_thread_id=setting.error_thread_id):
         requests.post(
             url=f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage",
             json={'chat_id': ADMIN_CHAT_IDs[0], 'text': msg, 'message_thread_id': message_thread_id}
@@ -126,15 +126,15 @@ class HandleErrors:
 
 async def report_to_admin(level, fun_name, msg, user_table=None):
     report_level = {
-        'purchase': {'thread_id': private.purchased_thread_id, 'emoji': '🟢'},
-        'info': {'thread_id': private.info_thread_id, 'emoji': '🔵'},
-        'warning': {'thread_id': private.info_thread_id, 'emoji': '🟡'},
-        'error': {'thread_id': private.error_thread_id, 'emoji': '🔴'},
-        'emergency_error': {'thread_id': private.error_thread_id, 'emoji': '🔴🔴'},
+        'purchase': {'thread_id': setting.purchased_thread_id, 'emoji': '🟢'},
+        'info': {'thread_id': setting.info_thread_id, 'emoji': '🔵'},
+        'warning': {'thread_id': setting.info_thread_id, 'emoji': '🟡'},
+        'error': {'thread_id': setting.error_thread_id, 'emoji': '🔴'},
+        'emergency_error': {'thread_id': setting.error_thread_id, 'emoji': '🔴🔴'},
     }
 
     emoji = report_level.get(level, {}).get('emoji', '🔵')
-    thread_id = report_level.get(level, {}).get('thread_id', private.info_thread_id)
+    thread_id = report_level.get(level, {}).get('thread_id', setting.info_thread_id)
     message = f"{emoji} Report {level.replace('_', ' ')} {fun_name}\n\n{msg}"
 
     if user_table:
@@ -215,12 +215,12 @@ class FakeContext:
     class bot:
         @staticmethod
         async def send_message(chat_id, text):
-            url = f"https://api.telegram.org/bot{private.telegram_bot_token}/sendMessage"
+            url = f"https://api.telegram.org/bot{setting.telegram_bot_token}/sendMessage"
             json_data = {'chat_id': chat_id, 'text': text}
             requests.post(url=url, json=json_data)
         @staticmethod
         async def send_photo(chat_id, text, caption, reply_markup, parse_mode):
-            url = f"https://api.telegram.org/bot{private.telegram_bot_token}/SendPhoto"
+            url = f"https://api.telegram.org/bot{setting.telegram_bot_token}/SendPhoto"
             json_data = {'chat_id': chat_id, 'text': text, 'caption': caption, 'reply_markup':reply_markup, 'parse_mode': parse_mode}
             requests.post(url=url, json=json_data)
 

@@ -3,7 +3,7 @@ from utilities_reFactore import FindText, message_token, handle_error
 import start_reFactore
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler
-import private, wallet_reFactore
+import setting, wallet_reFactore
 from vpn_service import start as vpn_start, buy_and_upgrade_service
 
 
@@ -35,7 +35,7 @@ async def services(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 if __name__ == '__main__':
-    application = ApplicationBuilder().token(private.telegram_bot_token).build()
+    application = ApplicationBuilder().token(setting.telegram_bot_token).build()
 
     # Commands
     application.add_handler(CommandHandler('start', start_reFactore.start))
@@ -46,6 +46,7 @@ if __name__ == '__main__':
     application.add_handler(CallbackQueryHandler(start_reFactore.start, pattern='start_in_new_message'))
     application.add_handler(CallbackQueryHandler(start_reFactore.register_user, pattern='register_user_(.*)'))
     application.add_handler(CallbackQueryHandler(services, pattern='menu_services'))
+    application.add_handler(CallbackQueryHandler(start_reFactore.just_for_show, pattern='just_for_show'))
 
     # Wallet
     application.add_handler(CallbackQueryHandler(wallet_reFactore.wallet_page, pattern='wallet_page'))

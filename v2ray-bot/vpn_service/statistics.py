@@ -1,14 +1,35 @@
 from datetime import datetime, timedelta
 import telegram.error, pytz
-from utilities import ready_report_problem_to_admin, sqlite_manager, format_mb_traffic, make_day_name_farsi, api_operation
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
-from plot import get_plot
+from vpn_service.plot import get_plot
 from tasks import handle_telegram_exceptions_without_user_side
 from arvanRadar.extraData import url_format, datacenter_keys
 from arvanRadar.arvanPlot import RadarPlot
 from arvanRadar import arvanApi
 
 STATISTICS_TIMER_HORSE = 3
+
+def make_day_name_farsi(text):
+    days_mapping = {
+        'Monday': 'دوشنبه',
+        'Tuesday': 'سه‌شنبه',
+        'Wednesday': 'چهارشنبه',
+        'Thursday': 'پنج‌شنبه',
+        'Friday': 'جمعه',
+        'Saturday': 'شنبه',
+        'Sunday': 'یک‌شنبه'
+    }
+
+    return days_mapping[text]
+
+
+def format_mb_traffic(traffic):
+    if traffic == 0:
+        return 'بدون مصرف'
+    elif int(traffic) < 1000:
+        return f"{int(traffic)} مگابایت"
+    else:
+        return f"{round(traffic / 1000, 2)} گیگابایت"
 
 
 def statistics_timer(context):

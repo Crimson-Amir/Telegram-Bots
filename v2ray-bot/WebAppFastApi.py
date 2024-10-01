@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
-import private, logging, traceback
+import setting, logging, traceback
 import crud, requests, utilities_reFactore, wallet_reFactore
 from database_sqlalchemy import SessionLocal
 from vpn_service import buy_and_upgrade_service
@@ -22,7 +22,7 @@ def verify_payment_zarinpal(authority: str, amount: int):
     """Verifies payment with Zarinpal API."""
     url = 'https://payment.zarinpal.com/pg/v4/payment/verify.json'
     json_payload = {
-        'merchant_id': private.zarinpal_merchant_id,
+        'merchant_id': setting.zarinpal_merchant_id,
         'amount': amount,
         'authority': authority
     }
@@ -177,7 +177,7 @@ async def verify_cryptomus_payment(order_id: str, uuid_: str | None, financial):
     """Verifies payment status using the Cryptomus API."""
     try:
         invoice_check = await cryptomusAPI.InvoiceInfo(
-            private.cryptomus_api_key, private.cryptomus_merchant_id
+            setting.cryptomus_api_key, setting.cryptomus_merchant_id
         ).execute(order_id, uuid_)
 
         if invoice_check:

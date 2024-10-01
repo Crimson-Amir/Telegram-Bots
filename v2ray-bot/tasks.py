@@ -7,7 +7,7 @@ from utilities import (human_readable, something_went_wrong,
                        send_service_to_customer_report, report_status_to_admin, report_problem,
                        init_name, ranking_manage)
 import admin_task
-from private import *
+from setting import *
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ConversationHandler, CallbackQueryHandler, MessageHandler, Filters
 import utilities
