@@ -1,6 +1,7 @@
 import os, sys, requests
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from vpn_service import vpn_crud
+from database_sqlalchemy import SessionLocal
 
 class MarzbanAPI:
     def __init__(self):
@@ -23,14 +24,15 @@ class MarzbanAPI:
 
     def refresh_connection(self):
         """Refresh access tokens for all servers."""
-        servers = vpn_crud.get_all_main_servers()
-        for server in servers:
-            response = self.get_server_access_token(server)
-            self.servers_bearer_token[server.server_ip] = {
-                'access_token': response['access_token'],
-                'server_instant': server
-            }
-
+        with SessionLocal() as session:
+            servers = vpn_crud.get_all_main_servers(session)
+            for server in servers:
+                response = self.get_server_access_token(server)
+                self.servers_bearer_token[server.server_ip] = {
+                    'access_token': response['access_token'],
+                    'server_instant': server
+                }
+            print(self.servers_bearer_token)
     @staticmethod
     def build_full_url(server, endpoint):
         """Construct full URL for a server and endpoint."""

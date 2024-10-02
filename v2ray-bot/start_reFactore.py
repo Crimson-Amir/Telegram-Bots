@@ -53,14 +53,14 @@ async def register_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f'User Name: {user_detail.first_name} {user_detail.last_name}\n'
                         f'User ID: <a href=\"tg://user?id={user_detail.id}\">{user_detail.id}</a>\n'
                         f'UserName: @{user_detail.username}\n'
-                        f'User Language: {selected_language}\n'
+                        f'Selected Language: {selected_language}\n'
                         f"\nInvited By: <a href=\"tg://user?id={inviter_chat_id}\">{inviter_chat_id}</a>")
 
     if photos.total_count > 0:
         photo_file_id = photos.photos[0][-1].file_id
-        await context.bot.send_photo(chat_id=setting.ADMIN_CHAT_IDs[0], photo=photo_file_id, caption=start_text_notif, parse_mode='HTML')
+        await context.bot.send_photo(chat_id=setting.ADMIN_CHAT_IDs[0], photo=photo_file_id, caption=start_text_notif, parse_mode='HTML', message_thread_id=setting.new_user_thread_id)
     else:
-        await context.bot.send_message(chat_id=setting.ADMIN_CHAT_IDs[0], text=start_text_notif + '\n\n• Without profile picture (or not public)', parse_mode='HTML')
+        await context.bot.send_message(chat_id=setting.ADMIN_CHAT_IDs[0], text=start_text_notif + '\n\n• Without profile picture (or not public)', parse_mode='HTML', message_thread_id=setting.new_user_thread_id)
 
     return await start(update, context)
 

@@ -8,7 +8,7 @@ from vpn_service import start as vpn_start, buy_and_upgrade_service
 
 
 logging.basicConfig(
-    level=logging.ERROR,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)',
     handlers=[
         logging.FileHandler("freebyte.log"),
@@ -55,6 +55,7 @@ if __name__ == '__main__':
     application.add_handler(CallbackQueryHandler(wallet_reFactore.create_invoice, pattern='create_invoice__(.*)'))
     application.add_handler(CallbackQueryHandler(wallet_reFactore.pay_by_zarinpal, pattern='pay_by_zarinpal__(.*)'))
     application.add_handler(CallbackQueryHandler(wallet_reFactore.pay_by_cryptomus, pattern='pay_by_cryptomus__(.*)'))
+    application.add_handler(CallbackQueryHandler(wallet_reFactore.pay_by_wallet, pattern='pay_by_wallet__(.*)'))
 
     # VPN Section
     application.add_handler(CallbackQueryHandler(vpn_start.vpn_main_menu, pattern='vpn_main_menu'))

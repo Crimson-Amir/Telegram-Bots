@@ -9,6 +9,7 @@ class UserDetail(Base):
     user_id = Column(Integer, primary_key=True)
     user_level = Column(Integer, default=1)
     status = Column(String, default="active")
+
     email = Column(String, unique=True, default=None)
     phone_number = Column(String, unique=True, default=None)
     first_name = Column(String)
@@ -16,15 +17,9 @@ class UserDetail(Base):
     username = Column(String, unique=True)
     chat_id = Column(BigInteger, unique=True, nullable=False)
     language = Column(String, default='fa')
-    traffic = Column(Integer, default=1)
-    period = Column(Integer, default=1)
     free_service = Column(Boolean, default=False)
-    notification_gb = Column(Integer, default=85)
-    notification_day = Column(Integer, default=3)
-
     wallet = Column(Integer, default=0)
     invited_by = Column(BigInteger, ForeignKey('UserDetail.chat_id'))
-
     register_date = Column(DateTime, default=datetime.now())
 
     financial_reports = relationship("FinancialReport", back_populates="owner")
@@ -39,7 +34,7 @@ class FinancialReport(Base):
 
     amount = Column(Integer, nullable=False)
     action = Column(String, nullable=False)
-    id_holder = Column(Integer, nullable=False)
+    id_holder = Column(Integer)
 
     payment_getway = Column(String)
     authority = Column(String)
@@ -59,7 +54,7 @@ class MainServer(Base):
     server_id = Column(Integer, primary_key=True)
     active = Column(Boolean)
     server_ip = Column(String)
-    server_protocol = Column(Integer)
+    server_protocol = Column(String)
     server_port = Column(Integer)
     server_username = Column(String)
     server_password = Column(String)
@@ -69,11 +64,8 @@ class Product(Base):
     __tablename__ = 'Product'
 
     product_id = Column(Integer, primary_key=True)
-    inbound_id = Column(ARRAY(Integer))
     active = Column(Boolean)
     product_name = Column(String)
-    inbound_host = Column(String)
-    inbound_header_type = Column(String)
     register_date = Column(DateTime, default=datetime.now())
     purchase = relationship("Purchase", back_populates="product")
 
@@ -85,21 +77,19 @@ class Purchase(Base):
     __tablename__ = 'Purchase'
 
     purchase_id = Column(Integer, primary_key=True)
+    username = Column(String)
     active = Column(Boolean)
-    inbound_id = Column(Integer)
-    client_email = Column(String)
-    client_id = Column(String)
     traffic = Column(Integer)
     period = Column(Integer)
-    notif_day = Column(Boolean, default=False)
-    notif_gb = Column(Boolean, default=False)
-    auto_renewal = Column(Boolean, default=False)
-    token = Column(String)
+    day_notification_stats = Column(Boolean, default=False)
+    traffic_notification_stats = Column(Boolean, default=False)
+    subscription_url = Column(String)
 
-    client_addresses = Column(String)
+    upgrade_traffic = Column(Integer, default=0)
+    upgrade_period = Column(Integer, default=0)
+
     product_id = Column(Integer, ForeignKey('Product.product_id'))
     product = relationship("Product", back_populates="purchase")
-
     chat_id = Column(BigInteger, ForeignKey('UserDetail.chat_id'))
     owner = relationship("UserDetail", back_populates="services")
 

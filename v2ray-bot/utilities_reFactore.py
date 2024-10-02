@@ -1,4 +1,4 @@
-import datetime
+import datetime, json
 from database_sqlalchemy import SessionLocal
 import setting, logging, traceback
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -110,10 +110,11 @@ class HandleErrors:
 
     @staticmethod
     async def report_to_admin(msg, message_thread_id=setting.error_thread_id):
-        requests.post(
+        response = requests.post(
             url=f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage",
-            json={'chat_id': ADMIN_CHAT_IDs[0], 'text': msg, 'message_thread_id': message_thread_id}
+            json={'chat_id': ADMIN_CHAT_IDs[0], 'text': msg[:4096], 'message_thread_id': message_thread_id}
         )
+        logging.info(f'send report to admin status code: {response.status_code}')
 
     @staticmethod
     async def handle_error_message_for_user(update, context, message_text=None):
@@ -219,10 +220,21 @@ class FakeContext:
             json_data = {'chat_id': chat_id, 'text': text}
             requests.post(url=url, json=json_data)
         @staticmethod
-        async def send_photo(chat_id, text, caption, reply_markup, parse_mode):
-            url = f"https://api.telegram.org/bot{setting.telegram_bot_token}/SendPhoto"
-            json_data = {'chat_id': chat_id, 'text': text, 'caption': caption, 'reply_markup':reply_markup, 'parse_mode': parse_mode}
-            requests.post(url=url, json=json_data)
+        async def send_photo(photo, chat_id, caption, reply_markup, parse_mode):
+            url = f"https://api.telegram.org/bot{setting.telegram_bot_token}/sendPhoto"
+            files = {'photo': ('qr_code.png', photo, 'image/png')}
+            keyboard = [[{'text': button.text, 'callback_data': button.callback_data} for button in row] for row in reply_markup.inline_keyboard]
+            reply_markup_json = json.dumps({'inline_keyboard': keyboard})
+
+            data = {
+                'chat_id': chat_id,
+                'caption': caption,
+                'reply_markup': reply_markup_json,
+                'parse_mode': parse_mode
+            }
+
+            response = requests.post(url=url, data=data, files=files)
+            print(response)
 
 handle_error = HandleErrors()
 message_token = MessageToken()

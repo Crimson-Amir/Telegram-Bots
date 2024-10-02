@@ -35,14 +35,16 @@ transaction = {
     403: "The transaction has been verified.",
     404: "Verification was unsuccessful.",
     405: "An error occurred during validation, the payment information has been sent to the admins, and the result will be announced to you in the bot.",
-    "operation_failed_user": 'An error occurred while executing the operation! The amount of {0} Tomans has been added to your wallet. Please perform the desired operation through the credit of the wallet.',
+    "operation_failed_user": 'An error occurred while executing the operation! The amount of {0} IRT has been added to your wallet. Please perform the desired operation through the credit of the wallet.',
     "successful_pay": 'Your payment has been successfully confirmed! Transaction number: {0}',
     "payment_failed_title": "Failed payment",
-     "payment_failed": "Your payment failed",
-     "payment_failed_body": "Unfortunately, your payment has failed. Error reason:",
-     "error_code_lable": "Error Code",
-     "extra_text": "If you think there is a problem, please contact support through the bot.",
-     "back_to_bot": "Back to bot",
+    "payment_failed": "Your payment failed",
+    "payment_failed_body": "Unfortunately, your payment has failed. Error reason:",
+    "error_code_lable": "Error Code",
+    "extra_text": "If you think there is a problem, please contact support through the bot.",
+    "back_to_bot": "Back to bot",
+    "amount_added_to_wallet_successfully": 'The amount of {0} IRT has been successfully added to your wallet✅',
+
   },
   "fa": {
     -9: "خطای اعتبار سنجی: مرچنت کد داخل تنظیمات وارد نشده باشد - آدرس بازگشت وارد نشده باشد - توضیحات بیش از حد مجاز - مبلغ پرداختی کمتر یا بیشتر از حد مجاز است",
@@ -88,5 +90,7 @@ transaction = {
     "error_code_lable": "کد خطا",
     "extra_text": "اگر فکر میکنید مشکلی وجود دارد، لطفا از طریق ربات با پشتیبانی در ارتباط باشید.",
     "back_to_bot": "بازگشت به ربات",
+    "amount_added_to_wallet_successfully": 'مبلغ {0} تومان به کیف پول شما اضافه شد✅',
+
   }
 }

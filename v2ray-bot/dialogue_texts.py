@@ -126,6 +126,24 @@ text_transaction = {
         'en': 'this button jusr showing info.',
         'fa': 'این دکمه جهت نمایش دادن اطلاعات است.'
     },
+    'invoice_in_not_payable': {
+        'en': 'This invoice is not payable.',
+        'fa': 'این فاکتور قابل پرداخت نیست.'
+    },
+    'invoice_paid_by_wallet_message': {
+        'en': 'invoice paid successfully✅',
+        'fa': 'فاکتور با موفقیت پرداخت شد✅'
+    },
+    'upgrade_service_successfuly': {
+        'en': '🟢 Your service named {0} has been upgraded successfully! '
+              '\n• The specifications added to the service are as follows:'
+              '\n• Traffic: {1} GB'
+              '\n• Time period: {2} days',
+        'fa': '🟢 سرویس شما با نام {0} با موفقیت ارتقا یافت!'
+              '\n• مشخصات اضافه شده به سرویس به شرح زیر میباشد:'
+              '\n• ترافیک: {1} گیگابایت'
+              '\n• دوره زمانی: {2} روز'
+    },
 }
 
 keyboard_transaction = {

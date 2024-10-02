@@ -1,12 +1,10 @@
-import json
-import uuid
-
+import json, uuid, WebAppUtilities, setting
 import crud, arrow, logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-import setting
 from database_sqlalchemy import SessionLocal
 from utilities_reFactore import FindText, message_token, handle_error
 from API import zarinPalAPI, cryptomusAPI, convert_irt_to_usd
+from WebAppDialogue import transaction
 
 def human_readable(date, user_language):
     get_date = arrow.get(date)
@@ -127,7 +125,7 @@ async def create_invoice(update, context):
     query = update.callback_query
     chat_id = update.effective_chat.id
     ft_instance = FindText(update, context)
-    pay_by_wallet = True
+    pay_by_wallet_satatus = True
     service_id = None
     action, *extra_data = query.data.replace('create_invoice__', '').split('__')
 
@@ -135,7 +133,7 @@ async def create_invoice(update, context):
         with session.begin():
 
             if action == "increase_wallet_balance":
-                pay_by_wallet = False
+                pay_by_wallet_satatus = False
                 amount = int(extra_data[0])
                 operation = 'recive'
                 back_button_callback = 'buy_credit_volume'
@@ -146,7 +144,7 @@ async def create_invoice(update, context):
                 amount = (int(traffic) * setting.PRICE_PER_GB) + (int(period) * setting.PRICE_PER_DAY)
                 product_id, back_button_callback= 1, 'vpn_set_period_traffic__30_40'
                 operation = 'spend'
-                invoice_extra_data = (f"{await ft_instance.find_text('charge_wallet')}"
+                invoice_extra_data = (f"{await ft_instance.find_text('buy_vpn_service')}"
                                       f"\n{await ft_instance.find_text('traffic')} {traffic} {await ft_instance.find_keyboard('gb_lable')}"
                                       f"\n{await ft_instance.find_text('period')} {period} {await ft_instance.find_keyboard('day_lable')}")
 
@@ -157,7 +155,7 @@ async def create_invoice(update, context):
 
             keyboard = [
                 [InlineKeyboardButton(await ft_instance.find_keyboard('iran_payment_getway'), callback_data=f"pay_by_zarinpal__{action}__{finacial_report.financial_id}")],
-                [InlineKeyboardButton(await ft_instance.find_keyboard('pay_with_wallet_balance'), callback_data=f"pay_by_wallet__{action}__{finacial_report.financial_id}") if pay_by_wallet else [],
+                [InlineKeyboardButton(await ft_instance.find_keyboard('pay_with_wallet_balance'), callback_data=f"pay_by_wallet__{action}__{finacial_report.financial_id}") if pay_by_wallet_satatus else [],
                  InlineKeyboardButton(await ft_instance.find_keyboard('cryptomus_payment_getway'), callback_data=f"pay_by_cryptomus__{action}__{finacial_report.financial_id}")],
                 [InlineKeyboardButton(await ft_instance.find_keyboard('back_button'), callback_data=back_button_callback)],
             ]
@@ -273,14 +271,31 @@ async def pay_by_cryptomus(update, context):
 
             await query.edit_message_text(text=text, parse_mode='html', reply_markup=InlineKeyboardMarkup(keyboard))
 
-
-async def increase_wallet_balance(update, context, session, financial_id: int):
-    get_financial = crud.get_financial_report_by_id(session, financial_id)
-
+@handle_error.handle_functions_error
+@message_token.check_token
+async def pay_by_wallet(update, context):
+    query = update.callback_query
+    action, financial_id = query.data.replace('pay_by_wallet__', '').split('__')
     ft_instance = FindText(update, context)
 
-    crud.add_credit_to_wallet(session, get_financial)
-    text = await ft_instance.find_text('amount_added_to_wallet_successfully')
-    text = text.format(f"{get_financial.amount:,}")
+    with SessionLocal() as session:
+        session.begin()
+        financial = crud.get_financial_report_by_id(session, financial_id)
+        dialogues = transaction.get(financial.owner.language, transaction.get('fa'))
 
-    await context.bot.send_message(text=text, chat_id=get_financial.chat_id)
+        if not financial or financial.payment_status in ['paid', 'refund'] or financial.amount < financial.owner.wallet:
+            return await query.answer(await ft_instance.find_text('invoice_in_not_payable'))
+
+        try:
+            await WebAppUtilities.handle_successful_payment(session, financial, financial_id, 'WalletPayment')
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            await WebAppUtilities.handle_failed_payment(session, financial, e, dialogues, financial_id, 'WalletPayment')
+
+
+    keyboard = [[InlineKeyboardButton(await ft_instance.find_keyboard('back_button'), callback_data="start_in_new_message")]]
+    return await query.edit_message_text(
+        await ft_instance.find_text('invoice_paid_by_wallet_message'),
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
