@@ -97,7 +97,7 @@ class MarzbanAPI:
         """Modify user details."""
         endpoint = f"/api/user/{username}"
         url, headers = self.initialize_request(main_server_ip, endpoint)
-        return self.make_request('post', url, headers=headers, json=user_data)
+        return self.make_request('put', url, headers=headers, json=user_data)
 
     async def remove_user(self, main_server_ip, username):
         """Remove a user."""
@@ -128,3 +128,12 @@ class MarzbanAPI:
         endpoint = "/api/nodes/usage"
         url, headers = self.initialize_request(main_server_ip, endpoint)
         return self.make_request('get', url, headers=headers)
+
+    async def reset_user_data_usage(self, main_server_ip, username):
+        """Retrieve node usage statistics."""
+        endpoint = f"/api/user/{username}/reset"
+        url, headers = self.initialize_request(main_server_ip, endpoint)
+        return self.make_request('post', url, headers=headers)
+
+
+marzban_api = MarzbanAPI()

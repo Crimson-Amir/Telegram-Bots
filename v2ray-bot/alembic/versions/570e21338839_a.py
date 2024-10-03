@@ -1,8 +1,8 @@
 """a
 
-Revision ID: 9bf777dfa77e
+Revision ID: 570e21338839
 Revises: 
-Create Date: 2024-10-02 01:52:57.096650
+Create Date: 2024-10-03 02:23:15.318913
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '9bf777dfa77e'
+revision: str = '570e21338839'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -31,7 +31,7 @@ def upgrade() -> None:
     sa.Column('server_id', sa.Integer(), nullable=False),
     sa.Column('active', sa.Boolean(), nullable=True),
     sa.Column('server_ip', sa.String(), nullable=True),
-    sa.Column('server_protocol', sa.Integer(), nullable=True),
+    sa.Column('server_protocol', sa.String(), nullable=True),
     sa.Column('server_port', sa.Integer(), nullable=True),
     sa.Column('server_username', sa.String(), nullable=True),
     sa.Column('server_password', sa.String(), nullable=True),
@@ -55,11 +55,7 @@ def upgrade() -> None:
     sa.Column('username', sa.String(), nullable=True),
     sa.Column('chat_id', sa.BigInteger(), nullable=False),
     sa.Column('language', sa.String(), nullable=True),
-    sa.Column('traffic', sa.Integer(), nullable=True),
-    sa.Column('period', sa.Integer(), nullable=True),
     sa.Column('free_service', sa.Boolean(), nullable=True),
-    sa.Column('notification_gb', sa.Integer(), nullable=True),
-    sa.Column('notification_day', sa.Integer(), nullable=True),
     sa.Column('wallet', sa.Integer(), nullable=True),
     sa.Column('invited_by', sa.BigInteger(), nullable=True),
     sa.Column('register_date', sa.DateTime(), nullable=True),
@@ -75,7 +71,7 @@ def upgrade() -> None:
     sa.Column('operation', sa.String(), nullable=True),
     sa.Column('amount', sa.Integer(), nullable=False),
     sa.Column('action', sa.String(), nullable=False),
-    sa.Column('id_holder', sa.Integer(), nullable=False),
+    sa.Column('id_holder', sa.Integer(), nullable=True),
     sa.Column('payment_getway', sa.String(), nullable=True),
     sa.Column('authority', sa.String(), nullable=True),
     sa.Column('currency', sa.String(), nullable=True),
@@ -89,11 +85,8 @@ def upgrade() -> None:
     )
     op.create_table('Product',
     sa.Column('product_id', sa.Integer(), nullable=False),
-    sa.Column('inbound_id', sa.ARRAY(sa.Integer()), nullable=True),
     sa.Column('active', sa.Boolean(), nullable=True),
     sa.Column('product_name', sa.String(), nullable=True),
-    sa.Column('inbound_host', sa.String(), nullable=True),
-    sa.Column('inbound_header_type', sa.String(), nullable=True),
     sa.Column('register_date', sa.DateTime(), nullable=True),
     sa.Column('main_server_id', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['main_server_id'], ['MainServer.server_id'], ),
@@ -101,17 +94,15 @@ def upgrade() -> None:
     )
     op.create_table('Purchase',
     sa.Column('purchase_id', sa.Integer(), nullable=False),
+    sa.Column('username', sa.String(), nullable=True),
     sa.Column('active', sa.Boolean(), nullable=True),
-    sa.Column('inbound_id', sa.Integer(), nullable=True),
-    sa.Column('client_email', sa.String(), nullable=True),
-    sa.Column('client_id', sa.String(), nullable=True),
     sa.Column('traffic', sa.Integer(), nullable=True),
     sa.Column('period', sa.Integer(), nullable=True),
-    sa.Column('notif_day', sa.Boolean(), nullable=True),
-    sa.Column('notif_gb', sa.Boolean(), nullable=True),
-    sa.Column('auto_renewal', sa.Boolean(), nullable=True),
-    sa.Column('token', sa.String(), nullable=True),
-    sa.Column('client_addresses', sa.String(), nullable=True),
+    sa.Column('day_notification_stats', sa.Boolean(), nullable=True),
+    sa.Column('traffic_notification_stats', sa.Boolean(), nullable=True),
+    sa.Column('subscription_url', sa.String(), nullable=True),
+    sa.Column('upgrade_traffic', sa.Integer(), nullable=True),
+    sa.Column('upgrade_period', sa.Integer(), nullable=True),
     sa.Column('product_id', sa.Integer(), nullable=True),
     sa.Column('chat_id', sa.BigInteger(), nullable=True),
     sa.Column('register_date', sa.DateTime(), nullable=True),

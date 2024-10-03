@@ -1,27 +1,10 @@
 import json, uuid, WebAppUtilities, setting
-import crud, arrow, logging
+import crud, logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from database_sqlalchemy import SessionLocal
-from utilities_reFactore import FindText, message_token, handle_error
+from utilities_reFactore import FindText, message_token, handle_error, human_readable
 from API import zarinPalAPI, cryptomusAPI, convert_irt_to_usd
 from WebAppDialogue import transaction
-
-def human_readable(date, user_language):
-    get_date = arrow.get(date)
-    if user_language == 'en':
-        return get_date.humanize()
-
-    try:
-        return get_date.humanize(locale="fa-ir")
-    except ValueError as e:
-        if 'week' in str(e):
-            return str(get_date.humanize()).replace('weeks ago', 'هفته پیش').replace('a week ago', 'هفته پیش')
-        else:
-            return get_date.humanize()
-
-    except Exception as e:
-        logging.error(f'an error in humanize data: {e}')
-        return f'Error In Parse Data'
 
 
 async def wallet_page(update, context):
@@ -79,7 +62,7 @@ async def financial_transactions_wallet(update, context):
                 lasts_report = await ft_instance.find_text('recent_transactions') + '\n'
                 for report in get_financial_reports:
                     lasts_report += f"\n\n{await ft_instance.find_text('recive_money') if report.operation == 'recive' else
-                    await ft_instance.find_text('spend_money')} {report.value:,} {await ft_instance.find_text('irt')} - {human_readable(report.register_date, await ft_instance.find_user_language())}"
+                    await ft_instance.find_text('spend_money')} {report.amount:,} {await ft_instance.find_text('irt')} - {human_readable(report.register_date, await ft_instance.find_user_language())}"
             else:
                 lasts_report = await ft_instance.find_text('no_transaction_yet')
 
@@ -148,8 +131,20 @@ async def create_invoice(update, context):
                                       f"\n{await ft_instance.find_text('traffic')} {traffic} {await ft_instance.find_keyboard('gb_lable')}"
                                       f"\n{await ft_instance.find_text('period')} {period} {await ft_instance.find_keyboard('day_lable')}")
 
-                purchase = crud.creatcreate_purchase(session, product_id, chat_id, traffic, period)
+                purchase = crud.create_purchase(session, product_id, chat_id, traffic, period)
                 service_id = purchase.purchase_id
+
+            elif action == "upgrade_vpn_service":
+                upgrade_period, upgrade_traffic, purchase_id = extra_data
+                amount = (int(upgrade_traffic) * setting.PRICE_PER_GB) + (int(upgrade_period) * setting.PRICE_PER_DAY)
+                back_button_callback, operation = f'vpn_upgrade_service__30__40__{purchase_id}', 'spend'
+                format_title = await ft_instance.find_text('upgrade_vpn_service')
+                format_title = format_title.format(purchase_id)
+                invoice_extra_data = (f"{format_title}"
+                                      f"\n{await ft_instance.find_text('traffic')} {upgrade_traffic} {await ft_instance.find_keyboard('gb_lable')}"
+                                      f"\n{await ft_instance.find_text('period')} {upgrade_period} {await ft_instance.find_keyboard('day_lable')}")
+
+                service_id = crud.update_purchase(session, purchase_id, upgrade_traffic, upgrade_period)
 
             finacial_report = crud.create_financial_report(session, operation, chat_id, amount, action, service_id, 'not paid')
 
@@ -283,8 +278,11 @@ async def pay_by_wallet(update, context):
         financial = crud.get_financial_report_by_id(session, financial_id)
         dialogues = transaction.get(financial.owner.language, transaction.get('fa'))
 
-        if not financial or financial.payment_status in ['paid', 'refund'] or financial.amount < financial.owner.wallet:
-            return await query.answer(await ft_instance.find_text('invoice_in_not_payable'))
+        if financial.amount > financial.owner.wallet:
+            return await query.answer(await ft_instance.find_text('not_enogh_credit'), show_alert=True)
+
+        if not financial or financial.payment_status in ['paid', 'refund']:
+            return await query.answer(await ft_instance.find_text('invoice_already_paid'))
 
         try:
             await WebAppUtilities.handle_successful_payment(session, financial, financial_id, 'WalletPayment')

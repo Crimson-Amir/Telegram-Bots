@@ -47,11 +47,11 @@ async def handle_successful_payment(session, financial, authority, payment_getwa
     extra_data = ""
     if financial.action == 'buy_vpn_service':
         service = await buy_and_upgrade_service.create_service_for_user(update, context, session, financial.id_holder)
-        extra_data = f"Service Traffic: {service.traffic}\nService Period: {service.period}"
+        extra_data = f"Service Traffic: {service.traffic}GB\nService Period: {service.period} Day"
 
     if financial.action == 'upgrade_vpn_service':
         service = await buy_and_upgrade_service.upgrade_service_for_user(update, context, session, financial.id_holder)
-        extra_data = f"Service Traffic: {service.traffic}\nService Period: {service.period}"
+        extra_data = f"Service Traffic: {service.traffic}GB\nService Period: {service.period} Day"
 
     elif financial.action == 'increase_wallet_balance':
         await increase_wallet_balance(financial, context, session)
@@ -90,7 +90,7 @@ def log_error(msg, exception, order_id):
     logging.error(f'{msg} {exception}')
     tb = traceback.format_exc()
     error = (
-        f'Unhandled error | User does not know payment status\n\n'
+        f'{msg}\n\n'
         f'Error Type: {type(exception)}\n'
         f'Authority: {order_id}\n'
         f'Error Reason: {exception}\n'
@@ -100,7 +100,7 @@ def log_error(msg, exception, order_id):
 
 async def report_unhandled_error(exception, section, authority, financial):
     """Reports unhandled errors to the admin."""
-    error_msg = log_error('Unhandled error occurred', exception, authority)
+    error_msg = log_error('Unhandled error occurred | User does not know payment status', exception, authority)
     await utilities_reFactore.report_to_admin(
         'emergency_error', section, error_msg, financial.owner
     )

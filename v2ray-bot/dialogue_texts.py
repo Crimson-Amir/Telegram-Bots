@@ -82,6 +82,11 @@ text_transaction = {
         'en': 'Buy VPN service',
         'fa': 'خرید سرویس VPN'
     },
+
+    'upgrade_vpn_service': {
+        'en': 'Upgrade VPN service number {0}',
+        'fa': 'ارتقاء سرویس VPN شماره {0}'
+    },
     'traffic': {
         'en': 'Traffic:',
         'fa': '• ترافیک (حجم):'
@@ -126,16 +131,20 @@ text_transaction = {
         'en': 'this button jusr showing info.',
         'fa': 'این دکمه جهت نمایش دادن اطلاعات است.'
     },
-    'invoice_in_not_payable': {
-        'en': 'This invoice is not payable.',
-        'fa': 'این فاکتور قابل پرداخت نیست.'
+    'invoice_already_paid': {
+        'en': 'This invoice already paid.',
+        'fa': 'این فاکتور قبلا پرداخت شده است.'
+    },
+    'not_enogh_credit': {
+        'en': 'you dont have enoght credit to pay this invoice!',
+        'fa': 'اعتبار شما برای پرداخت این فاکتور کافی نمیباشد!'
     },
     'invoice_paid_by_wallet_message': {
         'en': 'invoice paid successfully✅',
         'fa': 'فاکتور با موفقیت پرداخت شد✅'
     },
     'upgrade_service_successfuly': {
-        'en': '🟢 Your service named {0} has been upgraded successfully! '
+        'en': '🟢 Your service named {0} has been upgraded successfully!'
               '\n• The specifications added to the service are as follows:'
               '\n• Traffic: {1} GB'
               '\n• Time period: {2} days',
@@ -143,6 +152,14 @@ text_transaction = {
               '\n• مشخصات اضافه شده به سرویس به شرح زیر میباشد:'
               '\n• ترافیک: {1} گیگابایت'
               '\n• دوره زمانی: {2} روز'
+    },
+    'no_service_available': {
+        'en': 'You font have service!',
+        'fa': 'شما صاحب سرویس نیستید!'
+    },
+    'select_service_category': {
+        'en': 'Select the category fot view info:',
+        'fa': 'برای مشاهده جزئیات، دسته بندی مورد نظر را انتخاب کنید:'
     },
 }
 
@@ -166,6 +183,10 @@ keyboard_transaction = {
     'setting': {
         'en': 'Setting ⚙️',
         'fa': 'تنظیمات ⚙️'
+    },
+    'my_services': {
+        'en': 'My Services 🎛',
+        'fa': '🎛 سرویس‌های ‌من'
     },
     'invite': {
         'en': 'invite',
@@ -203,9 +224,13 @@ keyboard_transaction = {
         'en': 'refresh ⟳',
         'fa': 'تازه سازی ⟳'
     },
-    'buy_vpn_service': {
+    'buy_vpn_service_lable': {
         'en': 'Buy vpn service',
         'fa': 'خرید سرویس vpn'
+    },
+    'vpn_services_lable': {
+        'en': 'VPN service',
+        'fa': 'سرویس VPN'
     },
     'iran_payment_getway': {
         'en': 'Iran Payment Getway',

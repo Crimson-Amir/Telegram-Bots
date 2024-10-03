@@ -1,4 +1,4 @@
-import datetime, json
+import datetime, json, arrow
 from database_sqlalchemy import SessionLocal
 import setting, logging, traceback
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -10,26 +10,45 @@ class UserNotFound(Exception):
     def __init__(self): super().__init__("user was't register in bot!")
 
 
-async def start(update, context):
-    user_detail = update.effective_chat
+def human_readable(date, user_language):
+    get_date = arrow.get(date)
 
     try:
-        ft_instance = FindText(update, context, notify_user=False)
-        text = await ft_instance.find_text('start_menu')
+        return get_date.humanize(locale=user_language)
+
+    except ValueError as e:
+        if 'week' in str(e) and user_language == 'fa':
+            return str(get_date.humanize()).replace('weeks ago', 'هفته پیش').replace('a week ago', 'هفته پیش').replace('in', 'در').replace('weeks', 'هفته')
+        else:
+            return get_date.humanize()
+
+    except Exception as e:
+        logging.error(f'an error in humanize data: {e}')
+        return f'Error In Parse Data'
+
+
+async def start(update, context, in_new_message=False, raise_error=False):
+    user_detail = update.effective_chat
+    ft_instance = FindText(update, context, notify_user=False)
+    text = await ft_instance.find_text('start_menu')
+    try:
         main_keyboard = [
             [InlineKeyboardButton(await ft_instance.find_keyboard('menu_services'), callback_data='menu_services')],
             [InlineKeyboardButton(await ft_instance.find_keyboard('wallet'), callback_data='wallet_page'),
-             InlineKeyboardButton(await ft_instance.find_keyboard('ranking'), callback_data='ranking')],
+             InlineKeyboardButton(await ft_instance.find_keyboard('my_services'), callback_data='my_services')],
             [InlineKeyboardButton(await ft_instance.find_keyboard('setting'), callback_data='setting'),
              InlineKeyboardButton(await ft_instance.find_keyboard('invite'), callback_data='invite')],
             [InlineKeyboardButton(await ft_instance.find_keyboard('help_button'), callback_data='help_button')],
         ]
+
+        if update.callback_query and "start_in_new_message" not in update.callback_query.data and not in_new_message:
+            return await update.callback_query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(main_keyboard), parse_mode='html')
         return await context.bot.send_message(chat_id=user_detail.id, text=text, reply_markup=InlineKeyboardMarkup(main_keyboard), parse_mode='html')
 
     except Exception as e:
-        logging.error(f'error in send utilities start message! \n{e}')
+        if raise_error: raise e
+        logging.error(f'error in send start message! \n{e}')
         await context.bot.send_message(chat_id=user_detail.id, text='<b>Sorry, somthing went wrong!</b>', parse_mode='html')
-
 
 
 class FindText:
@@ -92,7 +111,7 @@ class HandleErrors:
                 return await func(update, context, **kwargs)
             except Exception as e:
                 if 'Message is not modified' in str(e): return await update.callback_query.answer()
-
+                logging.error(f'error in {func.__name__}: {str(e)}')
                 tb = traceback.format_exc()
                 err = (
                     f"🔴 An error occurred in {func.__name__}:"
@@ -198,7 +217,7 @@ class MessageToken:
 
             if timer_exist_in_message_timer:
                 if cls.message_expierd(message_id):
-                    new_message = await start(update, context)
+                    new_message = await start(update, context, sed_in_new_message=True)
                     del cls.message_timer[message_id]
                     cls.set_message_time(new_message.message_id)
                 else:

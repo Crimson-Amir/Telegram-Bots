@@ -52,7 +52,8 @@ def add_credit_to_wallet(session, financial_db, payment_status='paid'):
             update(model.FinancialReport)
             .where(model.FinancialReport.financial_id == financial_id)
             .values(
-                payment_status=payment_status
+                payment_status=payment_status,
+                operation='recive'
             )
         )
         session.execute(stmt_2)
@@ -103,7 +104,7 @@ def update_financial_report_status(session, financial_id: int, new_status):
     session.execute(stmt)
 
 
-def creatcreate_purchase(session, product_id, chat_id, traffic, period):
+def create_purchase(session, product_id, chat_id, traffic, period):
     purchase = model.Purchase(
         active=False,
         product_id=product_id,
@@ -114,6 +115,22 @@ def creatcreate_purchase(session, product_id, chat_id, traffic, period):
     session.add(purchase)
     session.flush()
     return purchase
+
+
+def update_purchase(session, product_id: int, upgrade_traffic, upgrade_period):
+    stmt = (
+        update(model.Purchase)
+        .where(model.Purchase.purchase_id == product_id)
+        .values(
+            upgrade_traffic = upgrade_traffic,
+            upgrade_period = upgrade_period
+        )
+        .returning(model.Purchase.purchase_id)
+    )
+
+    result = session.execute(stmt)
+    updated_purchase_id = result.scalar()
+    return updated_purchase_id
 
 
 def create_financial_report(session, operation, chat_id, amount, action, service_id, payment_status):

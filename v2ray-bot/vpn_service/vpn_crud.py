@@ -7,6 +7,15 @@ import models_sqlalchemy as model
 def get_purchase(session, purchase_id):
     return session.query(model.Purchase).filter_by(purchase_id=purchase_id).first()
 
+def get_purchase_by_chat_id(session, chat_id):
+    return session.query(model.Purchase).filter_by(chat_id=chat_id).all()
+
+def get_first_purchase_by_chat_id(session, chat_id):
+    return session.query(model.Purchase).filter_by(chat_id=chat_id).first()
+
+def get_purchase_bu_username(session, username):
+    return session.query(model.Purchase).filter_by(username=username).first()
+
 
 def update_purchase(session, purchase_id:int, **kwargs):
     stmt = (

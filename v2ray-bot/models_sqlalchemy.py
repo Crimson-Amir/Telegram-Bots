@@ -85,8 +85,8 @@ class Purchase(Base):
     traffic_notification_stats = Column(Boolean, default=False)
     subscription_url = Column(String)
 
-    upgrade_traffic = Column(Integer, default=0)
-    upgrade_period = Column(Integer, default=0)
+    upgrade_traffic = Column(Integer, default=1)
+    upgrade_period = Column(Integer, default=1)
 
     product_id = Column(Integer, ForeignKey('Product.product_id'))
     product = relationship("Product", back_populates="purchase")

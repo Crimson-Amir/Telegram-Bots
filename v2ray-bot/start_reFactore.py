@@ -1,5 +1,5 @@
 import logging, crud
-from utilities_reFactore import FindText, UserNotFound, handle_error, message_token
+from utilities_reFactore import FindText, UserNotFound, handle_error, message_token, start as ustart
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 import setting
@@ -8,23 +8,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE, in_new_messa
     user_detail = update.effective_chat
 
     try:
-        ft_instance = FindText(update, context, notify_user=False)
-        text = await ft_instance.find_text('start_menu')
-        main_keyboard = [
-            [InlineKeyboardButton(await ft_instance.find_keyboard('menu_services'), callback_data='menu_services')],
-
-            [InlineKeyboardButton(await ft_instance.find_keyboard('wallet'), callback_data='wallet_page'),
-             InlineKeyboardButton(await ft_instance.find_keyboard('ranking'), callback_data='ranking')],
-
-            [InlineKeyboardButton(await ft_instance.find_keyboard('setting'), callback_data='setting'),
-             InlineKeyboardButton(await ft_instance.find_keyboard('invite'), callback_data='invite')],
-
-            [InlineKeyboardButton(await ft_instance.find_keyboard('help_button'), callback_data='help_button')],
-        ]
-        if update.callback_query and "start_in_new_message" not in update.callback_query.data and not in_new_message:
-            return await update.callback_query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(main_keyboard), parse_mode='html')
-        return await context.bot.send_message(chat_id=user_detail.id, text=text, reply_markup=InlineKeyboardMarkup(main_keyboard), parse_mode='html')
-
+        await ustart(update, context, in_new_message, True)
     except UserNotFound:
         text = ('<b>• زبان خود را انتخاب کنید:'
                 '\n• Please choose your language:</b>')
